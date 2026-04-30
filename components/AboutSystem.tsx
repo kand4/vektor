@@ -45,16 +45,18 @@ const AboutSystem: React.FC<AboutSystemProps> = ({ isOpen, onClose }) => {
                     <div className="relative w-48 h-48 md:w-64 md:h-64 hexagon-mask overflow-hidden border-4 border-slate-800 shadow-2xl group-hover:border-emerald-500/50 transition-colors bg-slate-900 flex items-center justify-center">
                         
                         {/* 
-                          USING IFRAME FOR GOOGLE DRIVE PREVIEW
-                          Adjustment: '-translate-y-[35%]' moves the image DOWN slightly to reveal the head.
-                          Scale increased to 160% to ensure no borders appear when moving.
-                          pointer-events-none prevents interaction with the PDF/Image viewer controls
+                          Developer Image Container 
+                          This uses a local image file. 
                         */}
-                        <div className="w-full h-full relative overflow-hidden pointer-events-none">
-                            {/* Placeholder for profile image */}
-                            <div className="absolute inset-0 bg-slate-800 flex items-center justify-center text-slate-500 font-mono text-xs">
-                                NO IMAGE
-                            </div>
+                        <div className="w-full h-full relative overflow-hidden flex items-center justify-center">
+                            <img 
+                               src="/architect.jpg" 
+                               alt="System Architect" 
+                               className="w-full h-full object-cover object-center scale-110 group-hover:scale-125 transition-transform duration-700"
+                               onError={(e) => {
+                                 (e.target as HTMLImageElement).src = "https://ui-avatars.com/api/?name=PKAK+MAIL&background=020617&color=10b981&size=256";
+                               }}
+                            />
                             {/* Overlay to catch clicks and prevent interaction */}
                             <div className="absolute inset-0 z-10"></div>
                         </div>

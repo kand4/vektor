@@ -7,6 +7,7 @@ import LiveCameraScanner from './components/LiveCameraScanner';
 import BioBackground from './components/BioBackground';
 import HUDOverlay from './components/HUDOverlay';
 import AboutSystem from './components/AboutSystem';
+import SettingsModal from './components/SettingsModal';
 import { analyzeLandscape, fetchLatestIDengueStats, fetchRegionalDengueStats } from './services/geminiService';
 import { getGlobalOutbreaks } from './services/outbreakService';
 import { AnalysisResponse, AnalysisSession, OutbreakAlert, SensitivityLevel, AnalysisMode, iDengueData, RegionalDengueData } from './types';
@@ -178,6 +179,7 @@ const App: React.FC = () => {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [isGalleryExpanded, setIsGalleryExpanded] = useState(true);
   
@@ -291,11 +293,12 @@ const App: React.FC = () => {
     <div className="min-h-screen text-slate-200 relative selection:bg-emerald-500 selection:text-black font-sans flex flex-col overflow-x-hidden">
       <BioBackground />
       <AboutSystem isOpen={showAbout} onClose={() => setShowAbout(false)} />
+      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
       <HeatmapModal isOpen={showHeatmap} onClose={() => setShowHeatmap(false)} />
 
       {isLiveMode && <LiveCameraScanner onCaptureAnalysis={handleLiveAnalysisCapture} onClose={() => setIsLiveMode(false)} />}
 
-      <Header onOpenAbout={() => setShowAbout(true)} onGoHome={handleGoHome} />
+      <Header onOpenAbout={() => setShowAbout(true)} onOpenSettings={() => setShowSettings(true)} onGoHome={handleGoHome} />
 
       <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-20 md:mt-32 relative z-10 w-full transition-all duration-300">
         
