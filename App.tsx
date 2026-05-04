@@ -10,6 +10,7 @@ import AboutSystem from './components/AboutSystem';
 import SettingsModal from './components/SettingsModal';
 import { analyzeLandscape, fetchLatestIDengueStats, fetchRegionalDengueStats } from './services/geminiService';
 import { getGlobalOutbreaks } from './services/outbreakService';
+import LarvaeScanner from './components/LarvaeScanner';
 import { AnalysisResponse, AnalysisSession, OutbreakAlert, SensitivityLevel, AnalysisMode, iDengueData, RegionalDengueData } from './types';
 import { useLanguage } from './contexts/LanguageContext';
 import { PredictionChart } from './components/PredictionChart';
@@ -175,6 +176,7 @@ const HeatmapModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOp
 }
 
 const App: React.FC = () => {
+  const [currentView, setCurrentView] = useState<'HOME' | 'LARVAE_DETECTION'>('HOME');
   const [sessions, setSessions] = useState<AnalysisSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [isLiveMode, setIsLiveMode] = useState(false);
@@ -298,12 +300,25 @@ const App: React.FC = () => {
 
       {isLiveMode && <LiveCameraScanner onCaptureAnalysis={handleLiveAnalysisCapture} onClose={() => setIsLiveMode(false)} />}
 
-      <Header onOpenAbout={() => setShowAbout(true)} onOpenSettings={() => setShowSettings(true)} onGoHome={handleGoHome} />
+      <Header 
+         onOpenAbout={() => setShowAbout(true)} 
+         onOpenSettings={() => setShowSettings(true)} 
+         onGoHome={() => {
+            setCurrentView('HOME');
+            handleGoHome();
+         }} 
+         onGoLarvae={() => setCurrentView('LARVAE_DETECTION')}
+         currentView={currentView}
+      />
 
       <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-20 md:mt-32 relative z-10 w-full transition-all duration-300">
         
-        {!activeSessionId && (
-            <div className="mb-10 md:mb-14 text-center pt-4 md:pt-8 animate-fade-in-up">
+        {currentView === 'LARVAE_DETECTION' ? (
+            <LarvaeScanner />
+        ) : (
+            <>
+                {!activeSessionId && (
+                    <div className="mb-10 md:mb-14 text-center pt-4 md:pt-8 animate-fade-in-up">
             <h2 className="text-2xl sm:text-4xl md:text-5xl font-sci-fi font-bold text-white mb-3 md:mb-6 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)] leading-tight">{t('hero_title')} <span className="text-emerald-500">{t('hero_title_highlight')}</span></h2>
             <p className="text-slate-300 max-w-3xl mx-auto mb-6 md:mb-10 font-light tracking-wide text-xs sm:text-sm md:text-xl px-2">{t('hero_subtitle')}</p>
             
@@ -433,6 +448,8 @@ const App: React.FC = () => {
                  </div>
               ) : null}
            </div>
+        )}
+            </>
         )}
       </main>
       <Footer onOpenAbout={() => setShowAbout(true)} />

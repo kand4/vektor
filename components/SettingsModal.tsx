@@ -8,11 +8,17 @@ interface SettingsModalProps {
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [apiKey, setApiKey] = useState('');
+  const [roboflowKey, setRoboflowKey] = useState('');
+  const [roboflowModel, setRoboflowModel] = useState('');
 
   useEffect(() => {
     if (isOpen) {
       const storedKey = localStorage.getItem('gemini_api_key') || '';
+      const storedRoboflowKey = localStorage.getItem('roboflow_api_key') || '';
+      const storedRoboflowModel = localStorage.getItem('roboflow_model') || 'aegypti-larvae-detection/1';
       setApiKey(storedKey);
+      setRoboflowKey(storedRoboflowKey);
+      setRoboflowModel(storedRoboflowModel);
     }
   }, [isOpen]);
 
@@ -24,12 +30,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     } else {
       localStorage.removeItem('gemini_api_key');
     }
+
+    if (roboflowKey.trim()) {
+      localStorage.setItem('roboflow_api_key', roboflowKey.trim());
+    } else {
+      localStorage.removeItem('roboflow_api_key');
+    }
+
+    if (roboflowModel.trim()) {
+      localStorage.setItem('roboflow_model', roboflowModel.trim());
+    } else {
+      localStorage.removeItem('roboflow_model');
+    }
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 max-w-md w-full shadow-2xl">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 max-w-md w-full shadow-2xl my-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-white uppercase tracking-wider">Tetapan Sistem</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
@@ -51,8 +69,32 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Roboflow API Key
+            </label>
+            <input
+              type="password"
+              className="w-full bg-slate-800 border border-slate-600 rounded p-3 text-white focus:outline-none focus:border-cyan-500 font-mono text-sm"
+              placeholder="Private API Key from Roboflow..."
+              value={roboflowKey}
+              onChange={(e) => setRoboflowKey(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Roboflow Model ID / Version
+            </label>
+            <input
+              type="text"
+              className="w-full bg-slate-800 border border-slate-600 rounded p-3 text-white focus:outline-none focus:border-cyan-500 font-mono text-sm"
+              placeholder="e.g. aedypti-larvae-detection/1"
+              value={roboflowModel}
+              onChange={(e) => setRoboflowModel(e.target.value)}
+            />
             <p className="text-xs text-slate-500 mt-2">
-              Disimpan secara tempatan di dalam pelayar web anda (localStorage). Tidak dihantar ke mana-mana pelayan selain Google.
+              Keys are stored securely in localStorage.
             </p>
           </div>
         </div>

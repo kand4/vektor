@@ -6,10 +6,12 @@ import { Language } from '../constants/translations';
 interface HeaderProps {
   onOpenAbout?: () => void;
   onOpenSettings?: () => void;
-  onGoHome?: () => void; 
+  onGoHome?: () => void;
+  onGoLarvae?: () => void;
+  currentView?: 'HOME' | 'LARVAE_DETECTION';
 }
 
-const Header: React.FC<HeaderProps> = ({ onOpenAbout, onOpenSettings, onGoHome }) => {
+const Header: React.FC<HeaderProps> = ({ onOpenAbout, onOpenSettings, onGoHome, onGoLarvae, currentView = 'HOME' }) => {
   const { language, setLanguage, t } = useLanguage();
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
 
@@ -61,14 +63,40 @@ const Header: React.FC<HeaderProps> = ({ onOpenAbout, onOpenSettings, onGoHome }
 
         {/* Right Controls */}
         <div className="flex items-center gap-3 md:gap-6">
+           {/* Desktop Nav Items */}
+           <div className="hidden md:flex items-center gap-4 mr-2">
+             <button
+               onClick={onGoHome}
+               className={`text-xs font-bold tracking-widest px-3 py-1.5 rounded transition-colors ${currentView === 'HOME' ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-500/30' : 'text-slate-400 hover:text-white'}`}
+             >
+               HOME
+             </button>
+             <button
+               onClick={onGoLarvae}
+               className={`text-xs font-bold tracking-widest px-3 py-1.5 rounded transition-colors ${currentView === 'LARVAE_DETECTION' ? 'text-cyan-400 bg-cyan-900/20 border border-cyan-500/30' : 'text-slate-400 hover:text-white'}`}
+             >
+               LARVAE SCANNER
+             </button>
+           </div>
+
            {/* Home Link explicitly for Mobile */}
            <button 
               onClick={onGoHome} 
-              className="md:hidden flex items-center justify-center w-8 h-8 rounded border border-slate-700 bg-slate-900 active:bg-emerald-500 active:border-emerald-400 transition-colors"
+              className={`md:hidden flex items-center justify-center w-8 h-8 rounded border transition-colors ${currentView === 'HOME' ? 'border-emerald-500 bg-emerald-900/50 text-emerald-400' : 'border-slate-700 bg-slate-900 text-white'}`}
            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-white">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
                 <path d="M11.47 3.84a.75.75 0 011.06 0l8.69 8.69a.75.75 0 101.06-1.06l-8.689-8.69a2.25 2.25 0 00-3.182 0l-8.69 8.69a.75.75 0 001.061 1.06l8.69-8.69z" />
                 <path d="M12 5.432l8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875h-3.504a.75.75 0 01-.75-.75v-4.5a.75.75 0 00-.75-.75h-3a.75.75 0 00-.75.75v4.5a.75.75 0 01-.75.75H5.625a1.875 1.875 0 01-1.875-1.875v-6.198a2.29 2.29 0 00.091-.086L12 5.43z" />
+              </svg>
+           </button>
+           
+           {/* Larvae Link explicitly for Mobile */}
+           <button 
+              onClick={onGoLarvae} 
+              className={`md:hidden flex items-center justify-center w-8 h-8 rounded border transition-colors ${currentView === 'LARVAE_DETECTION' ? 'border-cyan-500 bg-cyan-900/50 text-cyan-400' : 'border-slate-700 bg-slate-900 text-white'}`}
+           >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 3.75H6A2.25 2.25 0 0 0 3.75 6v1.5m13.5 0V6A2.25 2.25 0 0 0 15 3.75h-1.5m-6 16.5H6A2.25 2.25 0 0 1 3.75 18v-1.5m13.5 0V18A2.25 2.25 0 0 1 15 20.25h-1.5M12 8.25v7.5m-3-3.75h6" />
               </svg>
            </button>
 
