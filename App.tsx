@@ -11,6 +11,7 @@ import SettingsModal from './components/SettingsModal';
 import { analyzeLandscape, fetchLatestIDengueStats, fetchRegionalDengueStats } from './services/geminiService';
 import { getGlobalOutbreaks } from './services/outbreakService';
 import LarvaeScanner from './components/LarvaeScanner';
+import AdultMosquitoScanner from './components/AdultMosquitoScanner';
 import { AnalysisResponse, AnalysisSession, OutbreakAlert, SensitivityLevel, AnalysisMode, iDengueData, RegionalDengueData } from './types';
 import { useLanguage } from './contexts/LanguageContext';
 import { PredictionChart } from './components/PredictionChart';
@@ -176,7 +177,7 @@ const HeatmapModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOp
 }
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'HOME' | 'LARVAE_DETECTION'>('HOME');
+  const [currentView, setCurrentView] = useState<'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION'>('HOME');
   const [sessions, setSessions] = useState<AnalysisSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [isLiveMode, setIsLiveMode] = useState(false);
@@ -308,6 +309,7 @@ const App: React.FC = () => {
             handleGoHome();
          }} 
          onGoLarvae={() => setCurrentView('LARVAE_DETECTION')}
+         onGoAdult={() => setCurrentView('ADULT_MOSQUITO_DETECTION')}
          currentView={currentView}
       />
 
@@ -315,6 +317,8 @@ const App: React.FC = () => {
         
         {currentView === 'LARVAE_DETECTION' ? (
             <LarvaeScanner />
+        ) : currentView === 'ADULT_MOSQUITO_DETECTION' ? (
+            <AdultMosquitoScanner />
         ) : (
             <>
                 {!activeSessionId && (

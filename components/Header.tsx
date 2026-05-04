@@ -8,10 +8,11 @@ interface HeaderProps {
   onOpenSettings?: () => void;
   onGoHome?: () => void;
   onGoLarvae?: () => void;
-  currentView?: 'HOME' | 'LARVAE_DETECTION';
+  onGoAdult?: () => void;
+  currentView?: 'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION';
 }
 
-const Header: React.FC<HeaderProps> = ({ onOpenAbout, onOpenSettings, onGoHome, onGoLarvae, currentView = 'HOME' }) => {
+const Header: React.FC<HeaderProps> = ({ onOpenAbout, onOpenSettings, onGoHome, onGoLarvae, onGoAdult, currentView = 'HOME' }) => {
   const { language, setLanguage, t } = useLanguage();
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
 
@@ -77,6 +78,12 @@ const Header: React.FC<HeaderProps> = ({ onOpenAbout, onOpenSettings, onGoHome, 
              >
                LARVAE SCANNER
              </button>
+             <button
+               onClick={onGoAdult}
+               className={`text-xs font-bold tracking-widest px-3 py-1.5 rounded transition-colors ${currentView === 'ADULT_MOSQUITO_DETECTION' ? 'text-purple-400 bg-purple-900/20 border border-purple-500/30' : 'text-slate-400 hover:text-white'}`}
+             >
+               ADULT SCANNER
+             </button>
            </div>
 
            {/* Home Link explicitly for Mobile */}
@@ -97,6 +104,16 @@ const Header: React.FC<HeaderProps> = ({ onOpenAbout, onOpenSettings, onGoHome, 
            >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 3.75H6A2.25 2.25 0 0 0 3.75 6v1.5m13.5 0V6A2.25 2.25 0 0 0 15 3.75h-1.5m-6 16.5H6A2.25 2.25 0 0 1 3.75 18v-1.5m13.5 0V18A2.25 2.25 0 0 1 15 20.25h-1.5M12 8.25v7.5m-3-3.75h6" />
+              </svg>
+           </button>
+
+           {/* Adult Link explicitly for Mobile */}
+           <button 
+              onClick={onGoAdult} 
+              className={`md:hidden flex items-center justify-center w-8 h-8 rounded border transition-colors ${currentView === 'ADULT_MOSQUITO_DETECTION' ? 'border-purple-500 bg-purple-900/50 text-purple-400' : 'border-slate-700 bg-slate-900 text-white'}`}
+           >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21v-4.5m1.5-3.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z" />
               </svg>
            </button>
 

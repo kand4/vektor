@@ -492,3 +492,172 @@ export const askRiskFollowUp = async (risk: RiskDetection, question: string, lan
     });
     return response.text || "Tiada jawapan.";
 };
+
+export const deepLarvaeAnalysis = async (base64Image: string): Promise<{ diagnosis: string, predictions: any[] }> => {
+    const ai = getAIClient();
+    // Kompres gambar sedikit lagi agar tidak terlalu besar untuk dihantar melalui rangkaian
+    const optimizedImage = await compressImage(base64Image, 1024, 0.8);
+    
+    const prompt = `Anda adalah sistem entomologi forensik pakar dan kawalan vektor (Tahap 5).
+Pengguna memuat naik imej jejentik (mosquito larvae).
+
+TUGAS ANDA:
+1. Analisa imej ini secara forensik dan mendalam. Fokus kepada profil MORFOLOGI DAN ANATOMI jejentik.
+2. Kesan bahagian-bahagian anatomi utama jejentik (contoh: Siphon/Corong pernafasan, Thorax, Kepala, Bulu/Setae, Anal Papillae, Segmen Abdomen).
+3. Bagi SETIAP bahagian anatomi yang jelas kelihatan, berikan koordinat kotak perlindungan (box_2d) dalam grid skala 0 hingga 1000 ([ymin, xmin, ymax, xmax]).
+4. Sediakan diagnosis saintifik yang komprehensif merangkumi kesimpulan spesis (Aedes, Culex, Anopheles, dll) berdasarkan bukti morfologi anatomi tersebut.
+
+FORMAT OUTPUT MESTILAH JSON SAHAJA:
+{
+  "diagnosis": "Laporan Saintifik Penuh (Markdown) mengenal pasti spesis",
+  "predictions": [
+    {
+      "box_2d": [ymin, xmin, ymax, xmax],
+      "class": "Bahagian (cth: 'Siphon')",
+      "short_desc": "Penerangan ringkas (cth: 'Pendek & gelap, khas Aedes')",
+      "confidence": 0.90
+    }
+  ]
+}`;
+
+    const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: {
+            parts: [
+                { inlineData: { mimeType: 'image/jpeg', data: optimizedImage } },
+                { text: prompt }
+            ]
+        },
+        config: {
+            responseMimeType: "application/json"
+        }
+    });
+
+    let text = response.text || "{}";
+    text = extractJSON(text);
+    const parsedResult = JSON.parse(text);
+
+    // Ensure predictions have standard structure x, y, width, height for the canvas
+    const formattedPredictions = (parsedResult.predictions || []).map((p: any) => {
+        const coords = p.box_2d;
+        // box_2d is [ymin, xmin, ymax, xmax] mapped to 0-1000 relative scale
+        // We need to convert it to relative ratios (0.0 to 1.0) so x, y, width, height can work natively
+        if (coords && coords.length === 4) {
+            const [ymin, xmin, ymax, xmax] = coords;
+            return {
+                x: ((xmin + xmax) / 2) / 1000, // Center X (Relative)
+                y: ((ymin + ymax) / 2) / 1000, // Center Y (Relative)
+                width: (xmax - xmin) / 1000,
+                height: (ymax - ymin) / 1000,
+                class: p.class || "Unknown",
+                short_desc: p.short_desc || "",
+                confidence: p.confidence || 0.99,
+                isRelative: true
+            };
+        }
+        return p;
+    });
+
+    return {
+        diagnosis: parsedResult.diagnosis || "Selesai dianalisa, namun laporan penuh gagal diekstrak.",
+        predictions: formattedPredictions
+    };
+};
+
+export const generateLarvaeDiagnosis = async (predictions: any[]): Promise<string> => {
+    const ai = getAIClient();
+    const classCounts = predictions.reduce((acc, p) => {
+        const cls = p.class || 'Unknown';
+        acc[cls] = (acc[cls] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+    
+    let summaryText = "";
+    Object.entries(classCounts).forEach(([cls, count]) => {
+        summaryText += `- ${cls}: ${count} ekor\n`;
+    });
+
+    const prompt = `Anda adalah pakar entomologi dan kawalan vektor dari Kementerian Kesihatan Malaysia.
+Sistem pengimejan komputer telah mengesan jentik-jentik nyamuk. Berikut adalah hasil kiraan:
+${summaryText}
+
+Sila berikan SATU perenggan diagnosa saintifik dan fakta ringkas tentang ancaman spesis ini (contoh, Aedes aegypti pembawa denggi). Cadangkan satu tindakan segera.
+Gunakan format markdown yang kemas, profesional, saintifik tetapi difahami awam. Tulis dalam Bahasa Melayu.`;
+
+    const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt
+    });
+
+    return response.text || "Tiada diagnosa dapat dijana buat masa ini.";
+};
+
+export const analyzeAdultMosquito = async (base64Image: string): Promise<{ diagnosis: string, predictions: any[] }> => {
+    const ai = getAIClient();
+    const optimizedImage = await compressImage(base64Image, 1024, 0.8);
+    
+    const prompt = `Anda adalah saintis forensik pakar dalam morfologi dan anatomi nyamuk dewasa. Anda mempunyai kepakaran peringkat 5 dalam pengelasan nyamuk (Aedes, Culex, Anopheles, dll).
+
+TUGAS ANDA:
+1. Analisa imej nyamuk dewasa ini secara forensik dan mendalam.
+2. Fokus kepada ciri morfologi utama:
+   - Corak sisik pada toraks/abdomen.
+   - Struktur kaki (jalur putih/gelap).
+   - Bentuk sayap dan venasi sayap.
+   - Proborcis dan palpus.
+3. Kesan bahagian-bahagian anatomi ini dan berikan kotak bounding (box_2d) dalam grid skala 0-1000.
+4. Berikan diagnosa forensik saintifik yang merangkumi pengenalan spesis nyamuk tersebut.
+
+FORMAT OUTPUT JSON SAHAJA:
+{
+  "diagnosis": "Laporan Morfologi Forensik dan Pengesanan Spesis (Markdown)",
+  "predictions": [
+    {
+      "box_2d": [ymin, xmin, ymax, xmax],
+      "class": "Bahagian Anatomi (cth: 'Leg stripe')",
+      "short_desc": "Ciri khas (cth: 'Jalur putih jelas, ciri Aedes aegypti')",
+      "confidence": 0.95
+    }
+  ]
+}`;
+
+    const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: {
+            parts: [
+                { inlineData: { mimeType: 'image/jpeg', data: optimizedImage } },
+                { text: prompt }
+            ]
+        },
+        config: {
+            responseMimeType: "application/json"
+        }
+    });
+
+    let text = response.text || "{}";
+    text = extractJSON(text);
+    const parsedResult = JSON.parse(text);
+
+    const formattedPredictions = (parsedResult.predictions || []).map((p: any) => {
+        const coords = p.box_2d;
+        if (coords && coords.length === 4) {
+            const [ymin, xmin, ymax, xmax] = coords;
+            return {
+                x: ((xmin + xmax) / 2) / 1000,
+                y: ((ymin + ymax) / 2) / 1000,
+                width: (xmax - xmin) / 1000,
+                height: (ymax - ymin) / 1000,
+                class: p.class || "Unknown",
+                short_desc: p.short_desc || "",
+                confidence: p.confidence || 0.99,
+                isRelative: true
+            };
+        }
+        return p;
+    });
+
+    return {
+        diagnosis: parsedResult.diagnosis || "Selesai dianalisa, namun laporan forensik gagal diekstrak.",
+        predictions: formattedPredictions
+    };
+};
