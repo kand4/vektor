@@ -112,7 +112,7 @@ const LarvaeScanner: React.FC = () => {
 
             setPredictions(response.data.predictions);
         } catch (err: any) {
-            setError(err.message || 'Ralat semasa membuat imbasan.');
+            setError(err.message || t('larvae_scanner_error'));
         } finally {
             setIsScanning(false);
         }
@@ -148,7 +148,7 @@ const LarvaeScanner: React.FC = () => {
             setDiagnosis(result.diagnosis);
             
         } catch (err: any) {
-             setError(err.message || 'Ralat semasa membuat imbasan mendalam AI.');
+             setError(err.message || t('larvae_scanner_error'));
         } finally {
              setIsGeneratingDiagnosis(false);
              setIsScanning(false);
@@ -157,11 +157,17 @@ const LarvaeScanner: React.FC = () => {
 
     return (
         <div className="w-full flex justify-center py-6">
-            <div className="max-w-4xl w-full bg-slate-900/80 border border-slate-700/50 rounded-xl p-6 backdrop-blur shadow-2xl">
-                <div className="mb-6 flex items-center justify-between">
+            <div className="max-w-6xl w-full bg-slate-900/80 border border-slate-700/50 rounded-xl p-4 sm:p-6 backdrop-blur shadow-2xl relative overflow-hidden">
+                {/* HUD Scanline Effect on the background */}
+                <div className="absolute inset-0 pointer-events-none opacity-10 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.5)_50%)] bg-[length:100%_4px] z-0"></div>
+
+                <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
                     <div>
-                        <h2 className="text-2xl font-sci-fi text-cyan-400 uppercase tracking-widest mb-1 shadow-cyan-500/20 drop-shadow-lg">Mosquito Larvae Scanner</h2>
-                        <p className="text-sm text-slate-400 font-mono-sci">Powered by Universal Roboflow Inference API <span className="text-purple-400 font-bold">& Gemini Vision</span></p>
+                        <div className="flex items-center gap-3">
+                           <div className="w-2 h-8 bg-cyan-500 rounded-sm animate-pulse"></div>
+                           <h2 className="text-xl sm:text-2xl font-sci-fi text-cyan-400 uppercase tracking-widest mb-1 shadow-cyan-500/20 drop-shadow-lg">Mosquito Larvae Scanner</h2>
+                        </div>
+                        <p className="text-xs sm:text-sm text-slate-400 font-mono-sci pl-5">Powered by Universal Roboflow Inference API <span className="text-purple-400 font-bold">& Gemini Vision</span></p>
                     </div>
                     {predictions !== null && (
                         <div className={`px-4 py-2 border rounded-lg font-mono-sci tabular-nums text-sm ${
@@ -175,27 +181,33 @@ const LarvaeScanner: React.FC = () => {
                 </div>
 
                 {error && (
-                    <div className="mb-6 p-4 bg-red-900/30 border border-red-500/50 rounded text-red-300 font-mono text-sm max-w-2xl">
-                        ⚠️ ralat: {error}
+                    <div className="mb-6 p-4 bg-red-900/30 border border-red-500/50 rounded text-red-300 font-mono text-sm max-w-2xl relative z-10">
+                        <span className="font-bold tracking-widest">SYSTEM_ERROR:</span> {error}
                     </div>
                 )}
                 
                 {(predictions !== null && predictions.length === 0) && (
-                    <div className="mb-6 p-4 bg-amber-900/30 border border-amber-500/50 rounded text-amber-200 font-mono text-sm max-w-4xl shadow-xl flex gap-3 items-start">
+                    <div className="mb-6 p-4 bg-amber-900/30 border border-amber-500/50 rounded-l-xl border-l-4 text-amber-200 font-mono text-sm max-w-4xl shadow-xl flex flex-col sm:flex-row gap-3 items-start relative z-10">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 shrink-0">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                         <div>
                             <p className="font-bold mb-1">Tiada pengesanan melalui Model Konvensional (Roboflow).</p>
                             <p className="text-amber-200/80 mb-2 leading-relaxed">Model Roboflow sangat bergantung kepada jenis imej yang dilatih (dataset). Jika gambar anda diambil dari sudut berbeza, beresolusi terlampau tinggi, atau pencahayaannya berbeza dari dataset mereka, ia mungkin gagal mengesan jejentik walaupun jelas kelihatan.</p>
-                            <p className="text-purple-300 bg-purple-900/40 p-2 rounded border border-purple-500/30 inline-block font-sci-fi tracking-wide">💡 TINDAKAN PENYELESAIAN: Sila klik "IMBASAN MENDALAM ULTRA AI" untuk menggunakan dataset biologi secara terus dari enjin penglihatan Gemini.</p>
+                            <p className="text-purple-300 bg-purple-900/40 p-2 rounded border border-purple-500/30 inline-block font-sci-fi tracking-wide text-xs">{t('larvae_scanner_tip')}</p>
                         </div>
                     </div>
                 )}
-
-                <div className="flex flex-col md:flex-row gap-6">
+                
+                <div className="flex flex-col lg:flex-row gap-6 relative z-10">
                     <div className="flex-1 space-y-4">
-                        <div className="relative border-2 border-dashed border-slate-600 rounded-xl overflow-hidden hover:border-cyan-500/50 transition-colors bg-slate-950/50 min-h-[300px] flex items-center justify-center group cursor-pointer">
+                        <div className="relative border border-cyan-900/50 rounded-xl overflow-hidden shadow-[0_0_15px_rgba(34,211,238,0.1)] transition-colors bg-slate-950/80 min-h-[300px] flex items-center justify-center group cursor-pointer">
+                            {/* Scanner Corner Crosshairs */}
+                            <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-cyan-500/70 pointer-events-none"></div>
+                            <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-cyan-500/70 pointer-events-none"></div>
+                            <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-cyan-500/70 pointer-events-none"></div>
+                            <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-cyan-500/70 pointer-events-none"></div>
+                            
                             <input 
                                 type="file" 
                                 accept="image/*" 
@@ -207,8 +219,8 @@ const LarvaeScanner: React.FC = () => {
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.2} stroke="currentColor" className="w-16 h-16 mx-auto text-slate-500 mb-3 group-hover:text-cyan-400 transition-colors">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
                                     </svg>
-                                    <p className="text-sm text-slate-300 font-bold mb-1">Klik atau heret gambar jentik-jentik</p>
-                                    <p className="text-xs text-slate-500 font-mono">Format disokong: JPG, PNG</p>
+                                    <p className="text-sm text-slate-300 font-bold mb-1">{t('larvae_scanner_drag')}</p>
+                                    <p className="text-xs text-slate-500 font-mono">{t('larvae_scanner_formats')}</p>
                                 </div>
                             ) : (
                                 <div className="relative flex items-center justify-center p-2 w-full min-h-[400px]">
@@ -317,16 +329,16 @@ const LarvaeScanner: React.FC = () => {
                                                             }}
                                                         >
                                                             <motion.div 
-                                                                className="bg-slate-900 border shadow-lg rounded-md p-2 backdrop-blur-sm bg-slate-900/90 text-left w-max max-w-[180px] pointer-events-auto"
+                                                                className="bg-slate-900 border shadow-lg rounded-md p-2 backdrop-blur-sm bg-slate-900/90 text-left w-max max-w-[140px] sm:max-w-[180px] md:max-w-[220px] pointer-events-auto"
                                                                 animate={{
                                                                     borderColor: activeId === i ? "rgba(34, 211, 238, 0.8)" : "rgba(16, 185, 129, 0.5)",
                                                                     boxShadow: activeId === i ? "0 10px 15px -3px rgba(34, 211, 238, 0.2)" : "0 10px 15px -3px rgba(0, 0, 0, 0.1)"
                                                                 }}
                                                             >
-                                                                <div className={`flex items-center gap-2 mb-1 border-b pb-1 transition-colors ${activeId === i ? 'border-cyan-900/50' : 'border-emerald-900/50'}`}>
-                                                                    <div className={`font-bold text-xs uppercase tracking-wider transition-colors ${activeId === i ? 'text-cyan-400' : 'text-emerald-400'}`}>{p.class}</div>
+                                                                <div className={`flex items-center gap-1 sm:gap-2 mb-1 border-b pb-1 transition-colors ${activeId === i ? 'border-cyan-900/50' : 'border-emerald-900/50'}`}>
+                                                                    <div className={`font-bold text-[10px] sm:text-xs uppercase tracking-wider overflow-hidden text-ellipsis transition-colors ${activeId === i ? 'text-cyan-400' : 'text-emerald-400'}`}>{p.class}</div>
                                                                 </div>
-                                                                {p.short_desc && <div className="text-[10px] text-slate-300 leading-tight">{p.short_desc}</div>}
+                                                                {p.short_desc && <div className="text-[9px] sm:text-[10px] text-slate-300 leading-tight break-words">{p.short_desc}</div>}
                                                             </motion.div>
                                                         </motion.div>
                                                     );
@@ -385,7 +397,7 @@ const LarvaeScanner: React.FC = () => {
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                                           <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
                                         </svg>
-                                        IMBASAN MENDALAM ULTRA AI
+                                        {t('larvae_scanner_btn')}
                                     </>
                                 )}
                             </button>
@@ -402,9 +414,9 @@ const LarvaeScanner: React.FC = () => {
                         </div>
                     </div>
                     
-                    <div className="w-full md:w-80 flex flex-col gap-6">
-                        <div className="bg-slate-950/50 border border-slate-700/50 rounded-xl p-5">
-                            <h3 className="text-white font-bold mb-4 font-sci-fi tracking-wide flex items-center gap-2">
+                    <div className="w-full lg:w-96 flex flex-col gap-6">
+                        <div className="bg-slate-950/50 border border-slate-700/50 rounded-xl p-4 sm:p-5 relative shadow-[0_0_15px_rgba(0,0,0,0.5)]">
+                            <h3 className="text-white font-bold mb-4 font-sci-fi tracking-wide flex items-center gap-2 text-sm sm:text-base">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-cyan-400">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
                                 </svg>
@@ -447,14 +459,13 @@ const LarvaeScanner: React.FC = () => {
                         </div>
 
                         {diagnosis && (
-                            <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-5 overflow-y-auto max-h-[400px]">
-                                <h3 className="text-emerald-400 font-bold mb-3 font-sci-fi tracking-wide flex items-center gap-2 text-sm">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                                    </svg>
+                            <div className="bg-emerald-950/30 border-l-4 border-emerald-500 border-t border-r border-b border-emerald-500/30 rounded-r-xl p-4 sm:p-5 overflow-y-auto max-h-[500px] shadow-[0_0_20px_rgba(16,185,129,0.1)] relative">
+                                <div className="absolute top-0 right-0 w-8 h-8 bg-[linear-gradient(135deg,transparent_50%,rgba(16,185,129,0.2)_50%)]"></div>
+                                <h3 className="text-emerald-400 font-bold mb-4 font-sci-fi tracking-widest text-sm flex items-center gap-2">
+                                    <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping mr-1"></span>
                                     DIAGNOSA SAINTIFIK AI
                                 </h3>
-                                <div className="text-sm text-slate-300 prose prose-invert prose-emerald max-w-none">
+                                <div className="text-sm text-slate-300 prose prose-invert prose-emerald max-w-none break-words">
                                     <ReactMarkdown>{diagnosis}</ReactMarkdown>
                                 </div>
                             </div>

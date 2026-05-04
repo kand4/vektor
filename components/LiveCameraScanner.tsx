@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { analyzeLandscape } from '../services/geminiService';
 import { AnalysisResponse, RiskDetection } from '../types';
 import { Toast } from './Toast';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface LiveCameraScannerProps {
   onCaptureAnalysis: (result: AnalysisResponse, imageSrc: string) => void;
@@ -9,6 +10,7 @@ interface LiveCameraScannerProps {
 }
 
 const LiveCameraScanner: React.FC<LiveCameraScannerProps> = ({ onCaptureAnalysis, onClose }) => {
+  const { t } = useLanguage();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -44,7 +46,7 @@ const LiveCameraScanner: React.FC<LiveCameraScannerProps> = ({ onCaptureAnalysis
         }
       } catch (err) {
         console.error("Camera Error:", err);
-        setCameraError("Gagal akses kamera. Pastikan anda memberi kebenaran.");
+        setCameraError(t('camera_error'));
       }
     };
 
@@ -98,7 +100,7 @@ const LiveCameraScanner: React.FC<LiveCameraScannerProps> = ({ onCaptureAnalysis
       }
     } catch (error) {
       console.error("Analysis Failed:", error);
-      setToastMsg({ msg: "Analisis gagal. Cuba stabilkan kamera.", type: 'error' });
+      setToastMsg({ msg: t('ar_analysis_failed'), type: 'error' });
     } finally {
       setIsAnalyzing(false);
     }
@@ -130,7 +132,7 @@ const LiveCameraScanner: React.FC<LiveCameraScannerProps> = ({ onCaptureAnalysis
 
        const response: AnalysisResponse = {
            risks: sortedRisks,
-           generalAdvice: "Laporan dijana daripada pemilihan pantas AR.",
+           generalAdvice: t('ar_report_fast'),
            groundingChunks: [],
            hygieneLevel: currentHygieneLevel,
            safetyLevel: currentSafetyLevel
@@ -144,7 +146,7 @@ const LiveCameraScanner: React.FC<LiveCameraScannerProps> = ({ onCaptureAnalysis
     if (liveRisks.length > 0 && lastCapturedImage) {
         const response: AnalysisResponse = {
             risks: liveRisks,
-            generalAdvice: "Laporan dijana daripada imbasan AR.",
+            generalAdvice: t('ar_report_scan'),
             groundingChunks: [],
             hygieneLevel: currentHygieneLevel,
             safetyLevel: currentSafetyLevel
@@ -163,7 +165,7 @@ const LiveCameraScanner: React.FC<LiveCameraScannerProps> = ({ onCaptureAnalysis
             const base64Image = canvas.toDataURL('image/jpeg', 0.95);
             const response: AnalysisResponse = {
                 risks: liveRisks,
-                generalAdvice: "Laporan dijana daripada imbasan AR (Bingkai Terkini).",
+                generalAdvice: t('ar_report_frame'),
                 groundingChunks: [],
                 hygieneLevel: currentHygieneLevel,
                 safetyLevel: currentSafetyLevel
@@ -190,8 +192,8 @@ const LiveCameraScanner: React.FC<LiveCameraScannerProps> = ({ onCaptureAnalysis
       {/* Top Bar */}
       <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-20 bg-gradient-to-b from-black/70 to-transparent">
         <div className="text-white">
-            <h3 className="font-bold text-lg">Pengimbas KULILATIN AR</h3>
-            <p className="text-xs text-emerald-300">Mod Pantas (Gemini Flash 2.5)</p>
+            <h3 className="font-bold text-lg">{t('ar_scanner_title')}</h3>
+            <p className="text-xs text-emerald-300">{t('ar_scanner_mode')}</p>
         </div>
         <button 
           onClick={onClose}
@@ -208,7 +210,7 @@ const LiveCameraScanner: React.FC<LiveCameraScannerProps> = ({ onCaptureAnalysis
         {cameraError ? (
            <div className="text-white text-center p-6">
              <p className="text-red-400 mb-2">{cameraError}</p>
-             <button onClick={onClose} className="underline">Kembali</button>
+             <button onClick={onClose} className="underline">{t('btn_back')}</button>
            </div>
         ) : (
            <div className="relative w-full h-full">
@@ -241,7 +243,7 @@ const LiveCameraScanner: React.FC<LiveCameraScannerProps> = ({ onCaptureAnalysis
               {isAnalyzing && (
                 <div className="absolute inset-0 bg-emerald-500/10 z-20 flex items-center justify-center pointer-events-none">
                    <div className="w-full h-1 bg-emerald-400 shadow-[0_0_20px_#34d399] animate-[scan_2s_ease-in-out_infinite]"></div>
-                   <div className="absolute text-white font-bold text-xl tracking-widest drop-shadow-md">MENGANALISIS...</div>
+                   <div className="absolute text-white font-bold text-xl tracking-widest drop-shadow-md">{t('analyzing')}</div>
                 </div>
               )}
            </div>
@@ -256,13 +258,13 @@ const LiveCameraScanner: React.FC<LiveCameraScannerProps> = ({ onCaptureAnalysis
                  onClick={handleCaptureAndAnalyze}
                  className="flex-1 bg-slate-700 text-white py-3 rounded-lg font-bold"
                >
-                 Imbas Semula
+                 {t('btn_rescan')}
                </button>
                <button 
                  onClick={handleViewDetails}
                  className="flex-1 bg-emerald-600 text-white py-3 rounded-lg font-bold shadow-lg hover:bg-emerald-700"
                >
-                 Lihat Laporan Penuh
+                 {t('btn_view_full_report')}
                </button>
             </div>
          ) : (
@@ -279,10 +281,10 @@ const LiveCameraScanner: React.FC<LiveCameraScannerProps> = ({ onCaptureAnalysis
          )}
          
          {!isAnalyzing && liveRisks.length === 0 && (
-            <p className="text-slate-400 text-sm">Tekan butang merah untuk analisis AR segera</p>
+            <p className="text-slate-400 text-sm">{t('ar_tip_red_btn')}</p>
          )}
          {!isAnalyzing && liveRisks.length > 0 && (
-            <p className="text-emerald-400 text-xs font-bold animate-pulse">KLIK KOTAK MERAH UNTUK BUTIRAN</p>
+            <p className="text-emerald-400 text-xs font-bold animate-pulse">{t('ar_tip_click_box')}</p>
          )}
       </div>
 

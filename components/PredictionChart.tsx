@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { iDengueData, RegionalDengueData } from '../types';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface PredictionChartProps {
     preloadedNational?: iDengueData | null;
@@ -24,13 +25,14 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
     preloadedRegional, 
     isLoading 
 }) => {
+    const { t } = useLanguage();
     
     if (isLoading && !preloadedNational) {
         return (
             <div className="space-y-4">
                 <div className="p-8 bg-slate-900 border border-slate-800 rounded-xl h-48 flex flex-col items-center justify-center text-slate-500">
                     <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                    <div className="font-mono-sci text-[10px] animate-pulse tracking-widest uppercase">Mengkaji Data iDengue MYSA (Minggu Epidemiologi)...</div>
+                    <div className="font-mono-sci text-[10px] animate-pulse tracking-widest uppercase">{t('analyzing_history')}</div>
                 </div>
             </div>
         );
@@ -46,37 +48,37 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
                         <div className="flex items-center gap-3">
                             <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
                             <h4 className="text-xs font-sci-fi font-black text-emerald-400 tracking-[0.2em] uppercase">
-                                INTELLIGENCE NASIONAL <span className="text-white text-[10px] ml-2 font-mono-sci">[{preloadedNational.epidemiologicalWeek}]</span>
+                                {t('intel_national_title')} <span className="text-white text-[10px] ml-2 font-mono-sci">[{preloadedNational.epidemiologicalWeek}]</span>
                             </h4>
                         </div>
                         <div className="flex items-center gap-2">
-                             <span className="text-[9px] font-mono-sci text-emerald-500/50 uppercase">SUMBER: idengue.mysa.gov.my</span>
+                             <span className="text-[9px] font-mono-sci text-emerald-500/50 uppercase">{t('citation_source')}</span>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-800">
                         <IDengueLink className="p-6 flex flex-col items-center text-center hover:bg-emerald-500/5">
-                            <span className="text-[9px] font-mono-sci text-slate-500 uppercase mb-1 tracking-widest">Kes Kumulatif (Kebangsaan)</span>
+                            <span className="text-[9px] font-mono-sci text-slate-500 uppercase mb-1 tracking-widest">{t('nat_cumulative_cases')}</span>
                             <div className="text-3xl font-black text-white font-mono-sci">
                                 {preloadedNational.cumulativeCases.toLocaleString()}
                             </div>
-                            <span className="text-[8px] text-emerald-500 mt-2 border border-emerald-500/30 px-2 py-0.5 rounded">SAHKAN DI PORTAL ↗</span>
+                            <span className="text-[8px] text-emerald-500 mt-2 border border-emerald-500/30 px-2 py-0.5 rounded">{t('portal_verify')} ↗</span>
                         </IDengueLink>
                         
                         <IDengueLink className="p-6 flex flex-col items-center text-center hover:bg-red-500/5">
-                            <span className="text-[9px] font-mono-sci text-slate-500 uppercase mb-1 tracking-widest">Kematian Kumulatif</span>
+                            <span className="text-[9px] font-mono-sci text-slate-500 uppercase mb-1 tracking-widest">{t('nat_cumulative_deaths')}</span>
                             <div className="text-3xl font-black text-red-500 font-mono-sci">
                                 {preloadedNational.cumulativeDeaths.toLocaleString()}
                             </div>
-                            <span className="text-[8px] text-red-500 mt-2 border border-red-500/30 px-2 py-0.5 rounded">SEMAK STATUS MAUT ↗</span>
+                            <span className="text-[8px] text-red-500 mt-2 border border-red-500/30 px-2 py-0.5 rounded">{t('check_death_status')} ↗</span>
                         </IDengueLink>
 
                         <IDengueLink className="p-6 flex flex-col items-center text-center hover:bg-amber-500/5">
-                            <span className="text-[9px] font-mono-sci text-slate-500 uppercase mb-1 tracking-widest">Hotspot Aktif (Nasional)</span>
+                            <span className="text-[9px] font-mono-sci text-slate-500 uppercase mb-1 tracking-widest">{t('nat_active_hotspots')}</span>
                             <div className="text-3xl font-black text-amber-500 font-mono-sci">
                                 {preloadedNational.activeHotspots.toLocaleString()}
                             </div>
-                            <span className="text-[8px] text-amber-500 mt-2 border border-amber-500/30 px-2 py-0.5 rounded">LIHAT PETA HOTSPOT ↗</span>
+                            <span className="text-[8px] text-amber-500 mt-2 border border-amber-500/30 px-2 py-0.5 rounded">{t('view_hotspot_map')} ↗</span>
                         </IDengueLink>
                     </div>
                 </div>
@@ -89,31 +91,31 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
                         <div className="flex items-center gap-3">
                             <div className="w-2 h-2 bg-cyan-400 rounded-full animate-ping"></div>
                             <h4 className="text-xs font-sci-fi font-black text-cyan-400 tracking-[0.2em] uppercase">
-                                SPOTLIGHT: {preloadedRegional.stateName} & {preloadedRegional.districtName} <span className="text-slate-400 text-[10px] ml-2 font-mono-sci">[{preloadedRegional.epidemiologicalWeek}]</span>
+                                {t('regional_spotlight')}: {preloadedRegional.stateName} & {preloadedRegional.districtName} <span className="text-slate-400 text-[10px] ml-2 font-mono-sci">[{preloadedRegional.epidemiologicalWeek}]</span>
                             </h4>
                         </div>
-                        <span className="text-[9px] font-mono-sci text-cyan-500/50 uppercase">DATA RASMI MYSA</span>
+                        <span className="text-[9px] font-mono-sci text-cyan-500/50 uppercase">{t('official_mysa_data')}</span>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-800">
                         <IDengueLink className="p-6 flex flex-col items-center text-center hover:bg-cyan-500/5">
-                            <span className="text-[9px] font-mono-sci text-slate-500 uppercase mb-1 tracking-widest">Kes Negeri {preloadedRegional.stateName}</span>
+                            <span className="text-[9px] font-mono-sci text-slate-500 uppercase mb-1 tracking-widest">{t('state_cases')} {preloadedRegional.stateName}</span>
                             <div className="text-3xl font-black text-cyan-300 font-mono-sci">{preloadedRegional.stateCases.toLocaleString()}</div>
-                            <span className="text-[8px] text-cyan-500 mt-2">TREND NEGERI ↗</span>
+                            <span className="text-[8px] text-cyan-500 mt-2">{t('state_trend')} ↗</span>
                         </IDengueLink>
 
                         <IDengueLink className="p-6 flex flex-col items-center text-center hover:bg-slate-800">
-                            <span className="text-[9px] font-mono-sci text-slate-500 uppercase mb-1 tracking-widest">Kes Daerah {preloadedRegional.districtName}</span>
+                            <span className="text-[9px] font-mono-sci text-slate-500 uppercase mb-1 tracking-widest">{t('district_cases')} {preloadedRegional.districtName}</span>
                             <div className="text-3xl font-black text-white font-mono-sci">{preloadedRegional.districtCases.toLocaleString()}</div>
-                            <span className="text-[8px] text-slate-400 mt-2">TREND DAERAH ↗</span>
+                            <span className="text-[8px] text-slate-400 mt-2">{t('district_trend')} ↗</span>
                         </IDengueLink>
 
                         <IDengueLink className="p-6 flex flex-col items-center text-center hover:bg-red-500/5">
-                            <span className="text-[9px] font-mono-sci text-slate-500 uppercase mb-1 tracking-widest">Hotspot {preloadedRegional.districtName}</span>
+                            <span className="text-[9px] font-mono-sci text-slate-500 uppercase mb-1 tracking-widest">{t('district_hotspot')} {preloadedRegional.districtName}</span>
                             <div className={`text-3xl font-black font-mono-sci ${preloadedRegional.districtHotspots > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
                                 {preloadedRegional.districtHotspots.toLocaleString()}
                             </div>
-                            <span className="text-[8px] text-red-400 mt-2">ZON BAHAYA ↗</span>
+                            <span className="text-[8px] text-red-400 mt-2">{t('danger_zone')} ↗</span>
                         </IDengueLink>
                     </div>
 
@@ -127,8 +129,8 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
                                 {preloadedRegional.districtRiskLevel}
                             </div>
                             <div>
-                                <div className="text-[9px] font-mono-sci text-slate-400 uppercase">Tahap Risiko Semasa</div>
-                                <div className="text-xs font-bold text-white uppercase">{preloadedRegional.districtRiskLevel} RISK STATUS</div>
+                                <div className="text-[9px] font-mono-sci text-slate-400 uppercase">{t('current_risk_level')}</div>
+                                <div className="text-xs font-bold text-white uppercase">{preloadedRegional.districtRiskLevel} {t('risk_status')}</div>
                             </div>
                         </div>
                         <div className="flex-1">
@@ -143,7 +145,7 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
                                 rel="noopener noreferrer"
                                 className="text-[10px] font-bold text-emerald-400 hover:text-white transition-colors underline decoration-emerald-500/30"
                              >
-                                Semak iDengue Secara Manual
+                                {t('check_manual')}
                              </a>
                              <span className="text-[8px] font-mono-sci text-slate-600 uppercase">SYNC_MODE: EPID_WEEKLY</span>
                         </div>
@@ -153,7 +155,7 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
             
             <div className="text-center">
                 <p className="text-[10px] font-mono-sci text-slate-600 uppercase">
-                    Penafian: Data diekstrak secara automatik dari iDengue MYSA mengikut Minggu Epidemiologi (ME) terkini yang dikesan.
+                    {t('disclaimer_data')}
                 </p>
             </div>
         </div>

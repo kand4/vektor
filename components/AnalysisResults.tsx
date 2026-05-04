@@ -24,7 +24,17 @@ const getRiskColorParams = (category: RiskCategory) => {
   }
 };
 
+const OptionBtn = ({ label, selected, onClick }: any) => (
+    <button 
+      onClick={onClick} 
+      className={`w-full p-3 rounded text-xs md:text-sm font-bold border transition-all flex items-center justify-center gap-2 ${selected ? 'bg-cyan-600 text-white border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.5)]' : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'}`}
+    >
+      {label}
+    </button>
+);
+
 const RiskListItem: React.FC<{ risk: RiskDetection, index: number, activeId: string | null, onClick: (r: RiskDetection) => void }> = ({ risk, index, activeId, onClick }) => {
+  const { t } = useLanguage();
   const isActive = activeId === risk.id;
   const params = getRiskColorParams(risk.category);
   const isManual = risk.id?.startsWith('manual'); // Added optional chaining
@@ -39,7 +49,7 @@ const RiskListItem: React.FC<{ risk: RiskDetection, index: number, activeId: str
       <div className="overflow-hidden flex-1 min-w-0">
         <div className={`font-sci-fi text-xs md:text-sm font-bold truncate flex items-center gap-2 ${isActive ? 'text-white' : 'text-slate-300 group-hover:text-emerald-400'}`}>
           <span className="truncate">{risk.label}</span>
-          {isManual && <span className="text-[9px] bg-slate-700 text-white px-1 rounded border border-slate-500 shrink-0">MANUAL</span>}
+          {isManual && <span className="text-[9px] bg-slate-700 text-white px-1 rounded border border-slate-500 shrink-0">{t('manual_label')}</span>}
         </div>
         <div className="text-[10px] md:text-xs text-slate-500 font-mono-sci italic truncate">{risk.agent}</div>
       </div>
@@ -49,6 +59,7 @@ const RiskListItem: React.FC<{ risk: RiskDetection, index: number, activeId: str
 
 // Dual Score Card
 const DualScoreCard: React.FC<{ hygieneLevel: number, safetyLevel: number, isSavage: boolean }> = ({ hygieneLevel, safetyLevel, isSavage }) => {
+    const { t } = useLanguage();
     const safeLevel = safetyLevel || hygieneLevel;
     const getColor = (level: number) => {
         if (level >= 4) return 'text-emerald-400 border-emerald-500';
@@ -61,14 +72,14 @@ const DualScoreCard: React.FC<{ hygieneLevel: number, safetyLevel: number, isSav
              <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay"></div>
              <div className="relative z-10 grid grid-cols-2 gap-4 md:gap-8 divide-x divide-slate-700">
                  <div className="flex flex-col items-center justify-center text-center">
-                     <div className="text-[10px] font-mono-sci uppercase tracking-widest text-slate-400 mb-2">HYGIENE</div>
+                     <div className="text-[10px] font-mono-sci uppercase tracking-widest text-slate-400 mb-2">{t('label_hygiene')}</div>
                      <div className={`w-12 h-12 md:w-16 md:h-16 rounded-full border-4 flex items-center justify-center bg-black/20 backdrop-blur mb-2 ${getColor(hygieneLevel)}`}>
                         <span className="text-xl md:text-3xl font-bold font-sci-fi">{hygieneLevel}</span>
                         <span className="text-[10px] opacity-60 mb-2">/5</span>
                      </div>
                  </div>
                  <div className="flex flex-col items-center justify-center text-center pl-4 md:pl-8">
-                     <div className="text-[10px] font-mono-sci uppercase tracking-widest text-slate-400 mb-2">SAFETY</div>
+                     <div className="text-[10px] font-mono-sci uppercase tracking-widest text-slate-400 mb-2">{t('label_safety')}</div>
                      <div className={`w-12 h-12 md:w-16 md:h-16 rounded-full border-4 flex items-center justify-center bg-black/20 backdrop-blur mb-2 ${getColor(safeLevel)}`}>
                         <span className="text-xl md:text-3xl font-bold font-sci-fi">{safeLevel}</span>
                         <span className="text-[10px] opacity-60 mb-2">/5</span>
@@ -77,8 +88,8 @@ const DualScoreCard: React.FC<{ hygieneLevel: number, safetyLevel: number, isSav
              </div>
              <div className="mt-4 pt-3 border-t border-slate-800 text-center">
                  <span className={`text-xs md:text-sm font-sci-fi font-bold uppercase tracking-widest ${Math.min(hygieneLevel, safeLevel) < 3 ? 'text-red-500 animate-pulse' : 'text-emerald-400'}`}>
-                     {isSavage ? 'HONEST VERDICT: ' : 'STATUS: '} 
-                     {Math.min(hygieneLevel, safeLevel) === 1 ? 'IMMEDIATE CLOSURE' : Math.min(hygieneLevel, safeLevel) === 2 ? 'NOTICE ISSUED' : 'COMPLIANT'}
+                     {isSavage ? `${t('verdict_honest')}: ` : `${t('verdict_status')}: `} 
+                     {Math.min(hygieneLevel, safeLevel) === 1 ? t('status_closure') : Math.min(hygieneLevel, safeLevel) === 2 ? t('status_notice') : t('status_compliant')}
                  </span>
              </div>
         </div>
@@ -92,6 +103,7 @@ interface SimulationConfigModalProps {
 }
 
 const SimulationConfigModal: React.FC<SimulationConfigModalProps> = ({ isOpen, onClose, onStart }) => {
+  const { t } = useLanguage();
   const [mode, setMode] = useState<SimulationConfig['mode']>('SANITIZE_ONLY');
   const [humans, setHumans] = useState<SimulationConfig['humans']>('KEEP_PROTECTED');
   const [lighting, setLighting] = useState<SimulationConfig['lighting']>('CLINICAL_BLUE');
@@ -100,67 +112,57 @@ const SimulationConfigModal: React.FC<SimulationConfigModalProps> = ({ isOpen, o
 
   if (!isOpen) return null;
 
-  const OptionBtn = ({ label, selected, onClick }: any) => (
-      <button 
-        onClick={onClick} 
-        className={`w-full p-3 rounded text-xs md:text-sm font-bold border transition-all flex items-center justify-center gap-2 ${selected ? 'bg-cyan-600 text-white border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.5)]' : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'}`}
-      >
-        {label}
-      </button>
-  );
-
   return (
     <div className="fixed inset-0 z-[160] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in no-print">
         <div className="bg-slate-900 border border-cyan-500 rounded-xl p-6 w-full max-w-lg shadow-[0_0_50px_rgba(34,211,238,0.3)] max-h-[90vh] overflow-y-auto custom-scrollbar">
             <h3 className="text-xl font-sci-fi font-bold text-white mb-6 flex items-center gap-2">
-               <span className="text-cyan-400">🧬 BIO-CLEAN SIMULATOR</span>
+               <span className="text-cyan-400">🧬 {t('sim_title')}</span>
             </h3>
 
             <div className="space-y-6">
                 <div>
-                   <label className="text-xs text-slate-400 font-mono-sci uppercase block mb-2">TARGET OBJECTIVE</label>
+                   <label className="text-xs text-slate-400 font-mono-sci uppercase block mb-2">{t('sim_objective')}</label>
                    <div className="grid grid-cols-1 gap-2">
-                      <OptionBtn label="🧹 SANITIZE" selected={mode === 'SANITIZE_ONLY'} onClick={() => setMode('SANITIZE_ONLY')} />
-                      <OptionBtn label="🛋️ UPGRADE FURNITURE" selected={mode === 'UPGRADE_FURNITURE'} onClick={() => setMode('UPGRADE_FURNITURE')} />
-                      <OptionBtn label="🏗️ FULL RECONSTRUCTION" selected={mode === 'FULL_RECONSTRUCTION'} onClick={() => setMode('FULL_RECONSTRUCTION')} />
+                      <OptionBtn label={t('opt_sanitize')} selected={mode === 'SANITIZE_ONLY'} onClick={() => setMode('SANITIZE_ONLY')} />
+                      <OptionBtn label={t('opt_upgrade')} selected={mode === 'UPGRADE_FURNITURE'} onClick={() => setMode('UPGRADE_FURNITURE')} />
+                      <OptionBtn label={t('opt_recon')} selected={mode === 'FULL_RECONSTRUCTION'} onClick={() => setMode('FULL_RECONSTRUCTION')} />
                    </div>
                 </div>
 
                 <div>
-                   <label className="text-xs text-slate-400 font-mono-sci uppercase block mb-2">PERSONNEL PROTOCOL</label>
+                   <label className="text-xs text-slate-400 font-mono-sci uppercase block mb-2">{t('sim_protocol')}</label>
                    <div className="grid grid-cols-2 gap-2">
-                      <OptionBtn label="👥 KEEP (PPE Gear)" selected={humans === 'KEEP_PROTECTED'} onClick={() => setHumans('KEEP_PROTECTED')} />
-                      <OptionBtn label="🚫 REMOVE HUMANS" selected={humans === 'REMOVE'} onClick={() => setHumans('REMOVE')} />
+                      <OptionBtn label={t('opt_keep_ppe')} selected={humans === 'KEEP_PROTECTED'} onClick={() => setHumans('KEEP_PROTECTED')} />
+                      <OptionBtn label={t('opt_remove_humans')} selected={humans === 'REMOVE'} onClick={() => setHumans('REMOVE')} />
                    </div>
                 </div>
                 
                 <div>
-                   <label className="text-xs text-slate-400 font-mono-sci uppercase block mb-2">ATMOSPHERE / LIGHTING</label>
+                   <label className="text-xs text-slate-400 font-mono-sci uppercase block mb-2">{t('label_atmosphere')}</label>
                    <div className="grid grid-cols-3 gap-2">
-                      <OptionBtn label="🔵 CLINICAL" selected={lighting === 'CLINICAL_BLUE'} onClick={() => setLighting('CLINICAL_BLUE')} />
-                      <OptionBtn label="☀️ NATURAL" selected={lighting === 'NATURAL'} onClick={() => setLighting('NATURAL')} />
-                      <OptionBtn label="💡 WARM" selected={lighting === 'WARM'} onClick={() => setLighting('WARM')} />
+                      <OptionBtn label={t('opt_clinical')} selected={lighting === 'CLINICAL_BLUE'} onClick={() => setLighting('CLINICAL_BLUE')} />
+                      <OptionBtn label={t('opt_natural')} selected={lighting === 'NATURAL'} onClick={() => setLighting('NATURAL')} />
+                      <OptionBtn label={t('opt_warm')} selected={lighting === 'WARM'} onClick={() => setLighting('WARM')} />
                    </div>
                 </div>
 
                 <div>
-                   <label className="text-xs text-slate-400 font-mono-sci uppercase block mb-2">AI ENGINE GENERATOR</label>
+                   <label className="text-xs text-slate-400 font-mono-sci uppercase block mb-2">{t('label_ai_engine')}</label>
                    <div className="grid grid-cols-2 gap-2">
                       <OptionBtn label="✨ GEMINI (Imagen 3)" selected={engine === 'GEMINI_IMAGEN'} onClick={() => setEngine('GEMINI_IMAGEN')} />
                       <OptionBtn label="🌸 FLUX (Pollinations)" selected={engine === 'POLLINATIONS'} onClick={() => setEngine('POLLINATIONS')} />
                    </div>
                    <p className="text-[10px] text-slate-500 mt-2 italic leading-relaxed">
-                       * Gemini (Imagen): Kualiti tinggi tetapi bergantung kepada kuota limitasi API anda (Rate-limit).<br/>
-                       * Flux (Pollinations): Percuma dan pantas, namun berisiko pelayan sibuk (public pool) dan hasil mungkin tidak konsisten.
+                       {t('sim_engine_tip')}
                    </p>
                 </div>
                 
                 <div>
-                    <label className="text-xs text-slate-400 font-mono-sci uppercase block mb-2">ARAHAN KHAS (PROMPT)</label>
+                    <label className="text-xs text-slate-400 font-mono-sci uppercase block mb-2">{t('sim_prompt')}</label>
                     <textarea 
                         className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white text-sm outline-none focus:border-cyan-500"
                         rows={3}
-                        placeholder="e.g. Pastikan meja bersih sepenuhnya..."
+                        placeholder={t('sim_prompt_placeholder')}
                         value={customPrompt}
                         onChange={(e) => setCustomPrompt(e.target.value)}
                     />
@@ -168,13 +170,13 @@ const SimulationConfigModal: React.FC<SimulationConfigModalProps> = ({ isOpen, o
             </div>
 
             <div className="flex gap-3 justify-end mt-8">
-                <button onClick={onClose} className="px-5 py-2 rounded text-slate-400 font-bold hover:text-white transition">BATAL</button>
+                <button onClick={onClose} className="px-5 py-2 rounded text-slate-400 font-bold hover:text-white transition">{t('btn_cancel')}</button>
                 <button 
                   onClick={() => onStart({ mode, humans, lighting, engine, customPrompt })}
                   className="px-6 py-2 rounded bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold shadow-lg shadow-cyan-500/30 flex items-center gap-2"
                 >
                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576L8.279 5.044A.75.75 0 019 4.5z" clipRule="evenodd" /></svg>
-                   JANA SIMULASI
+                   {t('btn_generate_sim')}
                 </button>
             </div>
         </div>
@@ -183,6 +185,7 @@ const SimulationConfigModal: React.FC<SimulationConfigModalProps> = ({ isOpen, o
 }
 
 const SimulationResultModal: React.FC<{ isOpen: boolean, onClose: () => void, originalImage: string, generatedImage: string }> = ({ isOpen, onClose, originalImage, generatedImage }) => {
+  const { t } = useLanguage();
   const [sliderPos, setSliderPos] = useState(50);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -211,7 +214,7 @@ const SimulationResultModal: React.FC<{ isOpen: boolean, onClose: () => void, or
     <div className="fixed inset-0 z-[180] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 no-print">
         <div className="bg-slate-900 border border-cyan-500 rounded-xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden">
              <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-950">
-                 <h3 className="text-lg font-sci-fi font-bold text-cyan-400">✨ SIMULATION COMPLETE</h3>
+                 <h3 className="text-lg font-sci-fi font-bold text-cyan-400">✨ {t('sim_complete')}</h3>
                  <button onClick={onClose} className="text-white">✕</button>
              </div>
              <div className="flex-1 relative bg-black/50 overflow-hidden flex items-center justify-center p-4">
@@ -276,6 +279,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   const [showCleanModal, setShowCleanModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [toastMsg, setToastMsg] = useState<{msg: string, type: 'error' | 'success'} | null>(null);
+  const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
 
   // Reference for scrolling
   const detailsPanelRef = useRef<HTMLDivElement>(null);
@@ -321,7 +325,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     setActiveRisk(risk);
     
     // SMOOTH SCROLL TO DETAILS PANEL ON CLICK
-    if (detailsPanelRef.current) {
+    if (isAutoScrollEnabled && detailsPanelRef.current) {
         // Add small delay to ensure UI updates first
         setTimeout(() => {
             detailsPanelRef.current?.scrollIntoView({ 
@@ -399,7 +403,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       const response = await askRiskFollowUp(activeRisk, newMsg.text, language);
       setChatMessages(prev => [...prev, { role: 'model', text: response }]);
     } catch (error) {
-      setChatMessages(prev => [...prev, { role: 'model', text: "Error contacting AI." }]);
+      setChatMessages(prev => [...prev, { role: 'model', text: t('chat_error') }]);
     } finally {
       setIsChatLoading(false);
     }
@@ -530,11 +534,11 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
      return (
         <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-slate-900 border border-emerald-500 rounded-xl p-6 w-full max-w-sm shadow-2xl animate-fade-in-up">
-                <h3 className="text-lg font-sci-fi font-bold text-white mb-4"><span className="text-emerald-400">🎯 MANUAL TARGETING</span></h3>
-                <textarea value={manualContext} onChange={(e) => setManualContext(e.target.value)} placeholder="e.g. Look at the dark spot..." rows={3} className="w-full bg-slate-950 border border-slate-700 rounded p-3 text-white text-sm outline-none mb-4" />
+                <h3 className="text-lg font-sci-fi font-bold text-white mb-4"><span className="text-emerald-400">🎯 {t('manual_targeting')}</span></h3>
+                <textarea value={manualContext} onChange={(e) => setManualContext(e.target.value)} placeholder={t('manual_placeholder')} rows={3} className="w-full bg-slate-950 border border-slate-700 rounded p-3 text-white text-sm outline-none mb-4" />
                 <div className="flex gap-2">
-                    <button onClick={cancelManualMode} disabled={isProcessingManual} className="flex-1 py-2 bg-slate-800 text-slate-300 rounded">CANCEL</button>
-                    <button onClick={submitManualAnalysis} disabled={!manualContext.trim() || isProcessingManual} className="flex-1 py-2 bg-emerald-600 text-white rounded font-bold">{isProcessingManual ? "SCANNING..." : "ANALYZE"}</button>
+                    <button onClick={cancelManualMode} disabled={isProcessingManual} className="flex-1 py-2 bg-slate-800 text-slate-300 rounded">{t('btn_cancel')}</button>
+                    <button onClick={submitManualAnalysis} disabled={!manualContext.trim() || isProcessingManual} className="flex-1 py-2 bg-emerald-600 text-white rounded font-bold">{isProcessingManual ? t('scanning_wait') : t('btn_analyze')}</button>
                 </div>
             </div>
         </div>
@@ -553,9 +557,20 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                  
                  {/* Right: Evidence */}
                  <div className="flex flex-col gap-4">
-                     <div className="bg-slate-900 border border-slate-700 rounded-xl p-4">
-                        <h3 className="text-sm font-bold text-white mb-2">BUKTI GAMBAR (ANNOTATED)</h3>
-                        <ImageAnnotator imageSrc={imageSrc} risks={currentRisks} onRiskSelect={() => {}} isEditing={false} />
+                     <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 relative">
+                        <div className="flex justify-between items-center mb-2">
+                           <h3 className="text-sm font-bold text-white">BUKTI GAMBAR (ANNOTATED)</h3>
+                           <button
+                              onClick={() => setIsAutoScrollEnabled(!isAutoScrollEnabled)}
+                              className={`text-[9px] uppercase font-bold px-2 py-1 rounded transition-colors flex items-center gap-1 border shadow-md backdrop-blur-md ${
+                                isAutoScrollEnabled ? 'bg-cyan-900/60 text-cyan-300 border-cyan-800/80 hover:bg-cyan-800/80' : 'bg-slate-900/60 text-slate-400 border-slate-700 hover:bg-slate-800'
+                              }`}
+                              title={isAutoScrollEnabled ? "Matikan Auto-Scroll" : "Hidupkan Auto-Scroll"}
+                           >
+                              {isAutoScrollEnabled ? '✅ Auto-Scroll (ON)' : '❌ Auto-Scroll (OFF)'}
+                           </button>
+                        </div>
+                        <ImageAnnotator imageSrc={imageSrc} risks={currentRisks} onRiskSelect={handleRiskChange} selectedId={activeRisk?.id} isEditing={false} />
                      </div>
                  </div>
              </div>
@@ -577,14 +592,14 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       <div className="flex flex-wrap gap-3 justify-between items-center mb-4 md:mb-6 no-print">
          <div className="flex gap-2">
             <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded text-xs md:text-sm font-bold uppercase tracking-wider transition-all border ${isEditing ? 'bg-red-600 text-white border-red-500 animate-pulse' : 'bg-slate-800 text-slate-300 border-slate-600'}`}>
-                {isEditing ? '🔴 TARGETING' : `🎯 ${t('btn_manual_scan')}`}
+                {isEditing ? `🔴 ${t('label_targeting')}` : `🎯 ${t('btn_manual_scan')}`}
             </button>
             <button onClick={handleOpenSimulation} disabled={isCleaning} className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded text-xs md:text-sm font-bold uppercase tracking-wider transition-all border border-cyan-500/50 hover:bg-cyan-900/30 text-cyan-400 disabled:opacity-50`}>
                 {isCleaning ? <span className="animate-pulse">SIMULATING...</span> : <>✨ {t('btn_simulation')}</>}
             </button>
             
             <button onClick={handlePrint} className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded text-xs md:text-sm font-bold uppercase tracking-wider transition-all border border-green-500/50 hover:bg-green-900/30 text-green-400">
-                🖨️ CETAK / SIMPAN PDF
+                🖨️ {t('btn_print_pdf')}
             </button>
          </div>
          <div className="flex items-center gap-2 md:gap-4">
@@ -599,20 +614,32 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
         {/* LEFT COL: Image & List */}
         <div className="lg:col-span-7 flex flex-col gap-4">
            <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-900 group">
+              {/* Auto Scroll Toggle */}
+              <div className="absolute top-2 right-2 z-50">
+                 <button
+                    onClick={() => setIsAutoScrollEnabled(!isAutoScrollEnabled)}
+                    className={`text-[9px] uppercase font-bold px-2 py-1 rounded transition-colors flex items-center gap-1 border shadow-md backdrop-blur-md ${
+                      isAutoScrollEnabled ? 'bg-cyan-900/60 text-cyan-300 border-cyan-800/80 hover:bg-cyan-800/80' : 'bg-slate-900/60 text-slate-400 border-slate-700 hover:bg-slate-800'
+                    }`}
+                    title={isAutoScrollEnabled ? "Matikan Auto-Scroll" : "Hidupkan Auto-Scroll"}
+                 >
+                    {isAutoScrollEnabled ? '✅ Auto-Scroll (ON)' : '❌ Auto-Scroll (OFF)'}
+                 </button>
+              </div>
               <ImageAnnotator imageSrc={imageSrc} risks={currentRisks} onRiskSelect={handleRiskChange} selectedId={activeRisk?.id} isEditing={isEditing} onRegionDrawn={handleRegionDrawn} />
               <div className="absolute bottom-4 right-4 flex items-center gap-2 bg-slate-900/90 backdrop-blur border border-slate-600 px-3 py-2 rounded-lg z-40 shadow-xl">
                  <div className="flex flex-col items-end">
                     <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[9px] text-slate-400 font-mono-sci uppercase">HYGIENE</span>
+                        <span className="text-[9px] text-slate-400 font-mono-sci uppercase">{t('label_hygiene')}</span>
                         <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs border ${result.hygieneLevel >= 4 ? 'border-emerald-500 text-emerald-400' : 'border-red-500 text-red-500'}`}>{result.hygieneLevel}</div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="text-[9px] text-slate-400 font-mono-sci uppercase">SAFETY</span>
+                        <span className="text-[9px] text-slate-400 font-mono-sci uppercase">{t('label_safety')}</span>
                         <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs border ${result.safetyLevel >= 4 ? 'border-blue-500 text-blue-400' : 'border-orange-500 text-orange-500'}`}>{result.safetyLevel || result.hygieneLevel}</div>
                     </div>
                     {result.sensitivityUsed && (
                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[9px] text-slate-500 font-mono-sci uppercase">SENSITIVITY</span>
+                          <span className="text-[9px] text-slate-500 font-mono-sci uppercase">{t('label_sensitivity')}</span>
                           <span className={`text-[8px] px-1 rounded border ${result.sensitivityUsed === 'EXTREME' ? 'border-red-500 text-red-400' : result.sensitivityUsed === 'HIGH' ? 'border-orange-500 text-orange-400' : 'border-slate-500 text-slate-400'}`}>
                              {result.sensitivityUsed}
                           </span>
@@ -645,18 +672,17 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
               {currentRisks.length === 0 && result.hygieneLevel >= 5 && (
                   <div className="bg-emerald-900/20 border border-emerald-500/50 rounded-lg p-6 text-center">
                       <div className="text-3xl mb-2">✅</div>
-                      <h3 className="text-emerald-400 font-bold font-sci-fi">TIADA RISIKO DIKESAN</h3>
-                      <p className="text-sm text-slate-400 mt-2">Premis kelihatan bersih dalam gambar ini. Walau bagaimanapun, sila gunakan 'Manual Scan' jika anda melihat sesuatu yang terlepas pandang.</p>
+                      <h3 className="text-emerald-400 font-bold font-sci-fi">{t('no_risk_detected')}</h3>
+                      <p className="text-sm text-slate-400 mt-2">{t('no_risk_desc')}</p>
                   </div>
               )}
               
               {currentRisks.length === 0 && result.hygieneLevel < 5 && (
                   <div className="bg-amber-900/20 border border-amber-500/50 rounded-lg p-6 text-center animate-pulse">
                       <div className="text-3xl mb-2">⚠️</div>
-                      <h3 className="text-amber-400 font-bold font-sci-fi">AMARAN: RISIKO TERSEMBUNYI</h3>
+                      <h3 className="text-amber-400 font-bold font-sci-fi">{t('hidden_risk_warning')}</h3>
                       <p className="text-sm text-slate-300 mt-2">
-                        Markah kebersihan rendah dikesan ({result.hygieneLevel}/5), tetapi AI tidak dapat menanda objek khusus. 
-                        Ini mungkin disebabkan oleh pencahayaan atau sudut kamera. Sila gunakan <b>Manual Scan</b> untuk menanda kawasan kotor.
+                        {t('hidden_risk_desc')}
                       </p>
                   </div>
               )}
@@ -672,27 +698,27 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     <div className="relative z-10 flex-1 flex flex-col">
                         <div className="mb-6 md:mb-8 border-b border-slate-700/50 pb-6">
                             <div className="flex items-center gap-3 mb-3">
-                                <span className={`px-2 py-0.5 rounded text-[10px] md:text-xs font-bold font-mono-sci uppercase tracking-widest ${activeRisk.category === 'HYGIENE' ? 'bg-amber-500 text-black' : activeRisk.category === 'SAFETY' ? 'bg-indigo-500 text-white' : 'bg-red-600 text-white'}`}>{activeRisk.category} THREAT</span>
+                                <span className={`px-2 py-0.5 rounded text-[10px] md:text-xs font-bold font-mono-sci uppercase tracking-widest ${activeRisk.category === 'HYGIENE' ? 'bg-amber-500 text-black' : activeRisk.category === 'SAFETY' ? 'bg-indigo-500 text-white' : 'bg-red-600 text-white'}`}>{activeRisk.category} {t('label_threat')}</span>
                                 <span className="text-slate-500 text-[10px] md:text-xs font-mono-sci">#{getRiskIndex(activeRisk).toString().padStart(2, '0')}</span>
                             </div>
                             <h2 className="text-2xl md:text-3xl lg:text-4xl font-sci-fi font-bold text-white mb-2 leading-tight break-words">{activeRisk.label}</h2>
-                            <div className="mt-2"><h3 className="text-slate-400 text-[10px] md:text-xs font-mono-sci tracking-widest uppercase mb-1">Identified Agent</h3><p className="text-lg md:text-xl lg:text-2xl text-emerald-400 font-mono-sci italic break-words leading-tight">{activeRisk.agent}</p></div>
+                            <div className="mt-2"><h3 className="text-slate-400 text-[10px] md:text-xs font-mono-sci tracking-widest uppercase mb-1">{t('label_agent')}</h3><p className="text-lg md:text-xl lg:text-2xl text-emerald-400 font-mono-sci italic break-words leading-tight">{activeRisk.agent}</p></div>
                         </div>
 
                         {/* BIO-FORENSIC DATA GRID (RESTORED FROM OLD FILE) */}
                         <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-slate-950/80 border border-slate-800 rounded-lg">
                              <div>
-                                <h4 className="text-[10px] font-mono-sci text-emerald-500 uppercase tracking-widest mb-1">PATHOGEN / MICROBIOLOGY</h4>
-                                <div className="text-sm text-white font-mono italic">{activeRisk.microbiology || "Analysis Pending..."}</div>
+                                <h4 className="text-[10px] font-mono-sci text-emerald-500 uppercase tracking-widest mb-1">{t('label_pathogen')}</h4>
+                                <div className="text-sm text-white font-mono italic">{activeRisk.microbiology || t('analysis_pending')}</div>
                              </div>
                              <div>
-                                <h4 className="text-[10px] font-mono-sci text-red-500 uppercase tracking-widest mb-1">CLINICAL DISEASE</h4>
-                                <div className="text-sm text-white font-bold">{activeRisk.disease || "Medical Check Required"}</div>
+                                <h4 className="text-[10px] font-mono-sci text-red-500 uppercase tracking-widest mb-1">{t('label_disease')}</h4>
+                                <div className="text-sm text-white font-bold">{activeRisk.disease || t('medical_check')}</div>
                              </div>
                              {activeRisk.statistics && (
                                 <div className="col-span-2 mt-2 pt-2 border-t border-slate-800">
                                    <div className="flex items-center gap-2">
-                                     <span className="text-[9px] text-slate-500 font-mono-sci">STATS:</span>
+                                     <span className="text-[9px] text-slate-500 font-mono-sci">{t('label_stats')}</span>
                                      <span className="text-xs text-slate-300">{activeRisk.statistics}</span>
                                    </div>
                                 </div>
@@ -700,17 +726,17 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                         </div>
 
                         <div className="flex-1 overflow-y-auto custom-scrollbar space-y-6 md:space-y-8 pr-2">
-                            <div><h4 className="text-emerald-500 font-bold text-xs font-sci-fi uppercase mb-2 flex items-center gap-2">ANALYSIS</h4><p className="text-slate-300 text-sm md:text-base leading-relaxed font-light">{activeRisk.description}</p></div>
+                            <div><h4 className="text-emerald-500 font-bold text-xs font-sci-fi uppercase mb-2 flex items-center gap-2">{t('label_analysis')}</h4><p className="text-slate-300 text-sm md:text-base leading-relaxed font-light">{activeRisk.description}</p></div>
                             <div className={`p-4 md:p-5 rounded-lg border relative overflow-hidden transition-colors duration-500 ${isSavageMode ? 'bg-red-900/10 border-red-500/30' : 'bg-emerald-900/10 border-emerald-500/30'}`}>
                                 <h4 className={`font-bold text-xs font-sci-fi uppercase mb-3 flex items-center gap-2 ${isSavageMode ? 'text-red-400' : 'text-emerald-400'}`}>{isSavageMode ? t('card_savage_verdict') : t('card_recommendation')}</h4>
-                                <div className="text-sm md:text-base text-slate-200 leading-relaxed italic">{isSavageMode && !activeRisk.id.startsWith('manual-') ? `"${result.savageCommentary || 'Disaster.'}"` : activeRisk.solution}</div>
+                                <div className="text-sm md:text-base text-slate-200 leading-relaxed italic">{isSavageMode && !activeRisk.id.startsWith('manual-') ? `"${result.savageCommentary || t('savage_fallback')}"` : activeRisk.solution}</div>
                             </div>
                             <a href={generateYoutubeLink(activeRisk)} target="_blank" rel="noopener noreferrer" className={`flex items-center justify-center gap-2 w-full py-3 rounded text-xs md:text-sm font-bold text-white transition-colors border ${activeRisk.category === 'SAFETY' ? 'bg-indigo-900/50 border-indigo-500 hover:bg-indigo-800' : 'bg-slate-800 border-slate-600 hover:bg-slate-700'}`}>
                             {activeRisk.category === 'SAFETY' ? '⚠️' : '🔬'} {getVideoButtonLabel(activeRisk)}
                             </a>
                         </div>
                         <div className="mt-4 pt-4 border-t border-slate-800">
-                            {chatMessages.length > 0 && (<div className="mb-3 max-h-[150px] overflow-y-auto custom-scrollbar bg-black/40 rounded p-2 text-xs space-y-2">{chatMessages.map((msg, idx) => (<div key={idx} className={`${msg.role === 'user' ? 'text-right text-emerald-300' : 'text-left text-slate-300'}`}><span className="font-bold">{msg.role === 'user' ? 'YOU: ' : 'AI: '}</span>{msg.text}</div>))}<div ref={chatEndRef}></div></div>)}
+                            {chatMessages.length > 0 && (<div className="mb-3 max-h-[150px] overflow-y-auto custom-scrollbar bg-black/40 rounded p-2 text-xs space-y-2">{chatMessages.map((msg, idx) => (<div key={idx} className={`${msg.role === 'user' ? 'text-right text-emerald-300' : 'text-left text-slate-300'}`}><span className="font-bold">{msg.role === 'user' ? t('chat_you') : t('chat_ai')}</span>{msg.text}</div>))}<div ref={chatEndRef}></div></div>)}
                             <form onSubmit={handleAskAI} className="relative"><input type="text" value={userQuestion} onChange={(e) => setUserQuestion(e.target.value)} placeholder={t('chat_placeholder')} disabled={isChatLoading} className="w-full bg-slate-950 border border-slate-700 rounded-full py-3 px-5 pr-12 text-sm text-white focus:border-emerald-500 outline-none" /><button type="submit" disabled={isChatLoading || !userQuestion.trim()} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-emerald-600 rounded-full text-white">➤</button></form>
                         </div>
                     </div>

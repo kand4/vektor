@@ -19,8 +19,9 @@ import { PredictionChart } from './components/PredictionChart';
 const MAX_CONCURRENT_ANALYSIS = 3;
 
 const LoadingDisplay: React.FC<{mode: AnalysisMode}> = ({mode}) => {
+  const { t } = useLanguage();
   const [progress, setProgress] = useState(0);
-  const [logText, setLogText] = useState("INITIALIZING DEEP FORENSIC CORE...");
+  const [logText, setLogText] = useState(t('log_initializing'));
   
   useEffect(() => {
     // UPDATED PROGRESS LOGIC:
@@ -54,19 +55,19 @@ const LoadingDisplay: React.FC<{mode: AnalysisMode}> = ({mode}) => {
 
   useEffect(() => {
       if (mode === 'KKM_FOOD_STANDARD') {
-          if (progress < 15) setLogText("GEMINI 3.0 PRO: INITIALIZING...");
-          else if (progress < 30) setLogText("DEEP THINKING: ANALYZING 32K TOKENS...");
-          else if (progress < 50) setLogText("GRID SEARCH: HUNTING FOR STAINS & RESIDUE...");
-          else if (progress < 70) setLogText("LAW REFERENCE: AKTA MAKANAN 1983...");
-          else if (progress < 90) setLogText("CALCULATING DEMERIT SCORE...");
-          else setLogText("FINALIZING REPORT...");
+          if (progress < 15) setLogText(t('log_initializing'));
+          else if (progress < 30) setLogText(t('log_deep_thinking'));
+          else if (progress < 50) setLogText(t('log_grid_search'));
+          else if (progress < 70) setLogText(t('log_law_ref'));
+          else if (progress < 90) setLogText(t('log_calculating'));
+          else setLogText(t('log_finalizing'));
       } else {
-          if (progress < 15) setLogText("GEMINI 3.0 PRO: INITIALIZING...");
-          else if (progress < 30) setLogText("DEEP THINKING: ANALYZING 32K TOKENS...");
-          else if (progress < 50) setLogText("CLUTTER DETECTION: SEEKING HIDDEN NESTS...");
-          else if (progress < 70) setLogText("VECTOR TRACING: RATS, FLIES, MOSQUITOES...");
-          else if (progress < 90) setLogText("PATHOGEN MATCHING: DATABASE LOOKUP...");
-          else setLogText("GENERATING FORENSIC REPORT...");
+          if (progress < 15) setLogText(t('log_initializing'));
+          else if (progress < 30) setLogText(t('log_deep_thinking'));
+          else if (progress < 50) setLogText(t('log_clutter'));
+          else if (progress < 70) setLogText(t('log_vector'));
+          else if (progress < 90) setLogText(t('log_pathogen'));
+          else setLogText(t('log_generating'));
       }
   }, [progress, mode]);
 
@@ -85,7 +86,7 @@ const LoadingDisplay: React.FC<{mode: AnalysisMode}> = ({mode}) => {
           <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-600 relative shadow-lg">
               <div className="h-full bg-gradient-to-r from-emerald-600 via-emerald-400 to-cyan-500 shadow-[0_0_20px_#10b981] relative overflow-hidden transition-all duration-200" style={{ width: `${progress}%` }}></div>
           </div>
-          <p className="text-[10px] font-mono-sci text-slate-500 uppercase tracking-widest">Processing Time: ~45-90 Seconds (Deep Logic Active)</p>
+          <p className="text-[10px] font-mono-sci text-slate-500 uppercase tracking-widest">{t('processing_time_info')}</p>
       </div>
     </div>
   );
@@ -103,7 +104,7 @@ const HeatmapModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOp
                  <div className="p-4 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center shrink-0">
                      <div className="flex items-center gap-3">
                         <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_red]"></div>
-                        <h3 className="font-sci-fi text-white text-lg tracking-widest uppercase">Global Bio-Intelligence <span className="text-slate-500 text-sm">| CDC & WHO DATA STREAM</span></h3>
+                        <h3 className="font-sci-fi text-white text-lg tracking-widest uppercase">{t('bio_intelligence')} <span className="text-slate-500 text-sm">| {t('cdc_who_stream')}</span></h3>
                      </div>
                      <button onClick={onClose} className="bg-slate-800 p-2 rounded hover:bg-red-600 transition text-white">✕ ESC</button>
                  </div>
@@ -128,9 +129,9 @@ const HeatmapModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOp
                              </button>
                          ))}
                          <div className="absolute bottom-4 left-4 p-3 bg-slate-900/80 border border-slate-700 rounded text-[10px] font-mono-sci text-slate-400">
-                             <div>{'>'} SOURCE: WHO/CDC AGGREGATE</div>
-                             <div>{'>'} LATENCY: REAL-TIME SIM</div>
-                             <div>{'>'} ACTIVE THREATS: {alerts.length}</div>
+                             <div>{'>'} {t('source_aggregate')}</div>
+                             <div>{'>'} {t('map_latency')}</div>
+                             <div>{'>'} {t('active_threats')}: {alerts.length}</div>
                          </div>
                      </div>
                      <div className="w-full lg:w-[400px] bg-slate-950 flex flex-col order-1 lg:order-2">
@@ -157,12 +158,12 @@ const HeatmapModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOp
                                          <span className="text-[9px] bg-black px-1.5 py-0.5 rounded text-slate-400 border border-slate-700">{alert.source}</span>
                                      </div>
                                      <div className="text-xs text-slate-300 mb-1 font-mono-sci">📍 {alert.location}</div>
-                                     <div className="text-[10px] text-slate-500 mb-2">{alert.cases} Cases Reported</div>
+                                     <div className="text-[10px] text-slate-500 mb-2">{alert.cases} {t('cases_reported')}</div>
                                      {selectedAlert?.id === alert.id && (
                                          <div className="mt-2 pt-2 border-t border-slate-700/50 animate-fade-in">
                                              <p className="text-xs text-slate-400 italic mb-2 leading-relaxed">"{alert.description}"</p>
                                              <div className="flex items-center gap-2 text-[10px] font-mono-sci text-red-400">
-                                                 <span>VECTOR: {alert.vector}</span>
+                                                 <span>{t('vector_label')}: {alert.vector}</span>
                                              </div>
                                          </div>
                                      )}
@@ -326,36 +327,49 @@ const App: React.FC = () => {
             <h2 className="text-2xl sm:text-4xl md:text-5xl font-sci-fi font-bold text-white mb-3 md:mb-6 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)] leading-tight">{t('hero_title')} <span className="text-emerald-500">{t('hero_title_highlight')}</span></h2>
             <p className="text-slate-300 max-w-3xl mx-auto mb-6 md:mb-10 font-light tracking-wide text-xs sm:text-sm md:text-xl px-2">{t('hero_subtitle')}</p>
             
-            <div className="flex justify-center gap-4 mb-6 md:mb-12 flex-wrap">
+            <div className="flex flex-col items-center justify-center gap-4 mb-6 md:mb-12">
                 <button onClick={() => setIsLiveMode(true)} className="group relative flex items-center gap-2 md:gap-3 bg-red-600/90 text-white px-5 py-3 md:px-10 md:py-5 rounded font-sci-fi font-bold text-sm md:text-lg shadow-[0_0_20px_rgba(220,38,38,0.5)] hover:bg-red-500 hover:shadow-[0_0_40px_rgba(220,38,38,0.8)] transition-all overflow-hidden border border-red-400 active:scale-95">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 md:w-7 md:h-7"><path d="M12 9a3.75 3.75 0 100 7.5A3.75 3.75 0 0012 9z" /><path fillRule="evenodd" d="M9.344 3.071a49.52 49.52 0 015.312 0c.967.052 1.83.585 2.332 1.39l.821 1.317c.24.383.645.643 1.11.71.386.054.77.113 1.152.177 1.432.239 2.429 1.493 2.429 2.909V18a3 3 0 01-3 3h-15a3 3 0 01-3-3V9.574c0-1.416.997-2.67 2.429-2.909.382-.064.766-.123 1.151-.178a1.56 1.56 0 001.11-.71l.822-1.315a2.942 2.942 0 012.332-1.39zM6.75 12.75a5.25 5.25 0 1110.5 0 5.25 5.25 0 01-10.5 0zm12-1.5a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" /></svg>
                     {t('btn_ar_scan')}
                 </button>
-                <button onClick={() => setShowHeatmap(true)} className="bg-slate-800 border border-slate-600 text-slate-300 px-5 py-3 rounded font-bold hover:bg-slate-700 flex items-center gap-2">
-                    🌍 OUTBREAK MAP
-                </button>
+                <div className="flex justify-center gap-3 w-full max-w-sm">
+                     <button
+                       onClick={() => setCurrentView('LARVAE_DETECTION')}
+                       className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 border border-cyan-500/50 rounded font-sci-fi text-xs tracking-wider transition-colors bg-cyan-900/20 hover:bg-cyan-900/40 text-cyan-400`}
+                     >
+                        <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse shrink-0"></div>
+                        {t('nav_larvae_scanner')}
+                     </button>
+                     <button
+                       onClick={() => setCurrentView('ADULT_MOSQUITO_DETECTION')}
+                       className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 border border-purple-500/50 rounded font-sci-fi text-xs tracking-wider transition-colors bg-purple-900/20 hover:bg-purple-900/40 text-purple-400`}
+                     >
+                        <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse shrink-0"></div>
+                        {t('nav_adult_scanner')}
+                     </button>
+                </div>
             </div>
             
             <div className="max-w-xl mx-auto mb-8 bg-slate-900/50 p-4 md:p-6 rounded-2xl border border-slate-700/50 shadow-2xl backdrop-blur-md">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Mode Picker */}
                   <div className="space-y-3">
-                     <label className="text-[10px] text-slate-400 font-mono-sci uppercase tracking-[0.2em] block">MOD PEMERIKSAAN</label>
+                     <label className="text-[10px] text-slate-400 font-mono-sci uppercase tracking-[0.2em] block">{t('inspection_mode')}</label>
                      <div className="grid grid-cols-2 gap-2">
                         <button onClick={() => setAnalysisMode('VECTOR_CONTROL')} className={`text-[10px] md:text-xs font-bold py-3 rounded-lg transition-all flex flex-col items-center justify-center gap-1 border ${analysisMode === 'VECTOR_CONTROL' ? 'bg-emerald-600 border-emerald-400 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-700'}`}>
                            <span className="text-lg">🦟</span>
-                           <span>VEKTOR</span>
+                           <span>{t('mode_vector')}</span>
                         </button>
                         <button onClick={() => setAnalysisMode('KKM_FOOD_STANDARD')} className={`text-[10px] md:text-xs font-bold py-3 rounded-lg transition-all flex flex-col items-center justify-center gap-1 border ${analysisMode === 'KKM_FOOD_STANDARD' ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-700'}`}>
                            <span className="text-lg">📋</span>
-                           <span>KKM</span>
+                           <span>{t('mode_kkm')}</span>
                         </button>
                      </div>
                   </div>
 
                   {/* Sensitivity Picker */}
                   <div className="space-y-3">
-                     <label className="text-[10px] text-slate-400 font-mono-sci uppercase tracking-[0.2em] block">SENSITIVITI FORENSIK</label>
+                     <label className="text-[10px] text-slate-400 font-mono-sci uppercase tracking-[0.2em] block">{t('forensic_sensitivity')}</label>
                      <div className="grid grid-cols-3 gap-2">
                         {(['STANDARD', 'HIGH', 'EXTREME'] as SensitivityLevel[]).map((level) => (
                            <button 
@@ -370,13 +384,20 @@ const App: React.FC = () => {
                   </div>
                </div>
                <p className="text-[9px] text-slate-500 mt-4 italic font-mono-sci leading-relaxed text-center">
-                  *Mod EXTREME mengaktifkan penakulan mendalam Gemini 3.0 Pro untuk mengesan ancaman mikroskopik.
+                  {t('extreme_mode_desc')}
                </p>
             </div>
             
             <div className="max-w-4xl mx-auto">
                 <div className="mb-3 text-center text-emerald-500/50 text-[10px] md:text-xs font-mono-sci tracking-[0.2em] md:tracking-[0.3em]">{t('secure_link')}</div>
                 <UploadZone onImagesSelected={handleFilesSelected} disabled={false} isAnalyzing={false} />
+                
+                <div className="mt-8 flex justify-center animate-fade-in-up">
+                    <button onClick={() => setShowHeatmap(true)} className="bg-slate-800 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 px-6 py-3 rounded-xl font-bold hover:bg-emerald-900/30 hover:border-emerald-400 transition-all flex items-center gap-3">
+                        <span className="font-sci-fi tracking-widest text-sm">{t('btn_outbreak_map')}</span>
+                    </button>
+                </div>
+
                 <div className="mt-8">
                     {/* Pass lifted stats to PredictionChart */}
                     <PredictionChart 

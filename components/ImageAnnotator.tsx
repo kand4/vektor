@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { motion, useDragControls } from 'motion/react';
 import { RiskDetection, BoundingBox } from '../types';
 
 interface ImageAnnotatorProps {
@@ -19,7 +20,9 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
   onRegionDrawn
 }) => {
   const [internalSelectedId, setInternalSelectedId] = useState<string | null>(null);
+  const [dragPositions, setDragPositions] = useState<{[key: string]: {x: number, y: number}}>({});
   const containerRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
   
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPos, setStartPos] = useState<{x: number, y: number} | null>(null);
@@ -95,8 +98,21 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
   };
 
   return (
-    <div 
-      className={`relative w-full rounded bg-black group shadow-2xl border border-slate-800 overflow-hidden ${isEditing ? 'cursor-crosshair touch-none' : 'cursor-default touch-pan-y'}`} 
+    <div className="w-full relative group">
+      {/* HUD Info Bar */}
+      {!isEditing && (
+        <div className="absolute top-2 left-2 z-[70] pointer-events-none flex flex-col gap-1">
+           <div className="bg-black/60 backdrop-blur-md border border-cyan-500/30 px-2 py-1 rounded text-[8px] font-mono-sci text-cyan-400 uppercase tracking-tighter">
+              SYSTEM_STATUS: ACTIVE
+           </div>
+           <div className="bg-black/60 backdrop-blur-md border border-cyan-500/30 px-2 py-1 rounded text-[8px] font-mono-sci text-cyan-400 uppercase tracking-tighter">
+              LINK_COORD: 1000x1000
+           </div>
+        </div>
+      )}
+      
+      <div 
+        className={`relative w-full rounded bg-black group shadow-2xl border border-slate-800 overflow-hidden ${isEditing ? 'cursor-crosshair touch-none' : 'cursor-default touch-pan-y'}`} 
       ref={containerRef}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -107,9 +123,14 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
       onTouchEnd={handleMouseUp}
     >
       <div className="relative">
-          <img src={imageSrc} alt="Analyzed" className="w-full h-auto object-contain block select-none opacity-90 relative z-10 transition-opacity duration-300 group-hover:opacity-70" />
+          <img 
+            ref={imageRef}
+            src={imageSrc} 
+            alt="Analyzed" 
+            className="w-full h-auto object-contain block select-none opacity-90 relative z-10 transition-opacity duration-300 group-hover:opacity-70" 
+          />
           
-          <div className="absolute inset-0 bg-[linear-gradient(rgba(16,185,129,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(16,185,129,0.1)_1px,transparent_1px)] bg-[size:40px_40px] opacity-0 group-hover:opacity-20 pointer-events-none z-10 transition-opacity duration-500"></div>
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(34,211,238,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.1)_1px,transparent_1px)] bg-[size:40px_40px] opacity-0 group-hover:opacity-20 pointer-events-none z-10 transition-opacity duration-500"></div>
           
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none z-20"></div>
       </div>
@@ -128,6 +149,47 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 
       {/* Existing Risks */}
       <div className="absolute inset-0 z-40 pointer-events-none">
+        {/* SVG Lines Overlay */}
+        {!isEditing && (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none z-30 overflow-visible">
+            {risks.map((risk) => {
+              if (!risk.box_2d || typeof risk.box_2d.xmin !== 'number') return null;
+              
+              const isSelected = activeId === risk.id;
+              const dragPos = dragPositions[risk.id] || { x: 0, y: 0 };
+              
+              const startX = (risk.box_2d.xmin + risk.box_2d.xmax) / 20; 
+              const startY = risk.box_2d.ymin / 10; 
+              
+              const containerWidth = imageRef.current?.offsetWidth || 1;
+              const containerHeight = imageRef.current?.offsetHeight || 1;
+              
+              const endX = startX + (dragPos.x / containerWidth * 100);
+              const endY = startY + (dragPos.y / containerHeight * 100);
+              const midY = (startY + endY) / 2;
+
+              let strokeColor = (risk.category === 'HYGIENE') ? "#f59e0b" : (risk.category === 'SAFETY' ? "#facc15" : "#ef4444");
+              if (isSelected) strokeColor = "#22d3ee"; 
+
+              return (
+                <motion.path
+                  key={`line-${risk.id}`}
+                  d={`M ${startX}% ${startY}% C ${startX}% ${midY}%, ${endX}% ${midY}%, ${endX}% ${endY}%`}
+                  animate={{
+                    d: `M ${startX}% ${startY}% C ${startX}% ${midY}%, ${endX}% ${midY}%, ${endX}% ${endY}%`,
+                    stroke: strokeColor,
+                    strokeWidth: isSelected ? 2.5 : 1,
+                    opacity: isSelected ? 1 : 0.4
+                  }}
+                  fill="none"
+                  strokeLinecap="round"
+                  initial={false}
+                />
+              );
+            })}
+          </svg>
+        )}
+
         {risks.map((risk, index) => {
           if (!risk.box_2d || typeof risk.box_2d.xmin !== 'number') return null;
 
@@ -152,64 +214,146 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
           }
 
           if (isSelected) {
-              borderColor = 'border-white';
-              bgColor = 'bg-white';
-              textColor = 'text-white';
-              pulseColor = 'shadow-[0_0_20px_rgba(255,255,255,0.8)]';
+              borderColor = 'border-cyan-400';
+              bgColor = 'bg-cyan-400';
+              textColor = 'text-cyan-400';
+              pulseColor = 'shadow-[0_0_20px_rgba(34,211,238,0.8)]';
           }
 
           return (
-            <div key={risk.id} 
-              className={`absolute pointer-events-auto transition-all duration-300 group/box
-                ${isEditing ? 'opacity-30 pointer-events-none' : 'opacity-90 hover:opacity-100 cursor-pointer'} 
-                ${isSelected ? 'z-[60]' : 'z-[40]'}
-              `}
-              style={getStyle(risk.box_2d)}
-              onClick={(e) => handleBoxClick(e, risk)} 
-            >
-                {/* Crosshair Reticles for Tech Look */}
-                <div className={`absolute -top-1 -left-1 w-2 h-2 border-t-2 border-l-2 ${borderColor}`}></div>
-                <div className={`absolute -top-1 -right-1 w-2 h-2 border-t-2 border-r-2 ${borderColor}`}></div>
-                <div className={`absolute -bottom-1 -left-1 w-2 h-2 border-b-2 border-l-2 ${borderColor}`}></div>
-                <div className={`absolute -bottom-1 -right-1 w-2 h-2 border-b-2 border-r-2 ${borderColor}`}></div>
+            <React.Fragment key={risk.id}>
+              <div 
+                className={`absolute pointer-events-auto transition-all duration-300 group/box
+                  ${isEditing ? 'opacity-30 pointer-events-none' : 'opacity-90 hover:opacity-100 cursor-pointer'} 
+                  ${isSelected ? 'z-[60]' : 'z-[40]'}
+                `}
+                style={getStyle(risk.box_2d)}
+                onClick={(e) => handleBoxClick(e, risk)} 
+              >
+                  {/* Crosshair Reticles for Tech Look */}
+                  <div className={`absolute -top-1 -left-1 w-2 h-2 border-t-2 border-l-2 ${borderColor}`}></div>
+                  <div className={`absolute -top-1 -right-1 w-2 h-2 border-t-2 border-r-2 ${borderColor}`}></div>
+                  <div className={`absolute -bottom-1 -left-1 w-2 h-2 border-b-2 border-l-2 ${borderColor}`}></div>
+                  <div className={`absolute -bottom-1 -right-1 w-2 h-2 border-b-2 border-r-2 ${borderColor}`}></div>
 
-                {/* Main Box */}
-                <div className={`
-                    absolute inset-0 border-2 ${borderColor} transition-all duration-300
-                    opacity-100 bg-white/10 ${pulseColor}
-                `}></div>
+                  {/* Main Box */}
+                  <div className={`
+                      absolute inset-0 border-2 ${borderColor} transition-all duration-300
+                      opacity-100 bg-white/10 ${pulseColor}
+                  `}></div>
 
-                {/* Center Point */}
-                <div className={`absolute top-1/2 left-1/2 w-1 h-1 bg-white rounded-full opacity-50 ${isSelected ? 'block' : 'hidden'}`}></div>
+                  {/* Center Point */}
+                  <div className={`absolute top-1/2 left-1/2 w-1 h-1 bg-white rounded-full opacity-50 ${isSelected ? 'block' : 'hidden'}`}></div>
 
-                {/* Label Tag */}
-                <div className={`
-                    absolute -top-6 left-0 flex items-center transition-all duration-300 origin-bottom-left
-                    ${isSelected ? 'scale-110 z-50' : 'scale-100 z-40'}
-                `}>
-                    <div className={`
-                        flex items-center justify-center w-5 h-5 text-[10px] font-bold font-mono-sci 
-                        ${bgColor} text-black shadow-lg
-                    `}>
-                        {index + 1}
-                    </div>
+                  {/* Index Indicator on Box */}
+                  <div className={`
+                      absolute -top-3 -left-3 w-6 h-6 flex items-center justify-center 
+                      text-[12px] font-bold font-mono-sci shadow-lg z-50
+                      ${bgColor} text-black rounded-sm border border-black/20
+                  `}>
+                      {index + 1}
+                  </div>
+              </div>
 
-                    <div className={`
-                        overflow-hidden whitespace-nowrap bg-slate-900 border-y border-r ${borderColor}
-                        transition-all duration-300 ease-out flex items-center
-                        max-w-[200px] px-2 opacity-100
-                    `}>
-                        {risk.category === 'SAFETY' && <span className="mr-1 text-[10px]">⚠️</span>}
-                        <span className={`text-[9px] font-bold uppercase tracking-wider ${textColor}`}>
-                            {risk.label}
-                        </span>
-                    </div>
-                </div>
-            </div>
+              {/* Draggable HUD Callout */}
+              {!isEditing && (
+                <HUDCallout 
+                  risk={risk} 
+                  isSelected={isSelected} 
+                  index={index}
+                  borderColor={borderColor}
+                  textColor={textColor}
+                  containerRef={containerRef}
+                  onSelect={() => {
+                    setInternalSelectedId(risk.id);
+                    onRiskSelect(risk);
+                  }}
+                  onDragUpdate={(delta) => {
+                    setDragPositions(prev => ({
+                      ...prev,
+                      [risk.id]: {
+                        x: (prev[risk.id]?.x || 0) + delta.x,
+                        y: (prev[risk.id]?.y || 0) + delta.y
+                      }
+                    }));
+                  }}
+                />
+              )}
+            </React.Fragment>
           );
         })}
       </div>
     </div>
+  </div>
+  );
+};
+
+// --- HUD CALLOUT COMPONENT WITH STABLE DRAG HANDLE ---
+interface HUDCalloutProps {
+  risk: RiskDetection;
+  isSelected: boolean;
+  index: number;
+  borderColor: string;
+  textColor: string;
+  containerRef: React.RefObject<HTMLDivElement>;
+  onSelect: () => void;
+  onDragUpdate: (delta: { x: number, y: number }) => void;
+}
+
+const HUDCallout: React.FC<HUDCalloutProps> = ({ risk, isSelected, index, borderColor, textColor, containerRef, onSelect, onDragUpdate }) => {
+  // Smart detect if callout should flip to bottom if original position (top) is too high
+  const isTooHigh = (risk.box_2d?.ymin || 0) < 160; 
+
+  return (
+    <motion.div
+      drag
+      dragMomentum={false}
+      dragConstraints={containerRef}
+      onDragStart={onSelect}
+      onDrag={(e, info) => onDragUpdate(info.delta)}
+      className={`absolute z-50 pointer-events-auto ${isTooHigh ? 'origin-top' : 'origin-bottom'} cursor-grab active:cursor-grabbing`}
+      style={{
+        left: `${((risk.box_2d?.xmin || 0) + (risk.box_2d?.xmax || 0)) / 20}%`,
+        // If too high, position callout below the box instead of above
+        top: isTooHigh ? `${(risk.box_2d?.ymax || 0) / 10}%` : `${(risk.box_2d?.ymin || 0) / 10}%`,
+        translateX: '-50%',
+        translateY: isTooHigh ? '20%' : '-115%',
+        touchAction: "none"
+      }}
+    >
+      <motion.div
+        onClick={onSelect}
+        className={`
+          relative bg-slate-900/90 backdrop-blur-md border rounded-md p-2 shadow-2xl
+          w-max min-w-[140px] max-w-[180px] sm:max-w-[220px] border-l-4
+          ${isSelected ? 'scale-110 shadow-cyan-500/20 ring-1 ring-cyan-500/50' : 'scale-100'} 
+          transition-all duration-300
+          ${borderColor}
+        `}
+      >
+        <div className="flex items-center justify-between gap-2 mb-1 border-b border-slate-800 pb-1 pr-4">
+          <div className="flex items-center gap-2">
+            <span className={`flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-sm ${isSelected ? 'bg-cyan-400 text-black' : 'bg-slate-700 text-white'}`}>
+              {index + 1}
+            </span>
+            <span className={`text-[10px] font-bold uppercase tracking-wider truncate ${textColor}`}>
+               {risk.label}
+            </span>
+          </div>
+        </div>
+        
+        <div className="text-[9px] text-slate-300 leading-snug line-clamp-2 italic font-mono-sci mb-1">
+           {risk.agent || risk.description.split('.')[0]}
+        </div>
+
+        {isSelected && (
+          <div className="flex items-center gap-1 mt-1 text-[7px] text-cyan-400 font-bold uppercase animate-pulse">
+             <div className="w-1 h-1 bg-cyan-400 rounded-full"></div>
+             DATA_LINK_ENGAGED
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
   );
 };
 

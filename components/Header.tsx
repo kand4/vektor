@@ -25,25 +25,29 @@ const Header: React.FC<HeaderProps> = ({ onOpenAbout, onOpenSettings, onGoHome, 
 
   return (
     <header className="fixed w-full top-0 z-50 border-b border-emerald-900/30 bg-slate-950/80 backdrop-blur-md transition-all duration-300 h-16 md:h-24">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 h-full flex items-center justify-between">
         
         {/* Logo Section - Primary Home Navigation */}
         <div 
-          className="flex items-center gap-2 md:gap-4 overflow-hidden cursor-pointer group hover:opacity-100 active:scale-95 transition-all origin-left pr-4" 
+          className="flex items-center gap-1.5 sm:gap-2 md:gap-4 overflow-hidden cursor-pointer group hover:opacity-100 active:scale-95 transition-all origin-left sm:pr-4" 
           onClick={onGoHome}
           title={t('nav_home')}
         >
           <div className="relative w-8 h-8 md:w-12 md:h-12 flex items-center justify-center shrink-0">
              <div className="absolute inset-0 bg-emerald-500/20 animate-pulse rounded-full blur-sm group-hover:bg-emerald-500/40 transition"></div>
              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 md:w-9 md:h-9 text-emerald-400 relative z-10 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]">
-               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+               {/* Shield */}
+               <path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+               {/* Mosquito/Bug inside */}
+               <circle cx="12" cy="11" r="2.5" />
+               <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.5v-2 M12 13.5v2 M9.5 11h-2 M16.5 11h2 M10.5 9.5l-1.5-1.5 M13.5 9.5l1.5-1.5 M10.5 12.5l-1.5 1.5 M13.5 12.5l1.5 1.5" />
              </svg>
           </div>
           
-          <div className="flex flex-col justify-center overflow-hidden">
+          <div className="flex flex-col justify-center overflow-hidden min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="text-base sm:text-xl md:text-3xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 drop-shadow-sm leading-tight truncate group-hover:from-white group-hover:to-emerald-400 transition-all">
-                VECTOR<span className="text-slate-100">GUARD</span>.AI
+              <h1 className="text-[13px] sm:text-xl md:text-3xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 drop-shadow-sm leading-tight truncate group-hover:from-white group-hover:to-emerald-400 transition-all">
+                VECTOR<span className="text-slate-100">GUARD</span><span className="hidden sm:inline">.AI</span>
               </h1>
               {/* Home Indicator */}
               <div className="w-6 h-6 rounded bg-slate-800 border border-slate-700 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex">
@@ -63,68 +67,18 @@ const Header: React.FC<HeaderProps> = ({ onOpenAbout, onOpenSettings, onGoHome, 
         </div>
 
         {/* Right Controls */}
-        <div className="flex items-center gap-3 md:gap-6">
+        <div className="flex items-center gap-1.5 sm:gap-3 md:gap-6 shrink-0">
            {/* Desktop Nav Items */}
-           <div className="hidden md:flex items-center gap-4 mr-2">
-             <button
-               onClick={onGoHome}
-               className={`text-xs font-bold tracking-widest px-3 py-1.5 rounded transition-colors ${currentView === 'HOME' ? 'text-emerald-400 bg-emerald-900/20 border border-emerald-500/30' : 'text-slate-400 hover:text-white'}`}
-             >
-               HOME
-             </button>
-             <button
-               onClick={onGoLarvae}
-               className={`text-xs font-bold tracking-widest px-3 py-1.5 rounded transition-colors ${currentView === 'LARVAE_DETECTION' ? 'text-cyan-400 bg-cyan-900/20 border border-cyan-500/30' : 'text-slate-400 hover:text-white'}`}
-             >
-               LARVAE SCANNER
-             </button>
-             <button
-               onClick={onGoAdult}
-               className={`text-xs font-bold tracking-widest px-3 py-1.5 rounded transition-colors ${currentView === 'ADULT_MOSQUITO_DETECTION' ? 'text-purple-400 bg-purple-900/20 border border-purple-500/30' : 'text-slate-400 hover:text-white'}`}
-             >
-               ADULT SCANNER
-             </button>
-           </div>
-
-           {/* Home Link explicitly for Mobile */}
-           <button 
-              onClick={onGoHome} 
-              className={`md:hidden flex items-center justify-center w-8 h-8 rounded border transition-colors ${currentView === 'HOME' ? 'border-emerald-500 bg-emerald-900/50 text-emerald-400' : 'border-slate-700 bg-slate-900 text-white'}`}
-           >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                <path d="M11.47 3.84a.75.75 0 011.06 0l8.69 8.69a.75.75 0 101.06-1.06l-8.689-8.69a2.25 2.25 0 00-3.182 0l-8.69 8.69a.75.75 0 001.061 1.06l8.69-8.69z" />
-                <path d="M12 5.432l8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875h-3.504a.75.75 0 01-.75-.75v-4.5a.75.75 0 00-.75-.75h-3a.75.75 0 00-.75.75v4.5a.75.75 0 01-.75.75H5.625a1.875 1.875 0 01-1.875-1.875v-6.198a2.29 2.29 0 00.091-.086L12 5.43z" />
-              </svg>
-           </button>
-           
-           {/* Larvae Link explicitly for Mobile */}
-           <button 
-              onClick={onGoLarvae} 
-              className={`md:hidden flex items-center justify-center w-8 h-8 rounded border transition-colors ${currentView === 'LARVAE_DETECTION' ? 'border-cyan-500 bg-cyan-900/50 text-cyan-400' : 'border-slate-700 bg-slate-900 text-white'}`}
-           >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 3.75H6A2.25 2.25 0 0 0 3.75 6v1.5m13.5 0V6A2.25 2.25 0 0 0 15 3.75h-1.5m-6 16.5H6A2.25 2.25 0 0 1 3.75 18v-1.5m13.5 0V18A2.25 2.25 0 0 1 15 20.25h-1.5M12 8.25v7.5m-3-3.75h6" />
-              </svg>
-           </button>
-
-           {/* Adult Link explicitly for Mobile */}
-           <button 
-              onClick={onGoAdult} 
-              className={`md:hidden flex items-center justify-center w-8 h-8 rounded border transition-colors ${currentView === 'ADULT_MOSQUITO_DETECTION' ? 'border-purple-500 bg-purple-900/50 text-purple-400' : 'border-slate-700 bg-slate-900 text-white'}`}
-           >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21v-4.5m1.5-3.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z" />
-              </svg>
-           </button>
+           {/* Removed to be relocated to main screen */}
 
            {/* Language Selector */}
            <div className="relative">
               <button 
                 onClick={() => setIsLangMenuOpen(!isLangMenuOpen)} 
-                className="flex items-center gap-1 md:gap-2 bg-slate-900 border border-slate-700 px-2 py-1 md:px-3 md:py-1.5 rounded hover:border-emerald-500 transition-colors"
+                className="flex items-center gap-1 md:gap-2 bg-slate-900 border border-slate-700 px-1.5 py-1 sm:px-2 md:px-3 md:py-1.5 rounded hover:border-emerald-500 transition-colors"
               >
-                  <span className="text-sm md:text-base">{languages.find(l => l.code === language)?.flag}</span>
-                  <span className="text-[10px] md:text-xs font-bold text-slate-300">{languages.find(l => l.code === language)?.label}</span>
+                  <span className="text-[10px] sm:text-sm md:text-base leading-none">{languages.find(l => l.code === language)?.flag}</span>
+                  <span className="text-[9px] sm:text-[10px] md:text-xs font-bold text-slate-300 hidden sm:inline-block leading-none">{languages.find(l => l.code === language)?.label}</span>
               </button>
               
               {isLangMenuOpen && (
@@ -150,7 +104,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAbout, onOpenSettings, onGoHome, 
            <button 
               onClick={onOpenSettings} 
               title="Settings & API Key"
-              className="flex items-center justify-center w-8 h-8 rounded border border-slate-700 bg-slate-900 hover:border-emerald-500 active:bg-emerald-500 transition-all text-slate-300 hover:text-emerald-400"
+              className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0 rounded border border-slate-700 bg-slate-900 hover:border-emerald-500 active:bg-emerald-500 transition-all text-slate-300 hover:text-emerald-400"
            >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z" />
@@ -174,9 +128,11 @@ const Header: React.FC<HeaderProps> = ({ onOpenAbout, onOpenSettings, onGoHome, 
            </button>
 
            {/* Mobile About Icon */}
-           <div className="md:hidden flex items-center gap-3">
-             <button onClick={onOpenAbout} className="text-[10px] text-emerald-400 font-sci-fi border border-emerald-500/30 px-3 py-1.5 rounded bg-emerald-900/20 active:bg-emerald-500 active:text-white transition-colors">
-               INFO
+           <div className="md:hidden flex items-center">
+             <button title="Info System" onClick={onOpenAbout} className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0 rounded border border-emerald-500/30 bg-emerald-900/20 text-emerald-400 active:bg-emerald-500 active:text-white transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                </svg>
              </button>
            </div>
         </div>

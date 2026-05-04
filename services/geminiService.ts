@@ -162,7 +162,7 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
   const optimizedImage = await compressImage(base64Image);
   
   // Use Pro model for higher spatial intelligence
-  const modelId = "gemini-3-pro-preview";
+  const modelId = "gemini-3.1-pro-preview";
 
   let thinkingBudget = 4000; 
   let engineerPersona = "";
@@ -391,9 +391,11 @@ export const analyzeManualRegion = async (base64Image: string, mimeType: string,
     const ai = getAIClient();
     
     // Manual analysis also gets the upgrade
-    const prompt = `ENGINEERING ANALYSIS OF ROI [${box.ymin}-${box.ymax}, ${box.xmin}-${box.xmax}]. 
-    CONTEXT: "${userContext}". 
-    TASK: IDENTIFY PATHOGEN, VECTOR AGENT, OR SAFETY HAZARD.
+    const prompt = `ENGINEERING ANALYSIS OF ROI (Region of Interest).
+    COORDINATES: ymin: ${box.ymin}, xmin: ${box.xmin}, ymax: ${box.ymax}, xmax: ${box.xmax}.
+    You MUST focus EXCLUSIVELY on the visual content within this specific bounding box.
+    CONTEXT provided by user: "${userContext}". 
+    TASK: IDENTIFY PATHOGEN, VECTOR AGENT, OR SAFETY HAZARD specifically at this location.
     SENSITIVITY MODE: ${sensitivity} (Adjust strictness of analysis accordingly: LOW=obvious risks only, HIGH=detailed risks, EXTREME=microscopic/theoretical risks).
     RETURN 'agent', 'microbiology', and 'disease' IN ENGLISH/SCIENTIFIC LATIN.
     IMPORTANT: Provide a detailed 'solution' and 'description' in ${language === 'ms' ? 'Malay' : 'English'}. The 'solution' MUST include practical recommendations and mitigation strategies for the identified risk.
@@ -409,10 +411,14 @@ export const analyzeManualRegion = async (base64Image: string, mimeType: string,
       "solution": "${isSavageMode ? 'Provide a highly sarcastic, brutal, aggressive roast/commentary instead of real advice.' : 'Provide official, practical recommendations and mitigation strategies'}"
     }`;
     
-    const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview", 
-        contents: { parts: [{ inlineData: { mimeType: 'image/jpeg', data: optimizedImage } }, { text: prompt }] },
-        config: { responseMimeType: "application/json" }
+    const response = await retryWithBackoff(async () => {
+        const ai = getAIClient();
+        return await ai.models.generateContent({
+            // Using Pro model for higher spatial intelligence and coordinate handling
+            model: "gemini-3.1-pro-preview", 
+            contents: { parts: [{ inlineData: { mimeType: 'image/jpeg', data: optimizedImage } }, { text: prompt }] },
+            config: { responseMimeType: "application/json" }
+        });
     });
     const text = extractJSON(response.text || "{}");
     const result = JSON.parse(text);
@@ -430,7 +436,9 @@ export const analyzeManualRegion = async (base64Image: string, mimeType: string,
 
 export const generateCleanSimulation = async (base64Image: string, mimeType: string, config: SimulationConfig): Promise<string> => {
     const ai = getAIClient();
+    const optimizedImage = await compressImage(base64Image);
     
+    // STEP 1: Generate a text-based prompt using gemini-2.5-flash
     let basePrompt = "Sterile high-tech modern clean room, highly professional medical lab, ultra-safe environment, spotless clean.";
     if (config.mode === 'UPGRADE_FURNITURE') {
         basePrompt += " Features brand new stainless steel tables, ergonomic lab chairs, advanced sealed cabinets.";
@@ -456,28 +464,77 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
     }
     basePrompt += " Ultra-photorealistic, 8k resolution, highly detailed, professional cinematography.";
 
+    // Logic Refinement: Primary -> Multi-modal Gemini 2.5 Flash, Fallback -> Imagen 3, Fallback -> External
+    const promptGeneration = async () => {
+        const resp = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: {
+                parts: [
+                    { inlineData: { data: optimizedImage, mimeType: 'image/jpeg' } },
+                    { text: `Based on this room image, generate a highly detailed image generation prompt for a clean, sterile version of it. Include layout details from the original. Requirements: ${basePrompt}` }
+                ]
+            }
+        });
+        return resp.text || basePrompt;
+    };
+
+    const finalPrompt = await retryWithBackoff(promptGeneration);
+
     if (config.engine === 'GEMINI_IMAGEN') {
+        // 1. Try Gemini 2.5 Flash Image-to-Image (Multimodal)
         try {
-            const response = await ai.models.generateImages({
-                model: 'imagen-3.0-generate-001',
-                prompt: basePrompt,
-                config: {
-                    numberOfImages: 1,
-                    outputMimeType: 'image/jpeg',
-                    aspectRatio: '16:9'
-                }
+            console.log("🎨 Attempting Gemini 2.5 Flash Image Generation...");
+            const response = await retryWithBackoff(async () => {
+                return await ai.models.generateContent({
+                    model: 'gemini-2.5-flash-image',
+                    contents: {
+                        parts: [
+                            { inlineData: { data: optimizedImage, mimeType: 'image/jpeg' } },
+                            { text: `TASK: Reimagine this room as a ${finalPrompt}. Keep layout but remove all dirt.` }
+                        ]
+                    }
+                });
             });
-            const image = response.generatedImages[0];
-            return `data:${image.image.mimeType};base64,${image.image.imageBytes}`;
+            
+            for (const part of response.candidates?.[0]?.content?.parts || []) {
+                if (part.inlineData) {
+                    return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                }
+            }
+            throw new Error("No inlineData image from Gemini");
         } catch (error) {
-            console.error("Gemini Imagen Failed, falling back to Pollinations:", error);
-            // Fallback to pollinations
+            console.warn("Gemini 2.5 Flash Image Failed, falling back to Imagen 3.0:", error);
+            
+            // 2. Try Imagen 3.0 Generate (Google Engine Fallback)
+            try {
+                console.log("🎨 Attempting Google Imagen 3.0...");
+                const imagenResponse = await retryWithBackoff(async () => {
+                    return await ai.models.generateImages({
+                        model: "imagen-3.0-generate-001",
+                        prompt: finalPrompt,
+                        config: {
+                            numberOfImages: 1,
+                            aspectRatio: "16:9"
+                        }
+                    });
+                });
+
+                const bytes = imagenResponse.generatedImages?.[0]?.image?.imageBytes;
+                if (bytes) {
+                    return `data:image/png;base64,${bytes}`;
+                }
+                throw new Error("No image bytes from Imagen 3.0");
+            } catch (imagenError) {
+                console.error("Google Imagen 3.0 Failed:", imagenError);
+                // Fallthrough to external
+            }
         }
     }
 
     // Default or Fallback: Pollinations
+    console.log("🎨 Using Pollinations (External) Fallback...");
     const seed = Math.floor(Math.random() * 999999);
-    const encodedPrompt = encodeURIComponent(basePrompt);
+    const encodedPrompt = encodeURIComponent(finalPrompt);
     const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1280&height=720&seed=${seed}&model=flux&nolog=true`;
     return url;
 };
@@ -485,7 +542,7 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
 export const askRiskFollowUp = async (risk: RiskDetection, question: string, language: string = 'ms'): Promise<string> => {
     const ai = getAIClient();
     const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview", 
+        model: "gemini-2.5-flash", 
         contents: `CONTEXT: RISK ANALYSIS. Risk: "${risk.label}" (${risk.category}). Agent: ${risk.agent}.
         USER QUERY: "${question}".
         INSTRUCTION: Answer as a Senior Public Health Engineer. Be technical but clear. Language: ${language}.`,
