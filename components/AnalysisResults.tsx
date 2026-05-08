@@ -280,6 +280,8 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [toastMsg, setToastMsg] = useState<{msg: string, type: 'error' | 'success'} | null>(null);
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [displayThreshold, setDisplayThreshold] = useState(100); // 0-100 threshold
 
   // Reference for scrolling
   const detailsPanelRef = useRef<HTMLDivElement>(null);
@@ -336,8 +338,17 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     }
   }
 
-  const bioRisks = currentRisks.filter(r => r.category === 'VECTOR' || r.category === 'HYGIENE');
-  const safetyRisks = currentRisks.filter(r => r.category === 'SAFETY');
+  // Filter risks based on displayThreshold
+  const filteredRisks = currentRisks.filter((_, idx) => {
+      // Simple heuristic: if threshold is 100, show all. 
+      // If threshold is 50, show first 50% of risks.
+      // This matches user's request for "more" or "fewer" boxes.
+      const percentage = ((idx + 1) / currentRisks.length) * 100;
+      return percentage <= displayThreshold;
+  });
+
+  const bioRisks = filteredRisks.filter(r => r.category === 'VECTOR' || r.category === 'HYGIENE');
+  const safetyRisks = filteredRisks.filter(r => r.category === 'SAFETY');
   const getRiskIndex = (risk: RiskDetection) => currentRisks.findIndex(r => r.id === risk.id) + 1;
 
   const handleRegionDrawn = (box: BoundingBox) => {
@@ -411,6 +422,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
   // ROBUST PRINT HANDLER V5: HTML2PDF + NATIVE FALLBACK
   const handlePrint = async () => {
+    setIsPrinting(true);
     // 1. Save scroll position
     const originalScrollY = window.scrollY;
     
@@ -426,18 +438,18 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     try {
-        setToastMsg({ msg: "Menjana PDF... Sila tunggu.", type: 'info' });
+        setToastMsg({ msg: "Menjana PDF... Sila tunggu.", type: 'success' });
         // Dynamically import html2pdf safely
         const html2pdfModule = await import('html2pdf.js');
         const html2pdf = html2pdfModule.default || html2pdfModule;
         const element = document.getElementById('print-mount');
         
         if (element) {
-            const targetElement = element.firstElementChild || element;
+            const targetElement = (element.firstElementChild as HTMLElement) || element;
             const opt = {
                 margin:       0,
                 filename:     `Laporan_Pemeriksaan_${Math.floor(Date.now() / 1000)}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
+                image:        { type: 'jpeg' as const, quality: 0.98 },
                 html2canvas:  { 
                     scale: 2, 
                     useCORS: true, 
@@ -449,7 +461,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     windowWidth: document.documentElement.scrollWidth,
                     windowHeight: document.documentElement.scrollHeight
                 },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
                 pagebreak:    { mode: 'css', avoid: '.avoid-break' }
             };
             
@@ -459,6 +471,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     document.body.classList.remove('is-printing');
                     window.scrollTo(0, originalScrollY);
                     setToastMsg({ msg: "PDF berjaya dijana!", type: 'success' });
+                    setIsPrinting(false);
                     
                     const file = new File([pdfBlob], opt.filename, { type: 'application/pdf' });
                     
@@ -484,6 +497,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     console.error("PDF generation failed", e);
                     document.body.classList.remove('is-printing');
                     window.scrollTo(0, originalScrollY);
+                    setIsPrinting(false);
                     window.print();
                 });
             }, 1000); // 1s delay to ensure content is fully painted
@@ -493,6 +507,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
         console.error('html2pdf error', e);
         document.body.classList.remove('is-printing');
         window.scrollTo(0, originalScrollY);
+        setIsPrinting(false);
         window.print();
     }
   };
@@ -534,8 +549,18 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
      return (
         <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-slate-900 border border-emerald-500 rounded-xl p-6 w-full max-w-sm shadow-2xl animate-fade-in-up">
-                <h3 className="text-lg font-sci-fi font-bold text-white mb-4"><span className="text-emerald-400">🎯 {t('manual_targeting')}</span></h3>
-                <textarea value={manualContext} onChange={(e) => setManualContext(e.target.value)} placeholder={t('manual_placeholder')} rows={3} className="w-full bg-slate-950 border border-slate-700 rounded p-3 text-white text-sm outline-none mb-4" />
+                <h3 className="text-lg font-sci-fi font-bold text-white mb-4"><span className="text-emerald-400">🎯 {t('manual_targeting')}</span></h3>                <div className="mb-4">
+                     <label className="text-xs text-slate-400 font-mono-sci uppercase block mb-1">Jenis Gambar:</label>
+                     <select 
+                        value={manualContext.includes("Candid") ? "Candid" : "Targeted"} 
+                        onChange={(e) => setManualContext(prev => `${e.target.value}: ${prev.split(': ')[1] || ''}`)}
+                        className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white text-sm"
+                     >
+                         <option value="Candid">Candid</option>
+                         <option value="Targeted">Targeted (Bersasar)</option>
+                     </select>
+                 </div>
+                 <textarea value={manualContext.split(': ')[1] || ''} onChange={(e) => setManualContext(prev => `${prev.split(': ')[0] || 'Candid'}: ${e.target.value}`)} placeholder={t('manual_placeholder')} rows={3} className="w-full bg-slate-950 border border-slate-700 rounded p-3 text-white text-sm outline-none mb-4" />
                 <div className="flex gap-2">
                     <button onClick={cancelManualMode} disabled={isProcessingManual} className="flex-1 py-2 bg-slate-800 text-slate-300 rounded">{t('btn_cancel')}</button>
                     <button onClick={submitManualAnalysis} disabled={!manualContext.trim() || isProcessingManual} className="flex-1 py-2 bg-emerald-600 text-white rounded font-bold">{isProcessingManual ? t('scanning_wait') : t('btn_analyze')}</button>
@@ -547,10 +572,51 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
   // IF KKM MODE: Show Special Report + Image Annotator
   if (isKKMMode) {
+      const validSessions = allSessions.filter(s => s.status === 'SUCCESS' && s.result);
+      const avgHygiene = validSessions.length > 0 ? (validSessions.reduce((sum, s) => sum + (s.result?.hygieneLevel || 0), 0) / validSessions.length) : 0;
+      
       return (
-          <div className="animate-fade-in pb-20">
+          <div className="animate-fade-in pb-20 border border-[#e5ebe5]">
+             {isPrinting && (
+                 <div className="fixed inset-0 z-[9999] bg-slate-900/90 backdrop-blur-sm flex flex-col items-center justify-center">
+                     <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mb-4 shadow-[0_0_15px_cyan]"></div>
+                     <h2 className="text-xl font-bold font-sci-fi text-cyan-400 tracking-wider">MENJANA LAPORAN PDF...</h2>
+                     <p className="text-sm text-slate-400 mt-2 font-mono">Sila tunggu. Mengumpul data analisis keseluruhan.</p>
+                 </div>
+             )}
              {toastMsg && <Toast message={toastMsg.msg} type={toastMsg.type} onClose={() => setToastMsg(null)} />}
-             <h2 className="text-2xl font-bold text-blue-400 mb-6 font-sci-fi text-center">LAPORAN PEMERIKSAAN KKM</h2>
+             
+             {/* THE HIDDEN PRINT MODULE */}
+             <PrintLayout sessions={allSessions} />
+
+             <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+                <h2 className="text-2xl font-bold text-blue-400 font-sci-fi">LAPORAN PEMERIKSAAN KKM</h2>
+                <div className="flex gap-2">
+                    <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 rounded text-sm font-bold uppercase tracking-wider transition-all border border-green-500/50 hover:bg-green-900/30 text-green-400 bg-slate-900 shadow-lg">
+                        🖨️ {t('btn_print_pdf') || 'CETAK LAPORAN PDF'}
+                    </button>
+                    {allSessions.length > 1 && (
+                        <div className="bg-blue-900/40 border border-blue-500/50 px-4 py-2 rounded flex items-center gap-3 shadow-lg">
+                            <div className="flex flex-col items-end">
+                                <span className="text-[10px] text-blue-300 font-bold uppercase tracking-tighter">SKOR KUMULATIF ({validSessions.length})</span>
+                                <span className="text-sm font-sci-fi font-bold text-white">{avgHygiene.toFixed(1)} / 5.0</span>
+                            </div>
+                            <div className={`w-8 h-8 rounded border-2 flex items-center justify-center font-bold text-sm ${avgHygiene < 3 ? 'border-red-500 text-red-500' : 'border-emerald-500 text-emerald-400'}`}>
+                                {avgHygiene < 3 ? 'D' : 'A'}
+                            </div>
+                        </div>
+                    )}
+                    {validSessions.length > 1 && (
+                        <button 
+                            onClick={() => document.getElementById('cumulative-table')?.scrollIntoView({ behavior: 'smooth' })}
+                            className="bg-slate-800 border border-slate-700 px-4 py-2 rounded text-xs font-bold text-slate-300 hover:bg-slate-700 transition"
+                        >
+                            📊 LIHAT PECAHAN
+                        </button>
+                    )}
+                </div>
+             </div>
+
              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                  {/* Left: Report */}
                  <KKMReport result={result} />
@@ -558,22 +624,154 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                  {/* Right: Evidence */}
                  <div className="flex flex-col gap-4">
                      <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 relative">
-                        <div className="flex justify-between items-center mb-2">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
                            <h3 className="text-sm font-bold text-white">BUKTI GAMBAR (ANNOTATED)</h3>
-                           <button
-                              onClick={() => setIsAutoScrollEnabled(!isAutoScrollEnabled)}
-                              className={`text-[9px] uppercase font-bold px-2 py-1 rounded transition-colors flex items-center gap-1 border shadow-md backdrop-blur-md ${
-                                isAutoScrollEnabled ? 'bg-cyan-900/60 text-cyan-300 border-cyan-800/80 hover:bg-cyan-800/80' : 'bg-slate-900/60 text-slate-400 border-slate-700 hover:bg-slate-800'
-                              }`}
-                              title={isAutoScrollEnabled ? "Matikan Auto-Scroll" : "Hidupkan Auto-Scroll"}
-                           >
-                              {isAutoScrollEnabled ? '✅ Auto-Scroll (ON)' : '❌ Auto-Scroll (OFF)'}
-                           </button>
+                           <div className="flex items-center gap-2">
+                               <button 
+                                   onClick={() => setIsEditing(!isEditing)} 
+                                   className={`text-[9px] uppercase font-bold px-2 py-1 rounded transition-colors flex items-center gap-1 border shadow-md backdrop-blur-md ${isEditing ? 'bg-red-900/60 text-red-300 border-red-800/80 animate-pulse' : 'bg-slate-900/60 text-slate-400 border-slate-700 hover:bg-slate-800'}`}
+                                   title={isEditing ? "Matikan Sasar Manual" : "Sasar Kawasan Manual"}
+                               >
+                                   {isEditing ? `🔴 ${t('label_targeting') || 'SEDANG SEDIA MENGESAN'}` : `🎯 ${t('btn_manual_scan') || 'SASARAN MANUAL'}`}
+                               </button>
+                               <button
+                                  onClick={() => setIsAutoScrollEnabled(!isAutoScrollEnabled)}
+                                  className={`text-[9px] uppercase font-bold px-2 py-1 rounded transition-colors flex items-center gap-1 border shadow-md backdrop-blur-md ${
+                                    isAutoScrollEnabled ? 'bg-cyan-900/60 text-cyan-300 border-cyan-800/80 hover:bg-cyan-800/80' : 'bg-slate-900/60 text-slate-400 border-slate-700 hover:bg-slate-800'
+                                  }`}
+                                  title={isAutoScrollEnabled ? "Matikan Auto-Scroll" : "Hidupkan Auto-Scroll"}
+                               >
+                                  {isAutoScrollEnabled ? '✅ Auto-Scroll (ON)' : '❌ Auto-Scroll (OFF)'}
+                               </button>
+                           </div>
                         </div>
-                        <ImageAnnotator imageSrc={imageSrc} risks={currentRisks} onRiskSelect={handleRiskChange} selectedId={activeRisk?.id} isEditing={false} />
+                        <div className="border border-slate-700 rounded-xl bg-slate-950 relative z-20">
+                            <ImageAnnotator 
+                                imageSrc={imageSrc} 
+                                risks={filteredRisks} 
+                                onRiskSelect={handleRiskChange} 
+                                selectedId={activeRisk?.id} 
+                                isEditing={isEditing} 
+                                onRegionDrawn={handleRegionDrawn} 
+                            />
+                            
+                            {activeRisk && (
+                                <div className="p-4 bg-slate-950 border-t border-slate-700">
+                                    <h4 className="text-emerald-500 font-bold text-xs font-sci-fi uppercase mb-1">{t('label_analysis') || 'ANALISIS KESELAMATAN & KESIHATAN MAKANAN'}</h4>
+                                    <p className="text-slate-300 text-sm leading-relaxed">{activeRisk.description}</p>
+                                    
+                                    {(activeRisk.agent || activeRisk.microbiology || activeRisk.disease) && (
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-4 p-3 bg-slate-900 border border-slate-800 rounded-lg">
+                                            {activeRisk.agent && (
+                                                <div>
+                                                    <h4 className="text-[9px] font-mono-sci text-slate-500 uppercase tracking-widest mb-1">{t('label_agent') || 'AGEN MIKROB'}</h4>
+                                                    <div className="text-xs text-emerald-400 font-mono italic break-words">{activeRisk.agent}</div>
+                                                </div>
+                                            )}
+                                            {activeRisk.microbiology && (
+                                                <div>
+                                                    <h4 className="text-[9px] font-mono-sci text-emerald-500 uppercase tracking-widest mb-1">{t('label_pathogen') || 'PATOGEN'}</h4>
+                                                    <div className="text-xs text-white font-mono italic break-words">{activeRisk.microbiology}</div>
+                                                </div>
+                                            )}
+                                            {activeRisk.disease && (
+                                                <div>
+                                                    <h4 className="text-[9px] font-mono-sci text-red-500 uppercase tracking-widest mb-1">{t('label_disease') || 'PENYAKIT/RISIKO KLINIKAL'}</h4>
+                                                    <div className="text-xs text-white break-words">{activeRisk.disease}</div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <h4 className="text-emerald-500 font-bold text-xs font-sci-fi uppercase mt-3 mb-1">{t('card_recommendation') || 'TINDAKAN PEMBETULAN'}</h4>
+                                    <p className="text-slate-200 text-sm italic mb-4">{activeRisk.solution}</p>
+
+                                    <div className="flex flex-col sm:flex-row gap-2 mt-4 border-t border-slate-800 pt-4">
+                                        <a href={generateYoutubeLink(activeRisk)} target="_blank" rel="noopener noreferrer" className={`flex-1 flex items-center justify-center gap-2 py-2 rounded text-xs font-bold text-white transition-colors border bg-slate-800 border-slate-600 hover:bg-slate-700`}>
+                                            🔬 {getVideoButtonLabel(activeRisk)}
+                                        </a>
+                                        {activeRisk.agent && (
+                                            <a href={`https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(activeRisk.agent + (activeRisk.microbiology ? ' ' + activeRisk.microbiology : '') + (activeRisk.disease ? ' ' + activeRisk.disease : ''))}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 py-2 rounded text-xs font-bold text-white transition-colors border bg-blue-900/50 border-blue-700 hover:bg-blue-800">
+                                                📚 PubMed Citation
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* SENSITIVITY CONTROL SECTION (KKM) */}
+                        <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 animate-fade-in no-print">
+                            <div className="flex flex-col gap-3">
+                                <div className="flex justify-between items-center">
+                                    <div className="flex flex-col">
+                                        <span className="text-xs font-bold text-blue-400 font-sci-fi tracking-widest">DARJAH PENGESANAN ANALITIS (AI)</span>
+                                        <span className="text-[10px] text-slate-400 font-mono italic">Kawal kepekaan pengesanan; peratusan tinggi akan memaparkan lebih banyak titik risiko.</span>
+                                    </div>
+                                    <div className="px-3 py-1 bg-blue-900/40 border border-blue-500/50 rounded text-blue-300 font-mono-sci font-bold">
+                                        {displayThreshold}%
+                                    </div>
+                                </div>
+                                <div className="relative pt-1">
+                                    <input 
+                                        type="range" 
+                                        min="10" 
+                                        max="100" 
+                                        step="10"
+                                        value={displayThreshold}
+                                        onChange={(e) => setDisplayThreshold(parseInt(e.target.value))}
+                                        className="w-full accent-blue-500 h-2 cursor-pointer bg-slate-800 rounded-lg appearance-none border border-slate-700"
+                                    />
+                                    <div className="flex justify-between mt-2">
+                                        <span className="text-[8px] font-mono-sci text-slate-500 uppercase tracking-tighter">Fokus Kritikal</span>
+                                        <span className="text-[8px] font-mono-sci text-slate-500 uppercase tracking-tighter">Analisis Maksimum</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                      </div>
                  </div>
              </div>
+             
+             {validSessions.length > 1 && (
+                 <div id="cumulative-table" className="mt-8 bg-slate-900 border border-slate-700 rounded-xl overflow-hidden animate-fade-in no-print">
+                     <div className="bg-slate-950 p-4 border-b border-slate-700 flex justify-between items-center">
+                         <h3 className="text-sm font-bold text-white tracking-widest font-sci-fi">RUMUSAN KUMULATIF ({validSessions.length} IMEJ)</h3>
+                         <span className="text-[10px] text-slate-500 font-mono">PURATA SCORE: {(validSessions.reduce((sum, s) => sum + (s.result?.hygieneLevel || 0), 0) / validSessions.length).toFixed(1)}/5.0</span>
+                     </div>
+                     <table className="w-full text-xs text-left border-collapse">
+                         <thead>
+                             <tr className="bg-slate-900/50 text-slate-400 border-b border-slate-800 font-mono-sci">
+                                 <th className="p-3 font-bold">#</th>
+                                 <th className="p-3 font-bold">FAIL / IMEJ</th>
+                                 <th className="p-3 font-bold">KEBERSIHAN</th>
+                                 <th className="p-3 font-bold text-center">STATUS</th>
+                             </tr>
+                         </thead>
+                         <tbody className="divide-y divide-slate-800">
+                             {validSessions.map((s, idx) => (
+                                 <tr key={s.id} className="hover:bg-slate-800/50 transition">
+                                     <td className="p-3 text-slate-500">{idx + 1}</td>
+                                     <td className="p-3 truncate max-w-xs text-slate-300">{s.fileName}</td>
+                                     <td className="p-3">
+                                         <div className="flex items-center gap-2">
+                                             <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                                 <div className={`h-full ${s.result!.hygieneLevel < 3 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${(s.result!.hygieneLevel / 5) * 100}%` }}></div>
+                                             </div>
+                                             <span className="font-bold">{s.result!.hygieneLevel}/5</span>
+                                         </div>
+                                     </td>
+                                     <td className="p-3 text-center">
+                                         <span className={`text-[9px] px-2 py-0.5 rounded border uppercase font-bold ${s.result!.hygieneLevel < 3 ? 'bg-red-900/20 text-red-500 border-red-500/50' : 'bg-emerald-900/20 text-emerald-500 border-emerald-500/50'}`}>
+                                             {s.result!.hygieneLevel < 3 ? 'GAGAL' : 'LULUS'}
+                                         </span>
+                                     </td>
+                                 </tr>
+                             ))}
+                         </tbody>
+                     </table>
+                 </div>
+             )}
           </div>
       )
   }
@@ -582,6 +780,13 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   // Restored to rely on activeRisk for details panel presence (Clean visual if no risk selected)
   return (
     <div className="animate-fade-in pb-20">
+      {isPrinting && (
+          <div className="fixed inset-0 z-[9999] bg-slate-900/90 backdrop-blur-sm flex flex-col items-center justify-center">
+              <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mb-4 shadow-[0_0_15px_cyan]"></div>
+              <h2 className="text-xl font-bold font-sci-fi text-cyan-400 tracking-wider">MENJANA LAPORAN PDF...</h2>
+              <p className="text-sm text-slate-400 mt-2 font-mono">Sila tunggu. Mengumpul data analisis keseluruhan.</p>
+          </div>
+      )}
       {toastMsg && <Toast message={toastMsg.msg} type={toastMsg.type} onClose={() => setToastMsg(null)} />}
       <SimulationConfigModal isOpen={showConfigModal} onClose={() => setShowConfigModal(false)} onStart={startSimulation} />
       <SimulationResultModal isOpen={showCleanModal} onClose={() => setShowCleanModal(false)} originalImage={imageSrc} generatedImage={cleanImage || ""} />
@@ -612,8 +817,8 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 no-print">
         {/* LEFT COL: Image & List */}
-        <div className="lg:col-span-7 flex flex-col gap-4">
-           <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-900 group">
+        <div className="lg:col-span-7 flex flex-col gap-4 z-20 relative">
+           <div className="relative rounded-xl border border-slate-700 bg-slate-900 group">
               {/* Auto Scroll Toggle */}
               <div className="absolute top-2 right-2 z-50">
                  <button
@@ -626,7 +831,16 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     {isAutoScrollEnabled ? '✅ Auto-Scroll (ON)' : '❌ Auto-Scroll (OFF)'}
                  </button>
               </div>
-              <ImageAnnotator imageSrc={imageSrc} risks={currentRisks} onRiskSelect={handleRiskChange} selectedId={activeRisk?.id} isEditing={isEditing} onRegionDrawn={handleRegionDrawn} />
+              <ImageAnnotator imageSrc={imageSrc} risks={filteredRisks} onRiskSelect={handleRiskChange} selectedId={activeRisk?.id} isEditing={isEditing} onRegionDrawn={handleRegionDrawn} />
+               
+              {activeRisk && (
+                  <div className="p-4 bg-slate-950 border-t border-slate-700">
+                      <h4 className="text-emerald-500 font-bold text-xs font-sci-fi uppercase mb-1">{t('label_analysis')}</h4>
+                      <p className="text-slate-300 text-sm leading-relaxed">{activeRisk.description}</p>
+                      <h4 className="text-emerald-500 font-bold text-xs font-sci-fi uppercase mt-3 mb-1">{t('card_recommendation')}</h4>
+                      <p className="text-slate-200 text-sm italic">{activeRisk.solution}</p>
+                  </div>
+              )}
               <div className="absolute bottom-4 right-4 flex items-center gap-2 bg-slate-900/90 backdrop-blur border border-slate-600 px-3 py-2 rounded-lg z-40 shadow-xl">
                  <div className="flex flex-col items-end">
                     <div className="flex items-center gap-2 mb-1">
@@ -648,8 +862,38 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                  </div>
               </div>
            </div>
-           
-           <div className="grid grid-cols-1 gap-4">
+
+           {/* SENSITIVITY CONTROL SECTION (STANDARD) */}
+           <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 animate-fade-in no-print mt-2">
+                <div className="flex flex-col gap-3">
+                    <div className="flex justify-between items-center">
+                        <div className="flex flex-col">
+                            <span className="text-xs font-bold text-emerald-400 font-sci-fi tracking-widest">TAHAP KEPEKAAN PENGESANAN</span>
+                            <span className="text-[10px] text-slate-400 font-mono italic">Tetapkan sensitiviti analisis AI untuk hasil minimum atau maksimum.</span>
+                        </div>
+                        <div className="px-3 py-1 bg-emerald-900/30 border border-emerald-500/50 rounded text-emerald-400 font-mono-sci font-bold">
+                            {displayThreshold}%
+                        </div>
+                    </div>
+                    <div className="relative pt-1">
+                        <input 
+                            type="range" 
+                            min="10" 
+                            max="100" 
+                            step="10"
+                            value={displayThreshold}
+                            onChange={(e) => setDisplayThreshold(parseInt(e.target.value))}
+                            className="w-full accent-emerald-500 h-2 cursor-pointer bg-slate-800 rounded-lg appearance-none border border-slate-700"
+                        />
+                        <div className="flex justify-between mt-2">
+                            <span className="text-[8px] font-mono-sci text-slate-500 uppercase tracking-tighter">Ketepatan Tinggi</span>
+                            <span className="text-[8px] font-mono-sci text-slate-500 uppercase tracking-tighter">Liputan Meluas</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 mt-4">
               {/* Only show lists if risks exist */}
               {bioRisks.length > 0 && (
                 <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-3 md:p-4">
@@ -729,11 +973,19 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                             <div><h4 className="text-emerald-500 font-bold text-xs font-sci-fi uppercase mb-2 flex items-center gap-2">{t('label_analysis')}</h4><p className="text-slate-300 text-sm md:text-base leading-relaxed font-light">{activeRisk.description}</p></div>
                             <div className={`p-4 md:p-5 rounded-lg border relative overflow-hidden transition-colors duration-500 ${isSavageMode ? 'bg-red-900/10 border-red-500/30' : 'bg-emerald-900/10 border-emerald-500/30'}`}>
                                 <h4 className={`font-bold text-xs font-sci-fi uppercase mb-3 flex items-center gap-2 ${isSavageMode ? 'text-red-400' : 'text-emerald-400'}`}>{isSavageMode ? t('card_savage_verdict') : t('card_recommendation')}</h4>
-                                <div className="text-sm md:text-base text-slate-200 leading-relaxed italic">{isSavageMode && !activeRisk.id.startsWith('manual-') ? `"${result.savageCommentary || t('savage_fallback')}"` : activeRisk.solution}</div>
+                                <div className="text-sm md:text-base text-slate-200 leading-relaxed italic mb-4">{isSavageMode && !activeRisk.id.startsWith('manual-') ? `"${result.savageCommentary || t('savage_fallback')}"` : activeRisk.solution}</div>
+                                
+                                <div className="flex flex-col sm:flex-row gap-2 mt-4 border-t border-slate-700/50 pt-4">
+                                    <a href={generateYoutubeLink(activeRisk)} target="_blank" rel="noopener noreferrer" className={`flex-1 flex items-center justify-center gap-2 py-3 rounded text-xs md:text-sm font-bold text-white transition-colors border ${activeRisk.category === 'SAFETY' ? 'bg-indigo-900/50 border-indigo-500 hover:bg-indigo-800' : 'bg-slate-800 border-slate-600 hover:bg-slate-700'}`}>
+                                        {activeRisk.category === 'SAFETY' ? '⚠️' : '🔬'} {getVideoButtonLabel(activeRisk)}
+                                    </a>
+                                    {activeRisk.agent && (
+                                        <a href={`https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(activeRisk.agent + (activeRisk.microbiology ? ' ' + activeRisk.microbiology : '') + (activeRisk.disease ? ' ' + activeRisk.disease : ''))}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 py-3 rounded text-xs md:text-sm font-bold text-white transition-colors border bg-blue-900/50 border-blue-700 hover:bg-blue-800">
+                                            📚 PubMed Citation
+                                        </a>
+                                    )}
+                                </div>
                             </div>
-                            <a href={generateYoutubeLink(activeRisk)} target="_blank" rel="noopener noreferrer" className={`flex items-center justify-center gap-2 w-full py-3 rounded text-xs md:text-sm font-bold text-white transition-colors border ${activeRisk.category === 'SAFETY' ? 'bg-indigo-900/50 border-indigo-500 hover:bg-indigo-800' : 'bg-slate-800 border-slate-600 hover:bg-slate-700'}`}>
-                            {activeRisk.category === 'SAFETY' ? '⚠️' : '🔬'} {getVideoButtonLabel(activeRisk)}
-                            </a>
                         </div>
                         <div className="mt-4 pt-4 border-t border-slate-800">
                             {chatMessages.length > 0 && (<div className="mb-3 max-h-[150px] overflow-y-auto custom-scrollbar bg-black/40 rounded p-2 text-xs space-y-2">{chatMessages.map((msg, idx) => (<div key={idx} className={`${msg.role === 'user' ? 'text-right text-emerald-300' : 'text-left text-slate-300'}`}><span className="font-bold">{msg.role === 'user' ? t('chat_you') : t('chat_ai')}</span>{msg.text}</div>))}<div ref={chatEndRef}></div></div>)}

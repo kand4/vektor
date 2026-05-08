@@ -112,7 +112,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
       )}
       
       <div 
-        className={`relative w-full rounded bg-black group shadow-2xl border border-slate-800 overflow-hidden ${isEditing ? 'cursor-crosshair touch-none' : 'cursor-default touch-pan-y'}`} 
+        className={`relative w-full rounded bg-black group shadow-2xl border border-slate-800 ${isEditing ? 'cursor-crosshair touch-none' : 'cursor-default touch-pan-y'}`} 
       ref={containerRef}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -122,7 +122,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
       onTouchMove={handleMouseMove}
       onTouchEnd={handleMouseUp}
     >
-      <div className="relative">
+      <div className="relative overflow-hidden rounded">
           <img 
             ref={imageRef}
             src={imageSrc} 
@@ -152,39 +152,80 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
         {/* SVG Lines Overlay */}
         {!isEditing && (
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-30 overflow-visible">
+            <defs>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
             {risks.map((risk) => {
               if (!risk.box_2d || typeof risk.box_2d.xmin !== 'number') return null;
               
               const isSelected = activeId === risk.id;
               const dragPos = dragPositions[risk.id] || { x: 0, y: 0 };
               
-              const startX = (risk.box_2d.xmin + risk.box_2d.xmax) / 20; 
-              const startY = risk.box_2d.ymin / 10; 
+              // Anchor point: top center of the box
+              const anchorX = (risk.box_2d.xmin + risk.box_2d.xmax) / 20; 
+              const anchorY = risk.box_2d.ymin / 10; 
               
               const containerWidth = imageRef.current?.offsetWidth || 1;
               const containerHeight = imageRef.current?.offsetHeight || 1;
               
-              const endX = startX + (dragPos.x / containerWidth * 100);
-              const endY = startY + (dragPos.y / containerHeight * 100);
-              const midY = (startY + endY) / 2;
+              // End point: label position with offset
+              // The label's initial position is calculated in HUDCallout
+              const isTooHigh = (risk.box_2d?.ymin || 0) < 160;
+              const labelInitialTranslateY = isTooHigh ? 10 : -115;
+              
+              // Calculate target center of the label correctly
+              const targetX = anchorX + (dragPos.x / containerWidth * 100);
+              const targetY = anchorY + (dragPos.y / containerHeight * 100);
 
               let strokeColor = (risk.category === 'HYGIENE') ? "#f59e0b" : (risk.category === 'SAFETY' ? "#facc15" : "#ef4444");
               if (isSelected) strokeColor = "#22d3ee"; 
 
               return (
-                <motion.path
-                  key={`line-${risk.id}`}
-                  d={`M ${startX}% ${startY}% C ${startX}% ${midY}%, ${endX}% ${midY}%, ${endX}% ${endY}%`}
-                  animate={{
-                    d: `M ${startX}% ${startY}% C ${startX}% ${midY}%, ${endX}% ${midY}%, ${endX}% ${endY}%`,
-                    stroke: strokeColor,
-                    strokeWidth: isSelected ? 2.5 : 1,
-                    opacity: isSelected ? 1 : 0.4
-                  }}
-                  fill="none"
-                  strokeLinecap="round"
-                  initial={false}
-                />
+                <g key={`line-group-${risk.id}`}>
+                  {/* Outer Glow Line */}
+                  {isSelected && (
+                    <motion.path
+                      d={`M ${anchorX}% ${anchorY}% L ${targetX}% ${targetY}%`}
+                      animate={{
+                        d: `M ${anchorX}% ${anchorY}% L ${targetX}% ${targetY}%`,
+                        stroke: strokeColor,
+                        strokeWidth: 4,
+                        opacity: 0.3
+                      }}
+                      filter="url(#glow)"
+                      fill="none"
+                      initial={false}
+                    />
+                  )}
+                  {/* Main Line */}
+                  <motion.path
+                    d={`M ${anchorX}% ${anchorY}% L ${targetX}% ${targetY}%`}
+                    animate={{
+                      d: `M ${anchorX}% ${anchorY}% L ${targetX}% ${targetY}%`,
+                      stroke: strokeColor,
+                      strokeWidth: isSelected ? 2 : 1,
+                      opacity: isSelected ? 1 : 0.4
+                    }}
+                    strokeDasharray={isSelected ? "none" : "2,2"}
+                    fill="none"
+                    strokeLinecap="round"
+                    initial={false}
+                  />
+                  {/* Joint circle at the box */}
+                  <motion.circle 
+                    cx={`${anchorX}%`} 
+                    cy={`${anchorY}%`} 
+                    r="2" 
+                    fill={strokeColor}
+                    animate={{ opacity: isSelected ? 1 : 0.5 }}
+                  />
+                </g>
               );
             })}
           </svg>
@@ -303,40 +344,57 @@ interface HUDCalloutProps {
 const HUDCallout: React.FC<HUDCalloutProps> = ({ risk, isSelected, index, borderColor, textColor, containerRef, onSelect, onDragUpdate }) => {
   // Smart detect if callout should flip to bottom if original position (top) is too high
   const isTooHigh = (risk.box_2d?.ymin || 0) < 160; 
+  
+  // Smart horizontal positioning to prevent clipping on edges
+  let leftPercent = ((risk.box_2d?.xmin || 0) + (risk.box_2d?.xmax || 0)) / 20;
+  let translateX = '-50%';
+  
+  if (leftPercent < 15) {
+    translateX = '0%';    // align left edge if too close to left
+  } else if (leftPercent > 85) {
+    translateX = '-100%'; // align right edge if too close to right
+  }
 
   return (
     <motion.div
       drag
+      dragControls={undefined}
+      dragListener={true}
       dragMomentum={false}
       dragConstraints={containerRef}
       onDragStart={onSelect}
       onDrag={(e, info) => onDragUpdate(info.delta)}
-      className={`absolute z-50 pointer-events-auto ${isTooHigh ? 'origin-top' : 'origin-bottom'} cursor-grab active:cursor-grabbing`}
+      className={`absolute z-[100] pointer-events-auto ${isTooHigh ? 'origin-top' : 'origin-bottom'} cursor-grab active:cursor-grabbing`}
       style={{
-        left: `${((risk.box_2d?.xmin || 0) + (risk.box_2d?.xmax || 0)) / 20}%`,
+        left: `${leftPercent}%`,
         // If too high, position callout below the box instead of above
         top: isTooHigh ? `${(risk.box_2d?.ymax || 0) / 10}%` : `${(risk.box_2d?.ymin || 0) / 10}%`,
-        translateX: '-50%',
-        translateY: isTooHigh ? '20%' : '-115%',
+        translateX: translateX,
+        translateY: isTooHigh ? '10%' : '-115%',
         touchAction: "none"
       }}
     >
-      <motion.div
+      <div
         onClick={onSelect}
         className={`
           relative bg-slate-900/90 backdrop-blur-md border rounded-md p-2 shadow-2xl
           w-max min-w-[140px] max-w-[180px] sm:max-w-[220px] border-l-4
           ${isSelected ? 'scale-110 shadow-cyan-500/20 ring-1 ring-cyan-500/50' : 'scale-100'} 
-          transition-all duration-300
-          ${borderColor}
+          transition-all duration-300 ${borderColor}
+          cursor-grab active:cursor-grabbing group/callout
         `}
       >
-        <div className="flex items-center justify-between gap-2 mb-1 border-b border-slate-800 pb-1 pr-4">
-          <div className="flex items-center gap-2">
-            <span className={`flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-sm ${isSelected ? 'bg-cyan-400 text-black' : 'bg-slate-700 text-white'}`}>
+        {/* DRAG HANDLE INDICATOR */}
+        <div className="absolute -top-2 -right-2 bg-slate-800 border border-slate-700 rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover/callout:opacity-100 transition-opacity z-[110]">
+            <span className="text-[8px] text-white font-bold">✥</span>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 mb-1 border-b border-slate-800 pb-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className={`flex-shrink-0 flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-sm ${isSelected ? 'bg-cyan-400 text-black' : 'bg-slate-700 text-white'}`}>
               {index + 1}
             </span>
-            <span className={`text-[10px] font-bold uppercase tracking-wider truncate ${textColor}`}>
+            <span className={`text-[9px] font-bold uppercase tracking-wider leading-tight ${textColor}`}>
                {risk.label}
             </span>
           </div>
@@ -352,7 +410,7 @@ const HUDCallout: React.FC<HUDCalloutProps> = ({ risk, isSelected, index, border
              DATA_LINK_ENGAGED
           </div>
         )}
-      </motion.div>
+      </div>
     </motion.div>
   );
 };

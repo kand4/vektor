@@ -220,15 +220,32 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
                - demeritReceived: number (Points deducted based on image)
                - violations: string[] (List specific faults if demerit > 0)
 
-        - risks: Array of specific visual findings (Optional but recommended for evidence).
+        - risks: Array of Objects. Each Object MUST contain specific visual findings for evidence:
+            1. box_2d: [ymin, xmin, ymax, xmax] 
+               - DATA TYPE: ARRAY OF 4 INTEGERS.
+               - SCALE: 0-1000 (1000x1000 grid).
+               - EXAMPLE: [0, 0, 500, 500].
+               - **CRITICAL:** YOU MUST DRAW A BOX AROUND THE HAZARD. DO NOT RETURN NULL.
+            2. label: string (Name in ${targetLang} e.g., "Kuku Panjang", "Kotoran")
+            3. agent: string (**STRICTLY ENGLISH/SCIENTIFIC NAME** e.g., "Escherichia coli", "Staphylococcus aureus", "Pest")
+            4. microbiology: string (**STRICTLY ENGLISH/SCIENTIFIC NAME** e.g., "Enterotoxins", "Endospores")
+            5. disease: string (**STRICTLY ENGLISH/MEDICAL TERM** e.g., "Food Poisoning", "Typhoid", "Cholera")
+            6. description: string (Forensic Observation in ${targetLang})
+            7. solution: string (Remedial action in ${targetLang})
         - hygieneLevel: INTEGER (1-5)
       `;
 
       finalPrompt = `
         ${engineerPersona}
-        OPERATIONAL MODE: KKM FOOD PREMISE AUDIT.
+        OPERATIONAL MODE: KKM FOOD PREMISE/WORKER HYGIENE AUDIT.
         TARGET LANGUAGE: ${targetLang}.
         
+        >>> SPATIAL ANALYSIS PROTOCOL (BOUNDING BOXES) <<<
+        1. **VISUAL GROUNDING IS MANDATORY.** You are an optical system.
+        2. **EVERY RISK MUST HAVE A BOX.** If you list a risk, you MUST identify its pixels [ymin, xmin, ymax, xmax] on a 1000x1000 grid.
+        3. **NO STACKING.** Objects are in different places. Coordinates must differ. 
+        4. **SCALE:** 0 is top/left, 1000 is bottom/right.
+
         ${scanProtocol}
         ${severityThreshold}
         

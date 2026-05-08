@@ -93,6 +93,7 @@ const LoadingDisplay: React.FC<{mode: AnalysisMode}> = ({mode}) => {
 };
 
 const HeatmapModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpen, onClose }) => {
+    const { t } = useLanguage();
     const [selectedAlert, setSelectedAlert] = useState<OutbreakAlert | null>(null);
     const [filter, setFilter] = useState<'ALL' | 'CRITICAL' | 'HIGH'>('ALL');
     const alerts = getGlobalOutbreaks();

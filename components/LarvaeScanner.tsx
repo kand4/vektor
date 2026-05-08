@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
+import { useLanguage } from '../contexts/LanguageContext';
 import { motion } from 'motion/react';
 import { generateLarvaeDiagnosis, deepLarvaeAnalysis } from '../services/geminiService';
 
@@ -16,6 +17,7 @@ interface Prediction {
 }
 
 const LarvaeScanner: React.FC = () => {
+    const { t } = useLanguage();
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [predictions, setPredictions] = useState<Prediction[] | null>(null);
     const [dragPositions, setDragPositions] = useState<{[key: number]: {x: number, y: number}}>({});

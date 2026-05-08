@@ -120,6 +120,90 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ sessions }) => {
       </div>
 
       {/* 
+         HALAMAN 2: RUMUSAN KUMULATIF KESELURUHAN (NEW PAGE)
+      */}
+      {validSessions.length > 0 && (() => {
+          const totalPoints = validSessions.length;
+          const avgHygiene = Math.round(validSessions.reduce((sum, s) => sum + (s.result?.hygieneLevel || 0), 0) / (totalPoints || 1) * 10) / 10;
+          const avgSafety = Math.round(validSessions.reduce((sum, s) => sum + (s.result?.safetyLevel || s.result?.hygieneLevel || 0), 0) / (totalPoints || 1) * 10) / 10;
+          const isFailing = avgHygiene < 3 || avgSafety < 3;
+          let verdict = isFailing ? "TIDAK MEMUASKAN & KRITIKAL" : "MEMUASKAN & TERKAWAL";
+          let actionLabel = isFailing ? "NOTIS AMARAN / KOMPAUN" : "TIADA TINDAKAN LANJUT";
+
+          return (
+              <div className={`${pageStyle} print-page-break-after flex flex-col`}>
+                  <div className="border-b border-black pb-2 mb-6 flex justify-between items-end text-xs font-bold uppercase">
+                      <span className="text-lg">RUMUSAN KUMULATIF PREMIS</span>
+                      <span>REF: {refNo}</span>
+                  </div>
+
+                  <div className="mb-6 avoid-break text-sm text-justify font-serif text-black leading-relaxed">
+                      Laporan ini adalah berasaskan penilaian menyeluruh ke atas <b>{totalPoints}</b> titik sampel/imej dalam premis ini. Markah di bawah adalah purata agregat sebagai gambaran adil dan holistik tahap pematuhan keseluruhan.
+                  </div>
+
+                  {/* KOTAK SKOR PURATA */}
+                  <div className="grid grid-cols-2 gap-4 mb-8 avoid-break">
+                      <div className="border-[3px] border-black p-4 text-center bg-gray-50 flex flex-col items-center justify-center">
+                          <div className="text-xs uppercase font-bold text-gray-800 mb-1">PURATA SKOR KEBERSIHAN</div>
+                          <div className="text-5xl font-extrabold mb-1">{avgHygiene.toFixed(1)} <span className="text-lg">/ 5</span></div>
+                          <div className="text-xs font-bold uppercase mt-1 tracking-wider">{avgHygiene < 3 ? 'GAGAL' : 'LULUS'}</div>
+                      </div>
+                      <div className="border-[3px] border-black p-4 text-center bg-gray-50 flex flex-col items-center justify-center">
+                          <div className="text-xs uppercase font-bold text-gray-800 mb-1">PURATA SKOR KESELAMATAN</div>
+                          <div className="text-5xl font-extrabold mb-1">{avgSafety.toFixed(1)} <span className="text-lg">/ 5</span></div>
+                          <div className="text-xs font-bold uppercase mt-1 tracking-wider">{avgSafety < 3 ? 'GAGAL' : 'LULUS'}</div>
+                      </div>
+                  </div>
+
+                  {/* JADUAL PERINCIAN SETIAP IMEJ */}
+                  <div className="flex-1 avoid-break">
+                      <h4 className="font-bold text-sm border-b border-black mb-3 pb-1 uppercase">Pecahan Markah Setiap Kedudukan:</h4>
+                      <table className="w-full text-xs border-collapse border border-black mb-4">
+                          <thead>
+                              <tr className="bg-gray-200">
+                                  <th className="border border-black p-2 w-10 text-center">BIL</th>
+                                  <th className="border border-black p-2 text-left">LOKASI / REFERENS FAIL</th>
+                                  <th className="border border-black p-2 text-center w-24">KEBERSIHAN</th>
+                                  <th className="border border-black p-2 text-center w-24">KESELAMATAN</th>
+                                  <th className="border border-black p-2 text-left">ISU UTAMA DOMINAN</th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                              {validSessions.map((s, idx) => {
+                                  const r = s.result!;
+                                  const dominantRisk = r.risks?.[0];
+                                  return (
+                                      <tr key={s.id} className={r.hygieneLevel < 3 || (r.safetyLevel && r.safetyLevel < 3) ? "bg-red-50 print:bg-transparent" : ""}>
+                                          <td className="border border-black p-2 text-center font-bold">{idx + 1}</td>
+                                          <td className="border border-black p-2 truncate max-w-[200px]" title={s.fileName}>{s.fileName || `Imej ${idx + 1}`}</td>
+                                          <td className={`border border-black p-2 text-center font-bold ${r.hygieneLevel < 3 ? 'text-red-600' : ''}`}>{r.hygieneLevel}/5</td>
+                                          <td className={`border border-black p-2 text-center font-bold ${(r.safetyLevel || r.hygieneLevel) < 3 ? 'text-red-600' : ''}`}>{r.safetyLevel || r.hygieneLevel}/5</td>
+                                          <td className="border border-black p-2 text-[10px] uppercase truncate max-w-[200px]">
+                                              {dominantRisk ? dominantRisk.label : "TIADA ISU KRITIKAL"}
+                                          </td>
+                                      </tr>
+                                  );
+                              })}
+                          </tbody>
+                      </table>
+                  </div>
+
+                  <div className="border-[3px] border-double border-black p-4 bg-gray-100 print:bg-white text-center mt-6 avoid-break">
+                      <div className="text-xs font-bold uppercase mb-1 underline">KEPUTUSAN KESELURUHAN MAKMAL AI</div>
+                      <div className="text-lg font-extrabold pb-2">{verdict}</div>
+                      <div className="text-xs uppercase font-serif mt-2 border-t border-gray-400 pt-2">TINDAKAN CADANGAN: <b>{actionLabel}</b></div>
+                  </div>
+
+                  {/* Footer Halaman */}
+                  <div className="mt-auto pt-4 border-t border-black text-[10px] flex justify-between">
+                      <span>Muka Surat 2 daripada {validSessions.length + 2}</span>
+                      <span>Dicetak pada: {new Date().toLocaleString()}</span>
+                  </div>
+              </div>
+          )
+      })()}
+
+      {/* 
          HALAMAN LAMPIRAN (DYNAMIC)
       */}
       {validSessions.map((session, index) => {
