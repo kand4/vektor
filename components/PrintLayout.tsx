@@ -224,15 +224,55 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ sessions }) => {
                     <p className="text-xs">{session.fileName}</p>
                 </div>
 
-                {/* GAMBAR BUKTI UTAMA */}
-                {/* Contain mode ensures the whole image fits without cropping */}
+                {/* GAMBAR BUKTI UTAMA BERSERTA ANNOTASI */}
+                {/* Inline blocks let us perfectly map percentages coordinates on image */}
                 <div className="mb-6 w-full flex flex-col gap-4 avoid-break">
-                    <div className="w-full h-[350px] border border-black bg-gray-50 flex items-center justify-center overflow-hidden">
-                        <img 
-                            src={session.imageSrc} 
-                            className="max-h-full max-w-full object-contain" 
-                            alt={`Bukti Pemeriksaan ${index + 1}`} 
-                        />
+                    <div className="w-full p-2 border border-black bg-gray-50 flex items-center justify-center">
+                        <div className="relative inline-block max-w-full">
+                            <img 
+                                src={session.imageSrc} 
+                                className="max-h-[350px] max-w-full block" 
+                                alt={`Bukti Pemeriksaan ${index + 1}`} 
+                            />
+                            {/* Annotations for each risk */}
+                            {risks.map((risk, rIdx) => {
+                                if (!risk.box_2d || typeof risk.box_2d.xmin !== 'number') return null;
+                                const box = risk.box_2d;
+                                
+                                const isHygiene = risk.category === 'HYGIENE';
+                                const isSafety = risk.category === 'SAFETY';
+                                const colorHex = isHygiene ? '#d97706' : (isSafety ? '#ca8a04' : '#dc2626'); // amber, yellow, red
+                                
+                                return (
+                                    <div 
+                                        key={risk.id}
+                                        className="absolute border-[2px]"
+                                        style={{
+                                            top: `${Math.max(0, Math.min(100, box.ymin / 10))}%`,
+                                            left: `${Math.max(0, Math.min(100, box.xmin / 10))}%`,
+                                            width: `${Math.max(2, Math.min(100, (box.xmax - box.xmin) / 10))}%`,
+                                            height: `${Math.max(2, Math.min(100, (box.ymax - box.ymin) / 10))}%`,
+                                            borderColor: colorHex,
+                                            backgroundColor: `${colorHex}33`, 
+                                            WebkitPrintColorAdjust: 'exact', 
+                                            printColorAdjust: 'exact'
+                                        }}
+                                    >
+                                        <div 
+                                            className="absolute -top-3 -left-3 w-5 h-5 flex items-center justify-center text-[10px] font-bold rounded-sm text-white z-10 print:!text-white border print:!border-black"
+                                            style={{ 
+                                                backgroundColor: colorHex,
+                                                borderColor: 'rgba(0,0,0,0.5)',
+                                                WebkitPrintColorAdjust: 'exact', 
+                                                printColorAdjust: 'exact'
+                                            }}
+                                        >
+                                            {rIdx + 1}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                     {session.simulationImage && (
                         <div>

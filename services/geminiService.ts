@@ -10,7 +10,10 @@ export interface SimulationConfig {
 }
 
 const getAIClient = () => {
-  let apiKey = process.env.GEMINI_API_KEY;
+  let apiKey = "";
+  if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+    apiKey = process.env.GEMINI_API_KEY;
+  }
   if (typeof window !== 'undefined') {
     const userKey = localStorage.getItem('gemini_api_key');
     if (userKey && userKey.trim()) {
@@ -158,9 +161,15 @@ const retryWithBackoff = async <T>(fn: () => Promise<T>, retries = 2, delay = 20
     try {
         return await fn();
     } catch (error: any) {
-        const msg = error.message || "";
-        const isQuotaError = msg.includes("429") || msg.includes("503") || msg.includes("overloaded");
-        if (isQuotaError && retries > 0) {
+        const msg = error.message || String(error) || "";
+        
+        // Hard Quota Error - no point in retrying
+        if (msg.includes("exceeded your current quota") || msg.includes("RESOURCE_EXHAUSTED")) {
+            throw new Error("Had Kuota API Gemini telah tamat (Quota Exceeded). Sila masukkan API Key anda sendiri di ruangan Tetapan.");
+        }
+
+        const isRateLimitError = msg.includes("429") || msg.includes("503") || msg.includes("overloaded");
+        if (isRateLimitError && retries > 0) {
             await new Promise(resolve => setTimeout(resolve, delay));
             return retryWithBackoff(fn, retries - 1, delay * 2);
         }
@@ -413,7 +422,11 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
 
   } catch (error: any) {
       console.error("Analysis Error:", error);
-      throw new Error("Sistem Bio-Analisis sibuk. Sila cuba sebentar lagi.");
+      const msg = error?.message || String(error);
+      if (msg.includes("429") || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED")) {
+          throw new Error("Had Kuota API Gemini telah dicapai (Quota Exceeded) atau terlalu banyak permintaan (Rate Limit). Sila tunggu sebentar, atau pergi ke Tetapan (Settings) > Masukkan API Key Google Gemini anda sendiri.");
+      }
+      throw new Error("Sistem Bio-Analisis sibuk. Sila cuba sebentar lagi. (" + msg + ")");
   }
 };
 
@@ -582,52 +595,79 @@ export const askRiskFollowUp = async (risk: RiskDetection, question: string, lan
 };
 
 export const deepLarvaeAnalysis = async (base64Image: string): Promise<{ diagnosis: string, predictions: any[] }> => {
-    const ai = getAIClient();
-    // Kompres gambar sedikit lagi agar tidak terlalu besar untuk dihantar melalui rangkaian
-    const optimizedImage = await compressImage(base64Image, 1024, 0.8);
-    
-    const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: {
-            parts: [
-                { inlineData: { mimeType: 'image/jpeg', data: optimizedImage } },
-                { text: prompt }
-            ]
-        },
-        config: {
-            responseMimeType: "application/json"
+    try {
+        // Kompres gambar sedikit lagi agar tidak terlalu besar untuk dihantar melalui rangkaian
+        const optimizedImage = await compressImage(base64Image, 1024, 0.8);
+
+        const prompt = `Anda adalah pakar entomologi dan sistem penglihatan komputer beresolusi tinggi di Kementerian Kesihatan Malaysia. 
+Sila analisa imej ini secara terperinci, kesan kedudukan jentik-jentik (larva nyamuk) dan berikan laporan hasil pengesanan berserta lokasi koordinat bounding box (box_2d) dalam grid skala 0-1000.
+Pastikan lokasi koordinat (ymin, xmin, ymax, xmax) adalah tepat dengan kedudukan larva di dalam gambar.
+Keluarkan output DALAM FORMAT JSON SAHAJA:
+{
+  "diagnosis": "Ayat diagnosa profesional (ringkas)",
+  "predictions": [
+    {
+      "class": "Aedes Larvae / Culex Larvae / dll",
+      "short_desc": "Perincian ringkas (Cth: Larva pada peringkat Instar ke-4)",
+      "confidence": 0.95,
+      "box_2d": [ymin, xmin, ymax, xmax]
+    }
+  ]
+}`;
+        
+        const response = await retryWithBackoff(async () => {
+             const ai = getAIClient();
+             return await ai.models.generateContent({
+                 model: "gemini-2.0-flash",
+                 contents: {
+                     parts: [
+                         { inlineData: { mimeType: 'image/jpeg', data: optimizedImage } },
+                         { text: prompt }
+                     ]
+                 },
+                 config: {
+                     responseMimeType: "application/json"
+                 }
+             });
+        });
+
+        let text = response.text || "{}";
+        text = extractJSON(text);
+        const parsedResult = JSON.parse(text);
+
+        // Ensure predictions have standard structure x, y, width, height for the canvas
+        const formattedPredictions = (parsedResult.predictions || []).map((p: any) => {
+            const coords = p.box_2d;
+            // box_2d is [ymin, xmin, ymax, xmax] mapped to 0-1000 relative scale
+            // We need to convert it to relative ratios (0.0 to 1.0) so x, y, width, height can work natively
+            if (coords && coords.length === 4) {
+                const [ymin, xmin, ymax, xmax] = coords;
+                return {
+                    x: ((xmin + xmax) / 2) / 1000, // Center X (Relative)
+                    y: ((ymin + ymax) / 2) / 1000, // Center Y (Relative)
+                    width: (xmax - xmin) / 1000,
+                    height: (ymax - ymin) / 1000,
+                    class: p.class || "Unknown",
+                    short_desc: p.short_desc || "",
+                    confidence: p.confidence || 0.99,
+                    isRelative: true
+                };
+            }
+            return p;
+        });
+
+        return {
+            diagnosis: parsedResult.diagnosis || "Selesai dianalisa, namun laporan penuh gagal diekstrak.",
+            predictions: formattedPredictions
+        };
+    } catch (error: any) {
+        console.error("deepLarvaeAnalysis Error:", error);
+        const msg = String(error?.message || error);
+        if (msg.includes("429") || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED")) {
+            throw new Error("Had Kuota API Gemini telah dicapai (Quota Exceeded). Sila masukkan API Key Google Gemini anda sendiri di Tetapan.");
         }
-    });
-
-    let text = response.text || "{}";
-    text = extractJSON(text);
-    const parsedResult = JSON.parse(text);
-
-    // Ensure predictions have standard structure x, y, width, height for the canvas
-    const formattedPredictions = (parsedResult.predictions || []).map((p: any) => {
-        const coords = p.box_2d;
-        // box_2d is [ymin, xmin, ymax, xmax] mapped to 0-1000 relative scale
-        // We need to convert it to relative ratios (0.0 to 1.0) so x, y, width, height can work natively
-        if (coords && coords.length === 4) {
-            const [ymin, xmin, ymax, xmax] = coords;
-            return {
-                x: ((xmin + xmax) / 2) / 1000, // Center X (Relative)
-                y: ((ymin + ymax) / 2) / 1000, // Center Y (Relative)
-                width: (xmax - xmin) / 1000,
-                height: (ymax - ymin) / 1000,
-                class: p.class || "Unknown",
-                short_desc: p.short_desc || "",
-                confidence: p.confidence || 0.99,
-                isRelative: true
-            };
-        }
-        return p;
-    });
-
-    return {
-        diagnosis: parsedResult.diagnosis || "Selesai dianalisa, namun laporan penuh gagal diekstrak.",
-        predictions: formattedPredictions
-    };
+        throw new Error("Gagal mengimbas jentik-jentik: " + msg);
+    }
 };
 
 export const generateLarvaeDiagnosis = async (predictions: any[]): Promise<string> => {
@@ -659,10 +699,10 @@ Gunakan format markdown yang kemas, profesional, saintifik tetapi difahami awam.
 };
 
 export const analyzeAdultMosquito = async (base64Image: string): Promise<{ diagnosis: string, predictions: any[] }> => {
-    const ai = getAIClient();
-    const optimizedImage = await compressImage(base64Image, 1024, 0.8);
-    
-    const prompt = `Anda adalah saintis forensik pakar dalam morfologi dan anatomi nyamuk dewasa. Anda mempunyai kepakaran peringkat 5 dalam pengelasan nyamuk (Aedes, Culex, Anopheles, dll).
+    try {
+        const optimizedImage = await compressImage(base64Image, 1024, 0.8);
+        
+        const prompt = `Anda adalah saintis forensik pakar dalam morfologi dan anatomi nyamuk dewasa. Anda mempunyai kepakaran peringkat 5 dalam pengelasan nyamuk (Aedes, Culex, Anopheles, dll).
 
 TUGAS ANDA:
 1. Analisa imej nyamuk dewasa ini secara forensik dan mendalam.
@@ -687,43 +727,54 @@ FORMAT OUTPUT JSON SAHAJA:
   ]
 }`;
 
-    const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: {
-            parts: [
-                { inlineData: { mimeType: 'image/jpeg', data: optimizedImage } },
-                { text: prompt }
-            ]
-        },
-        config: {
-            responseMimeType: "application/json"
+        const response = await retryWithBackoff(async () => {
+             const ai = getAIClient();
+             return await ai.models.generateContent({
+                 model: "gemini-2.0-flash",
+                 contents: {
+                     parts: [
+                         { inlineData: { mimeType: 'image/jpeg', data: optimizedImage } },
+                         { text: prompt }
+                     ]
+                 },
+                 config: {
+                     responseMimeType: "application/json"
+                 }
+             });
+        });
+
+        let text = response.text || "{}";
+        text = extractJSON(text);
+        const parsedResult = JSON.parse(text);
+
+        const formattedPredictions = (parsedResult.predictions || []).map((p: any) => {
+            const coords = p.box_2d;
+            if (coords && coords.length === 4) {
+                const [ymin, xmin, ymax, xmax] = coords;
+                return {
+                    x: ((xmin + xmax) / 2) / 1000,
+                    y: ((ymin + ymax) / 2) / 1000,
+                    width: (xmax - xmin) / 1000,
+                    height: (ymax - ymin) / 1000,
+                    class: p.class || "Unknown",
+                    short_desc: p.short_desc || "",
+                    confidence: p.confidence || 0.99,
+                    isRelative: true
+                };
+            }
+            return p;
+        });
+
+        return {
+            diagnosis: parsedResult.diagnosis || "Selesai dianalisa, namun laporan forensik gagal diekstrak.",
+            predictions: formattedPredictions
+        };
+    } catch (error: any) {
+        console.error("analyzeAdultMosquito Error:", error);
+        const msg = String(error?.message || error);
+        if (msg.includes("429") || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED")) {
+            throw new Error("Had Kuota API Gemini telah dicapai (Quota Exceeded). Sila masukkan API Key Google Gemini anda sendiri di Tetapan.");
         }
-    });
-
-    let text = response.text || "{}";
-    text = extractJSON(text);
-    const parsedResult = JSON.parse(text);
-
-    const formattedPredictions = (parsedResult.predictions || []).map((p: any) => {
-        const coords = p.box_2d;
-        if (coords && coords.length === 4) {
-            const [ymin, xmin, ymax, xmax] = coords;
-            return {
-                x: ((xmin + xmax) / 2) / 1000,
-                y: ((ymin + ymax) / 2) / 1000,
-                width: (xmax - xmin) / 1000,
-                height: (ymax - ymin) / 1000,
-                class: p.class || "Unknown",
-                short_desc: p.short_desc || "",
-                confidence: p.confidence || 0.99,
-                isRelative: true
-            };
-        }
-        return p;
-    });
-
-    return {
-        diagnosis: parsedResult.diagnosis || "Selesai dianalisa, namun laporan forensik gagal diekstrak.",
-        predictions: formattedPredictions
-    };
+        throw new Error("Gagal mengimbas nyamuk dewasa: " + msg);
+    }
 };

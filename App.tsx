@@ -16,7 +16,7 @@ import { AnalysisResponse, AnalysisSession, OutbreakAlert, SensitivityLevel, Ana
 import { useLanguage } from './contexts/LanguageContext';
 import { PredictionChart } from './components/PredictionChart';
 
-const MAX_CONCURRENT_ANALYSIS = 3;
+const MAX_CONCURRENT_ANALYSIS = 1;
 
 const LoadingDisplay: React.FC<{mode: AnalysisMode}> = ({mode}) => {
   const { t } = useLanguage();
@@ -246,7 +246,8 @@ const App: React.FC = () => {
         if (analyzingCount < MAX_CONCURRENT_ANALYSIS) {
             const pendingSession = sessions.find(s => s.status === 'PENDING');
             if (pendingSession) {
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // Enforce minimum 4 seconds between processing to respect 15 RPM free tier limits
+                await new Promise(resolve => setTimeout(resolve, 4000));
                 triggerAnalysis(pendingSession.id);
             }
         }
