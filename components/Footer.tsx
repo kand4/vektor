@@ -1,6 +1,7 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import DebugLogsModal from './DebugLogsModal';
 
 interface FooterProps {
   onOpenAbout?: () => void;
@@ -8,14 +9,31 @@ interface FooterProps {
 
 const Footer: React.FC<FooterProps> = ({ onOpenAbout }) => {
   const { t } = useLanguage();
+  const [clicks, setClicks] = useState(0);
+  const [showLogs, setShowLogs] = useState(false);
+
+  const handleSecretClick = () => {
+      setClicks(c => c + 1);
+      if (clicks >= 4) { // 5th click
+          setShowLogs(true);
+          setClicks(0);
+      }
+  };
+
   return (
+    <>
     <footer className="w-full border-t border-slate-800 bg-slate-950 py-6 mt-12 relative z-50">
       <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
         
-        <div className="flex items-center gap-2">
+        <div 
+            className="flex items-center gap-2 cursor-pointer select-none"
+            onClick={handleSecretClick}
+            title="Sistem Diagnosis Tersembunyi (Klik 5 kali log ralat)"
+        >
            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-           <span className="text-[10px] md:text-xs font-mono-sci text-emerald-600/70 tracking-[0.2em]">
+           <span className="text-[10px] md:text-xs font-mono-sci text-emerald-600/70 tracking-[0.2em] relative">
              SECURE_TERMINAL_V2.5
+             {clicks > 0 && <span className="absolute -top-4 -right-4 text-[8px] text-slate-600">[{clicks}]</span>}
            </span>
         </div>
 
@@ -35,6 +53,8 @@ const Footer: React.FC<FooterProps> = ({ onOpenAbout }) => {
         </div>
       </div>
     </footer>
+    <DebugLogsModal isOpen={showLogs} onClose={() => setShowLogs(false)} />
+    </>
   );
 };
 

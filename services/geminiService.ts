@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResponse, RiskDetection, BoundingBox, SensitivityLevel, AnalysisMode, iDengueData, RegionalDengueData } from "../types";
+import { saveLog } from "./logService";
 
 export interface SimulationConfig {
   mode: 'SANITIZE_ONLY' | 'UPGRADE_FURNITURE' | 'FULL_RECONSTRUCTION';
@@ -161,6 +162,7 @@ const retryWithBackoff = async <T>(fn: () => Promise<T>, retries = 2, delay = 20
     try {
         return await fn();
     } catch (error: any) {
+        saveLog(`Retry Failure (Retries left: ${retries}): ${error?.message || error}`, { error });
         const msg = error.message || String(error) || "";
         
         // Hard Quota Error - no point in retrying
@@ -422,6 +424,7 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
 
   } catch (error: any) {
       console.error("Analysis Error:", error);
+      saveLog(`Analysis Error: ${error?.message || error}`, { error, mode: analysisMode, finalPrompt });
       const msg = error?.message || String(error);
       if (msg.includes("429") || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED")) {
           throw new Error("Had Kuota API Gemini telah dicapai (Quota Exceeded) atau terlalu banyak permintaan (Rate Limit). Sila tunggu sebentar, atau pergi ke Tetapan (Settings) > Masukkan API Key Google Gemini anda sendiri.");
@@ -662,6 +665,7 @@ Keluarkan output DALAM FORMAT JSON SAHAJA:
         };
     } catch (error: any) {
         console.error("deepLarvaeAnalysis Error:", error);
+        saveLog(`Larvae Analysis Error: ${error?.message || error}`, { error });
         const msg = String(error?.message || error);
         if (msg.includes("429") || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED")) {
             throw new Error("Had Kuota API Gemini telah dicapai (Quota Exceeded). Sila masukkan API Key Google Gemini anda sendiri di Tetapan.");
@@ -771,6 +775,7 @@ FORMAT OUTPUT JSON SAHAJA:
         };
     } catch (error: any) {
         console.error("analyzeAdultMosquito Error:", error);
+        saveLog(`Adult Mosquito Analysis Error: ${error?.message || error}`, { error });
         const msg = String(error?.message || error);
         if (msg.includes("429") || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED")) {
             throw new Error("Had Kuota API Gemini telah dicapai (Quota Exceeded). Sila masukkan API Key Google Gemini anda sendiri di Tetapan.");
