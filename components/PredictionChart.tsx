@@ -7,6 +7,7 @@ interface PredictionChartProps {
     preloadedNational?: iDengueData | null;
     preloadedRegional?: RegionalDengueData | null;
     isLoading?: boolean;
+    onSync?: () => void;
 }
 
 const IDengueLink: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
@@ -23,7 +24,8 @@ const IDengueLink: React.FC<{ children: React.ReactNode; className?: string }> =
 export const PredictionChart: React.FC<PredictionChartProps> = ({ 
     preloadedNational, 
     preloadedRegional, 
-    isLoading 
+    isLoading,
+    onSync
 }) => {
     const { t } = useLanguage();
     
@@ -33,6 +35,7 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
                 <div className="p-8 bg-slate-900 border border-slate-800 rounded-xl h-48 flex flex-col items-center justify-center text-slate-500">
                     <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
                     <div className="font-mono-sci text-[10px] animate-pulse tracking-widest uppercase">{t('analyzing_history')}</div>
+                    <div className="text-[8px] text-emerald-500/50 mt-2">LINKING TO IDENGUE PORTAL...</div>
                 </div>
             </div>
         );
@@ -41,6 +44,52 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
     return (
         <div className="space-y-6 animate-fade-in-up">
             
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-2 px-1">
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981]"></div>
+                    <span className="text-[10px] font-mono-sci text-emerald-500 uppercase tracking-widest font-bold">LIVE_DENGUE_FEED_v3.1</span>
+                </div>
+                {preloadedNational && (
+                    <button 
+                        onClick={onSync}
+                        disabled={isLoading}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded bg-slate-800 border border-emerald-500/30 text-[10px] font-mono-sci text-emerald-400 hover:bg-emerald-500/10 transition-all ${isLoading ? 'opacity-50 cursor-wait' : 'active:scale-95'}`}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                        </svg>
+                        {isLoading ? 'SYNCING...' : 'SYNC_PLATFORM'}
+                    </button>
+                )}
+            </div>
+
+            {!preloadedNational && !preloadedRegional && (
+                <div className="bg-slate-900 border border-slate-700 border-dashed rounded-xl overflow-hidden p-8 flex flex-col items-center justify-center space-y-4 shadow-inner">
+                    <div className="text-emerald-500/50 mb-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-12 h-12">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                        </svg>
+                    </div>
+                    <div className="text-center space-y-2 max-w-sm">
+                        <h3 className="text-slate-300 font-bold font-sci-fi tracking-wider text-sm">SEMAKAN LOKALITI DENGGI</h3>
+                        <p className="text-xs text-slate-500">
+                            Sistem sedia memuat turun data secara berperingkat untuk memastikan kestabilan dan menjimatkan limit rate API.
+                        </p>
+                    </div>
+                    <button 
+                        onClick={onSync}
+                        disabled={isLoading}
+                        className={`mt-4 flex items-center gap-2 px-6 py-3 rounded-lg bg-emerald-600/20 border border-emerald-500 text-sm font-bold text-emerald-400 hover:bg-emerald-600/30 transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] ${isLoading ? 'opacity-50 cursor-wait' : 'active:scale-95 hover:shadow-[0_0_25px_rgba(16,185,129,0.3)]'}`}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                        </svg>
+                        {isLoading ? 'SEDANG MEMUAT...' : 'PAPAR DATA LOKALITI & KES'}
+                    </button>
+                </div>
+            )}
+
             {/* 1. NATIONAL INTELLIGENCE HUB */}
             {preloadedNational && (
                 <div className="bg-slate-950 border border-emerald-500/30 rounded-xl overflow-hidden shadow-2xl relative group">

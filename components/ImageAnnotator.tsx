@@ -167,21 +167,24 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
               const isSelected = activeId === risk.id;
               const dragPos = dragPositions[risk.id] || { x: 0, y: 0 };
               
-              // Anchor point: top center of the box
+              // Anchor point: center of the detection box
               const anchorX = (risk.box_2d.xmin + risk.box_2d.xmax) / 20; 
-              const anchorY = risk.box_2d.ymin / 10; 
+              const anchorY = (risk.box_2d.ymin + risk.box_2d.ymax) / 20; 
               
-              const containerWidth = imageRef.current?.offsetWidth || 1;
-              const containerHeight = imageRef.current?.offsetHeight || 1;
+              const containerWidth = containerRef.current?.offsetWidth || 1;
+              const containerHeight = containerRef.current?.offsetHeight || 1;
               
-              // End point: label position with offset
-              // The label's initial position is calculated in HUDCallout
               const isTooHigh = (risk.box_2d?.ymin || 0) < 160;
-              const labelInitialTranslateY = isTooHigh ? 10 : -115;
               
               // Calculate target center of the label correctly
-              const targetX = anchorX + (dragPos.x / containerWidth * 100);
-              const targetY = anchorY + (dragPos.y / containerHeight * 100);
+              // We need to match the HUDCallout's actual visual center
+              let leftPercent = ((risk.box_2d?.xmin || 0) + (risk.box_2d?.xmax || 0)) / 20;
+              const targetX = leftPercent + (dragPos.x / containerWidth * 100);
+              
+              // Standard offset logic matching HUDCallout style
+              const baseTop = isTooHigh ? ((risk.box_2d?.ymax || 0) / 10) : ((risk.box_2d?.ymin || 0) / 10);
+              const verticalOffsetPercent = isTooHigh ? 18 : -18; // approx center of callout relative to its attachment point
+              const targetY = baseTop + (dragPos.y / containerHeight * 100) + verticalOffsetPercent;
 
               let strokeColor = (risk.category === 'HYGIENE') ? "#f59e0b" : (risk.category === 'SAFETY' ? "#facc15" : "#ef4444");
               if (isSelected) strokeColor = "#22d3ee"; 
@@ -189,30 +192,28 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
               return (
                 <g key={`line-group-${risk.id}`}>
                   {/* Outer Glow Line */}
-                  {isSelected && (
-                    <motion.path
-                      d={`M ${anchorX}% ${anchorY}% L ${targetX}% ${targetY}%`}
-                      animate={{
-                        d: `M ${anchorX}% ${anchorY}% L ${targetX}% ${targetY}%`,
-                        stroke: strokeColor,
-                        strokeWidth: 4,
-                        opacity: 0.3
-                      }}
-                      filter="url(#glow)"
-                      fill="none"
-                      initial={false}
-                    />
-                  )}
-                  {/* Main Line */}
                   <motion.path
                     d={`M ${anchorX}% ${anchorY}% L ${targetX}% ${targetY}%`}
                     animate={{
                       d: `M ${anchorX}% ${anchorY}% L ${targetX}% ${targetY}%`,
                       stroke: strokeColor,
-                      strokeWidth: isSelected ? 2 : 1,
-                      opacity: isSelected ? 1 : 0.4
+                      strokeWidth: isSelected ? 4 : 2,
+                      opacity: isSelected ? 0.3 : 0.1
                     }}
-                    strokeDasharray={isSelected ? "none" : "2,2"}
+                    filter="url(#glow)"
+                    fill="none"
+                    initial={false}
+                  />
+                  {/* Main Tether Line */}
+                  <motion.path
+                    d={`M ${anchorX}% ${anchorY}% L ${targetX}% ${targetY}%`}
+                    animate={{
+                      d: `M ${anchorX}% ${anchorY}% L ${targetX}% ${targetY}%`,
+                      stroke: strokeColor,
+                      strokeWidth: isSelected ? 1.5 : 0.8,
+                      opacity: isSelected ? 1 : 0.3
+                    }}
+                    strokeDasharray={isSelected ? "none" : "3,3"}
                     fill="none"
                     strokeLinecap="round"
                     initial={false}
@@ -221,9 +222,17 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
                   <motion.circle 
                     cx={`${anchorX}%`} 
                     cy={`${anchorY}%`} 
-                    r="2" 
+                    r={isSelected ? "2.5" : "1.5"} 
                     fill={strokeColor}
-                    animate={{ opacity: isSelected ? 1 : 0.5 }}
+                    animate={{ opacity: isSelected ? 1 : 0.4 }}
+                  />
+                  {/* Join circle at the callout attachment point */}
+                  <motion.circle 
+                    cx={`${targetX}%`} 
+                    cy={`${targetY}%`} 
+                    r={isSelected ? "2" : "1"} 
+                    fill={strokeColor}
+                    animate={{ opacity: isSelected ? 0.8 : 0.2 }}
                   />
                 </g>
               );

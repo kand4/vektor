@@ -194,29 +194,29 @@ const App: React.FC = () => {
   // iDengue Persistent Stats
   const [nationalStats, setNationalStats] = useState<iDengueData | null>(null);
   const [regionalStats, setRegionalStats] = useState<RegionalDengueData | null>(null);
-  const [isStatsLoading, setIsStatsLoading] = useState(true);
+  const [isStatsLoading, setIsStatsLoading] = useState(false);
   
   const { language, t } = useLanguage();
 
-  // Fetch stats once on Mount
-  useEffect(() => {
-    const loadDengueData = async () => {
-        try {
-            // Updated to handle potential failures silently using the new robust service
-            const [national, regional] = await Promise.all([
-                fetchLatestIDengueStats(),
-                fetchRegionalDengueStats("Pahang", "Temerloh")
-            ]);
-            setNationalStats(national);
-            setRegionalStats(regional);
-        } catch (e) {
-            console.error("Critical: Failed to sync iDengue data even with fallback", e);
-        } finally {
-            setIsStatsLoading(false);
-        }
-    };
-    loadDengueData();
-  }, []);
+  // Fetch stats only when triggered manually by the user
+  const loadDengueData = async () => {
+    setIsStatsLoading(true);
+    try {
+        // Fetch sequentially instead of Promise.all to prevent Gemini API 429 Rate Limits
+        const national = await fetchLatestIDengueStats();
+        setNationalStats(national);
+        
+        // Add a 2 seconds delay between the API calls to protect RPM limits
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        const regional = await fetchRegionalDengueStats("Pahang", "Temerloh");
+        setRegionalStats(regional);
+    } catch (e) {
+        console.error("Critical: Failed to sync iDengue data even with fallback", e);
+    } finally {
+        setIsStatsLoading(false);
+    }
+  };
 
   const readFile = (file: File): Promise<{ base64: string, mimeType: string, preview: string }> => {
     return new Promise((resolve) => {
@@ -405,6 +405,7 @@ const App: React.FC = () => {
                         preloadedNational={nationalStats} 
                         preloadedRegional={regionalStats} 
                         isLoading={isStatsLoading}
+                        onSync={loadDengueData}
                     />
                 </div>
                 <div className="hidden md:block"><HUDOverlay /></div>

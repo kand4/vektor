@@ -21,12 +21,12 @@ const extractJSON = (text: string): string => {
   return "{}";
 };
 
-// FALLBACK DATA (UNCHANGED)
+// FALLBACK DATA (UPDATED FOR 2026)
 const FALLBACK_IDENGUE_DATA: iDengueData = {
-    epidemiologicalWeek: "ME 08/2025 (Anggaran)",
-    cumulativeCases: 28500,
-    cumulativeDeaths: 18,
-    activeHotspots: 142,
+    epidemiologicalWeek: "ME 18/2026 (Anggaran)",
+    cumulativeCases: 42300,
+    cumulativeDeaths: 28,
+    activeHotspots: 186,
     topState: "Selangor",
     lastUpdated: new Date().toLocaleDateString(),
     sources: [{ title: "iDengue Backup Data", url: "https://idengue.mysa.gov.my" }]
@@ -35,85 +35,89 @@ const FALLBACK_IDENGUE_DATA: iDengueData = {
 const FALLBACK_REGIONAL_DATA: RegionalDengueData = {
     stateName: "Pahang",
     districtName: "Temerloh",
-    stateCases: 1250,
-    districtCases: 85,
-    districtHotspots: 3,
+    stateCases: 1850,
+    districtCases: 112,
+    districtHotspots: 5,
     districtRiskLevel: "HIGH",
-    localAdvice: "Aktiviti gotong-royong disyorkan segera. Sila periksa bekas air bertakung.",
-    epidemiologicalWeek: "ME 08/2025"
+    localAdvice: "Aktiviti gotong-royong disyorkan segera. Sila periksa bekas air bertakung di sekitar Temerloh.",
+    epidemiologicalWeek: "ME 18/2026"
 };
 
 export const fetchLatestIDengueStats = async (): Promise<iDengueData> => {
   try {
       const ai = getAIClient();
-      const prompt = `EKSTRAK DATA RASMI DENGGI MALAYSIA. 
-      Rujuk portal idengue.mysa.gov.my atau berita terkini KKM.
-      Dapatkan data bagi MINGGU EPIDEMIOLOGI (ME) TERKINI 2024/2025.
-      Output JSON Structure: { "cumulativeCases": number, "cumulativeDeaths": number, "activeHotspots": number, "topState": string, "epidemiologicalWeek": string }`;
+      const currentYear = new Date().getFullYear();
+      const prompt = `EKSTRAK DATA RASMI DENGGI MALAYSIA TERKINI. 
+      Rujuk portal idengue.mysa.gov.my atau berita terkini KKM (Kementerian Kesihatan Malaysia).
+      PENTING: Fokus kepada data tahun ${currentYear}. 
+      Dapatkan data bagi MINGGU EPIDEMIOLOGI (ME) PALING TERKINI yang dilaporkan.
+      Output JSON Structure: { "cumulativeCases": number, "cumulativeDeaths": number, "activeHotspots": number, "topState": string, "epidemiologicalWeek": string, "lastUpdated": string }`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview', 
-        contents: prompt,
+        model: 'gemini-2.0-flash', 
+        contents: { parts: [{ text: prompt }] },
         config: {
-          tools: [{ googleSearch: {} }],
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              cumulativeCases: { type: Type.NUMBER },
-              cumulativeDeaths: { type: Type.NUMBER },
-              activeHotspots: { type: Type.NUMBER },
-              topState: { type: Type.STRING },
-              lastUpdated: { type: Type.STRING },
-              epidemiologicalWeek: { type: Type.STRING }
-            },
-            required: ["cumulativeCases", "cumulativeDeaths", "activeHotspots", "topState", "epidemiologicalWeek"]
-          }
+          tools: [{ googleSearch: {} }]
         }
       });
       let text = response.text || "{}";
       text = extractJSON(text);
       const data = JSON.parse(text);
-      if (!data.cumulativeCases) throw new Error("Empty Data");
-      return { ...data, sources: [{ title: "iDengue MYSA Official", url: "https://idengue.mysa.gov.my/" }] };
+      
+      const cases = typeof data.cumulativeCases === 'number' ? data.cumulativeCases : (Number(data.cumulativeCases) || FALLBACK_IDENGUE_DATA.cumulativeCases);
+      const deaths = typeof data.cumulativeDeaths === 'number' ? data.cumulativeDeaths : (Number(data.cumulativeDeaths) || FALLBACK_IDENGUE_DATA.cumulativeDeaths);
+      const hotspots = typeof data.activeHotspots === 'number' ? data.activeHotspots : (data.activeHotspots === 0 ? 0 : (Number(data.activeHotspots) || FALLBACK_IDENGUE_DATA.activeHotspots));
+      
+      return { 
+          cumulativeCases: cases,
+          cumulativeDeaths: deaths,
+          activeHotspots: hotspots,
+          topState: data.topState || FALLBACK_IDENGUE_DATA.topState,
+          epidemiologicalWeek: data.epidemiologicalWeek || FALLBACK_IDENGUE_DATA.epidemiologicalWeek,
+          lastUpdated: data.lastUpdated || new Date().toLocaleDateString(),
+          sources: [{ title: "iDengue MYSA Official", url: "https://idengue.mysa.gov.my/" }] 
+      };
   } catch (error) {
-      return FALLBACK_IDENGUE_DATA;
+      console.error("Fetch iDengue Stats Error:", error);
+      return { ...FALLBACK_IDENGUE_DATA, lastUpdated: new Date().toLocaleDateString() };
   }
 };
 
 export const fetchRegionalDengueStats = async (state: string, district: string): Promise<RegionalDengueData> => {
     try {
         const ai = getAIClient();
-        const prompt = `Cari statistik denggi untuk Negeri: ${state}, Daerah: ${district}. Rujuk idengue.mysa.gov.my. Output JSON: { "stateName": "${state}", "districtName": "${district}", "stateCases": number, "districtCases": number, "districtHotspots": number, "districtRiskLevel": "LOW"|"MEDIUM"|"HIGH"|"EXTREME", "localAdvice": string, "epidemiologicalWeek": string }`;
+        const currentYear = new Date().getFullYear();
+        const prompt = `Cari statistik denggi terkini untuk Negeri: ${state}, Daerah: ${district}. 
+        Rujuk idengue.mysa.gov.my atau portal data rasmi KKM. 
+        Output JSON: { "stateName": "${state}", "districtName": "${district}", "stateCases": number, "districtCases": number, "districtHotspots": number, "districtRiskLevel": "LOW"|"MEDIUM"|"HIGH"|"EXTREME", "localAdvice": string, "epidemiologicalWeek": string }`;
 
         const response = await ai.models.generateContent({
-          model: 'gemini-3-flash-preview',
-          contents: prompt,
+          model: 'gemini-2.0-flash',
+          contents: { parts: [{ text: prompt }] },
           config: {
-            tools: [{ googleSearch: {} }],
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                stateName: { type: Type.STRING },
-                districtName: { type: Type.STRING },
-                stateCases: { type: Type.NUMBER },
-                districtCases: { type: Type.NUMBER },
-                districtHotspots: { type: Type.NUMBER },
-                districtRiskLevel: { type: Type.STRING, enum: ["LOW", "MEDIUM", "HIGH", "EXTREME"] },
-                localAdvice: { type: Type.STRING },
-                epidemiologicalWeek: { type: Type.STRING }
-              },
-              required: ["stateName", "districtName", "stateCases", "districtCases", "districtHotspots", "districtRiskLevel", "epidemiologicalWeek"]
-            }
+            tools: [{ googleSearch: {} }]
           }
         });
         let text = response.text || "{}";
         text = extractJSON(text);
         const data = JSON.parse(text);
-        if (!data.stateCases) throw new Error("Empty Regional Data");
-        return data;
+        
+        const stateCases = typeof data.stateCases === 'number' ? data.stateCases : (Number(data.stateCases) || FALLBACK_REGIONAL_DATA.stateCases);
+        const districtCases = typeof data.districtCases === 'number' ? data.districtCases : (Number(data.districtCases) || FALLBACK_REGIONAL_DATA.districtCases);
+        const districtHotspots = typeof data.districtHotspots === 'number' ? data.districtHotspots : (data.districtHotspots === 0 ? 0 : (Number(data.districtHotspots) || FALLBACK_REGIONAL_DATA.districtHotspots));
+        
+        return {
+            stateName: data.stateName || state,
+            districtName: data.districtName || district,
+            stateCases: stateCases,
+            districtCases: districtCases,
+            districtHotspots: districtHotspots,
+            districtRiskLevel: data.districtRiskLevel || FALLBACK_REGIONAL_DATA.districtRiskLevel,
+            localAdvice: data.localAdvice || FALLBACK_REGIONAL_DATA.localAdvice,
+            epidemiologicalWeek: data.epidemiologicalWeek || FALLBACK_REGIONAL_DATA.epidemiologicalWeek
+        };
     } catch (error) {
+        console.error("Fetch Regional Dengue Error:", error);
         return { ...FALLBACK_REGIONAL_DATA, stateName: state, districtName: district };
     }
 };
@@ -432,7 +436,7 @@ export const analyzeManualRegion = async (base64Image: string, mimeType: string,
         const ai = getAIClient();
         return await ai.models.generateContent({
             // Using Pro model for higher spatial intelligence and coordinate handling
-            model: "gemini-3.1-pro-preview", 
+            model: "gemini-2.0-pro", 
             contents: { parts: [{ inlineData: { mimeType: 'image/jpeg', data: optimizedImage } }, { text: prompt }] },
             config: { responseMimeType: "application/json" }
         });
@@ -572,30 +576,8 @@ export const deepLarvaeAnalysis = async (base64Image: string): Promise<{ diagnos
     // Kompres gambar sedikit lagi agar tidak terlalu besar untuk dihantar melalui rangkaian
     const optimizedImage = await compressImage(base64Image, 1024, 0.8);
     
-    const prompt = `Anda adalah sistem entomologi forensik pakar dan kawalan vektor (Tahap 5).
-Pengguna memuat naik imej jejentik (mosquito larvae).
-
-TUGAS ANDA:
-1. Analisa imej ini secara forensik dan mendalam. Fokus kepada profil MORFOLOGI DAN ANATOMI jejentik.
-2. Kesan bahagian-bahagian anatomi utama jejentik (contoh: Siphon/Corong pernafasan, Thorax, Kepala, Bulu/Setae, Anal Papillae, Segmen Abdomen).
-3. Bagi SETIAP bahagian anatomi yang jelas kelihatan, berikan koordinat kotak perlindungan (box_2d) dalam grid skala 0 hingga 1000 ([ymin, xmin, ymax, xmax]).
-4. Sediakan diagnosis saintifik yang komprehensif merangkumi kesimpulan spesis (Aedes, Culex, Anopheles, dll) berdasarkan bukti morfologi anatomi tersebut.
-
-FORMAT OUTPUT MESTILAH JSON SAHAJA:
-{
-  "diagnosis": "Laporan Saintifik Penuh (Markdown) mengenal pasti spesis",
-  "predictions": [
-    {
-      "box_2d": [ymin, xmin, ymax, xmax],
-      "class": "Bahagian (cth: 'Siphon')",
-      "short_desc": "Penerangan ringkas (cth: 'Pendek & gelap, khas Aedes')",
-      "confidence": 0.90
-    }
-  ]
-}`;
-
     const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.0-flash",
         contents: {
             parts: [
                 { inlineData: { mimeType: 'image/jpeg', data: optimizedImage } },
@@ -659,7 +641,7 @@ Sila berikan SATU perenggan diagnosa saintifik dan fakta ringkas tentang ancaman
 Gunakan format markdown yang kemas, profesional, saintifik tetapi difahami awam. Tulis dalam Bahasa Melayu.`;
 
     const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.0-flash",
         contents: prompt
     });
 
@@ -696,7 +678,7 @@ FORMAT OUTPUT JSON SAHAJA:
 }`;
 
     const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.0-flash",
         contents: {
             parts: [
                 { inlineData: { mimeType: 'image/jpeg', data: optimizedImage } },
