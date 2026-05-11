@@ -10,7 +10,17 @@ export interface SimulationConfig {
 }
 
 const getAIClient = () => {
-  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+  let apiKey = process.env.GEMINI_API_KEY;
+  if (typeof window !== 'undefined') {
+    const userKey = localStorage.getItem('gemini_api_key');
+    if (userKey && userKey.trim()) {
+      apiKey = userKey.trim();
+    }
+  }
+  if (!apiKey) {
+    throw new Error("API Key tiada. Sila masukkan API Key di ruangan Tetapan (Settings).");
+  }
+  return new GoogleGenAI({ apiKey });
 };
 
 const extractJSON = (text: string): string => {
