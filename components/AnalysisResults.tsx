@@ -883,6 +883,29 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 no-print">
         {/* LEFT COL: Image & List */}
         <div className="lg:col-span-7 flex flex-col gap-4 z-20 relative">
+            
+            {/* Analysis Score Overview */}
+            <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-900/80 backdrop-blur-md border border-slate-700 rounded-xl p-3 md:p-4 shadow-sm">
+                 <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] md:text-xs text-slate-400 font-mono-sci uppercase">{t('label_hygiene')}</span>
+                        <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center font-bold text-sm md:text-base border ${result.hygieneLevel >= 4 ? 'border-emerald-500 text-emerald-400 bg-emerald-950/30' : 'border-red-500 text-red-500 bg-red-950/30'}`}>{result.hygieneLevel}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] md:text-xs text-slate-400 font-mono-sci uppercase">{t('label_safety')}</span>
+                        <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center font-bold text-sm md:text-base border ${result.safetyLevel >= 4 ? 'border-blue-500 text-blue-400 bg-blue-950/30' : 'border-orange-500 text-orange-500 bg-orange-950/30'}`}>{result.safetyLevel || result.hygieneLevel}</div>
+                    </div>
+                 </div>
+                 {result.sensitivityUsed && (
+                    <div className="flex items-center gap-3">
+                       <span className="text-[10px] md:text-xs text-slate-500 font-mono-sci uppercase">{t('label_sensitivity')}</span>
+                       <span className={`text-[10px] md:text-xs px-2 py-1 rounded border font-bold ${result.sensitivityUsed === 'EXTREME' ? 'border-red-500 text-red-400 bg-red-950/30' : result.sensitivityUsed === 'HIGH' ? 'border-orange-500 text-orange-400 bg-orange-950/30' : 'border-slate-500 text-slate-400 bg-slate-900'}`}>
+                          {result.sensitivityUsed}
+                       </span>
+                    </div>
+                 )}
+            </div>
+
            <div className="relative rounded-xl border border-slate-700 bg-slate-900 group">
               {/* Auto Scroll Toggle */}
               <div className="absolute top-2 right-2 z-50">
@@ -906,26 +929,6 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                       <p className="text-slate-200 text-sm italic">{activeRisk.solution}</p>
                   </div>
               )}
-              <div className="absolute bottom-4 right-4 flex items-center gap-2 bg-slate-900/90 backdrop-blur border border-slate-600 px-3 py-2 rounded-lg z-40 shadow-xl">
-                 <div className="flex flex-col items-end">
-                    <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[9px] text-slate-400 font-mono-sci uppercase">{t('label_hygiene')}</span>
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs border ${result.hygieneLevel >= 4 ? 'border-emerald-500 text-emerald-400' : 'border-red-500 text-red-500'}`}>{result.hygieneLevel}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-[9px] text-slate-400 font-mono-sci uppercase">{t('label_safety')}</span>
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs border ${result.safetyLevel >= 4 ? 'border-blue-500 text-blue-400' : 'border-orange-500 text-orange-500'}`}>{result.safetyLevel || result.hygieneLevel}</div>
-                    </div>
-                    {result.sensitivityUsed && (
-                       <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[9px] text-slate-500 font-mono-sci uppercase">{t('label_sensitivity')}</span>
-                          <span className={`text-[8px] px-1 rounded border ${result.sensitivityUsed === 'EXTREME' ? 'border-red-500 text-red-400' : result.sensitivityUsed === 'HIGH' ? 'border-orange-500 text-orange-400' : 'border-slate-500 text-slate-400'}`}>
-                             {result.sensitivityUsed}
-                          </span>
-                       </div>
-                    )}
-                 </div>
-              </div>
            </div>
 
            {/* SENSITIVITY CONTROL SECTION (STANDARD) */}

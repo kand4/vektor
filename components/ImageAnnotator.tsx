@@ -99,18 +99,6 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 
   return (
     <div className="w-full relative group">
-      {/* HUD Info Bar */}
-      {!isEditing && (
-        <div className="absolute top-2 left-2 z-[70] pointer-events-none flex flex-col gap-1">
-           <div className="bg-black/60 backdrop-blur-md border border-cyan-500/30 px-2 py-1 rounded text-[8px] font-mono-sci text-cyan-400 uppercase tracking-tighter">
-              SYSTEM_STATUS: ACTIVE
-           </div>
-           <div className="bg-black/60 backdrop-blur-md border border-cyan-500/30 px-2 py-1 rounded text-[8px] font-mono-sci text-cyan-400 uppercase tracking-tighter">
-              LINK_COORD: 1000x1000
-           </div>
-        </div>
-      )}
-      
       <div 
         className={`relative w-full rounded bg-black group shadow-2xl border border-slate-800 ${isEditing ? 'cursor-crosshair touch-none' : 'cursor-default touch-pan-y'}`} 
       ref={containerRef}

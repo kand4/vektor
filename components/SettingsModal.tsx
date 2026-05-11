@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { GoogleGenAI } from '@google/genai';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -10,6 +11,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [apiKey, setApiKey] = useState('');
   const [roboflowKey, setRoboflowKey] = useState('');
   const [roboflowModel, setRoboflowModel] = useState('');
+  const [testStatus, setTestStatus] = useState<'idle'|'testing'|'success'|'error'>('idle');
+  const [testMessage, setTestMessage] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -19,10 +22,33 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       setApiKey(storedKey);
       setRoboflowKey(storedRoboflowKey);
       setRoboflowModel(storedRoboflowModel);
+      setTestStatus('idle');
+      setTestMessage('');
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  const testGeminiConnection = async () => {
+    if (!apiKey.trim()) {
+       setTestStatus('error');
+       setTestMessage('Sila masukkan API Key dahulu.');
+       return;
+    }
+    setTestStatus('testing');
+    try {
+       const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
+       await ai.models.generateContent({
+           model: 'gemini-2.5-flash',
+           contents: 'Test connection. Reply OK.'
+       });
+       setTestStatus('success');
+       setTestMessage('✅ Sambungan Gemini Berjaya!');
+    } catch (err: any) {
+       setTestStatus('error');
+       setTestMessage(`❌ Ralat: ${err.message || 'Gagal disambung'}`);
+    }
+  };
 
   const handleSave = () => {
     if (apiKey.trim()) {
@@ -59,9 +85,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">
-              Gemini API Key
-            </label>
+            <div className="flex justify-between items-center mb-1">
+               <label className="block text-sm font-medium text-slate-300">
+                 Gemini API Key
+               </label>
+               <button 
+                  onClick={testGeminiConnection}
+                  disabled={testStatus === 'testing'}
+                  className="text-[10px] uppercase font-bold bg-slate-800 hover:bg-slate-700 border border-slate-600 px-2 py-1 rounded text-cyan-400 disabled:opacity-50"
+               >
+                  {testStatus === 'testing' ? 'Menguji...' : 'Uji Sambungan'}
+               </button>
+            </div>
             <input
               type="password"
               className="w-full bg-slate-800 border border-slate-600 rounded p-3 text-white focus:outline-none focus:border-cyan-500 font-mono text-sm"
@@ -69,6 +104,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
             />
+            {testMessage && (
+               <div className={`mt-2 text-xs p-2 rounded ${testStatus === 'success' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-500/30' : 'bg-red-900/30 text-red-400 border border-red-500/30'}`}>
+                   {testMessage}
+               </div>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
