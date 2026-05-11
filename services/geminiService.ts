@@ -10,6 +10,10 @@ export interface SimulationConfig {
   customPrompt?: string;
 }
 
+export const getPreferredModel = (defaultModel: string) => {
+    return localStorage.getItem('gemini_model_preference') || defaultModel;
+};
+
 const getAIClient = () => {
   let apiKey = "";
   if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
@@ -68,7 +72,7 @@ export const fetchLatestIDengueStats = async (): Promise<iDengueData> => {
       Output JSON Structure: { "cumulativeCases": number, "cumulativeDeaths": number, "activeHotspots": number, "topState": string, "epidemiologicalWeek": string, "lastUpdated": string }`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash', 
+        model: getPreferredModel('gemini-2.0-flash'), 
         contents: { parts: [{ text: prompt }] },
         config: {
           tools: [{ googleSearch: {} }]
@@ -106,7 +110,7 @@ export const fetchRegionalDengueStats = async (state: string, district: string):
         Output JSON: { "stateName": "${state}", "districtName": "${district}", "stateCases": number, "districtCases": number, "districtHotspots": number, "districtRiskLevel": "LOW"|"MEDIUM"|"HIGH"|"EXTREME", "localAdvice": string, "epidemiologicalWeek": string }`;
 
         const response = await ai.models.generateContent({
-          model: 'gemini-2.0-flash',
+          model: getPreferredModel('gemini-2.0-flash'),
           contents: { parts: [{ text: prompt }] },
           config: {
             tools: [{ googleSearch: {} }]
@@ -186,8 +190,8 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
   const targetLang = langMap[language] || 'Bahasa Melayu';
   const optimizedImage = await compressImage(base64Image);
   
-  // Use Pro model for higher spatial intelligence
-  const modelId = "gemini-3.1-pro-preview";
+  // Use preferred model or Pro model for higher spatial intelligence
+  const modelId = getPreferredModel("gemini-3.1-pro-preview");
 
   let thinkingBudget = 4000; 
   let engineerPersona = "";
@@ -462,7 +466,7 @@ export const analyzeManualRegion = async (base64Image: string, mimeType: string,
         const ai = getAIClient();
         return await ai.models.generateContent({
             // Using Pro model for higher spatial intelligence and coordinate handling
-            model: "gemini-2.0-pro", 
+            model: getPreferredModel("gemini-2.0-pro"), 
             contents: { parts: [{ inlineData: { mimeType: 'image/jpeg', data: optimizedImage } }, { text: prompt }] },
             config: { responseMimeType: "application/json" }
         });
@@ -589,7 +593,7 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
 export const askRiskFollowUp = async (risk: RiskDetection, question: string, language: string = 'ms'): Promise<string> => {
     const ai = getAIClient();
     const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash", 
+        model: getPreferredModel("gemini-2.5-flash"), 
         contents: `CONTEXT: RISK ANALYSIS. Risk: "${risk.label}" (${risk.category}). Agent: ${risk.agent}.
         USER QUERY: "${question}".
         INSTRUCTION: Answer as a Senior Public Health Engineer. Be technical but clear. Language: ${language}.`,
@@ -621,7 +625,7 @@ Keluarkan output DALAM FORMAT JSON SAHAJA:
         const response = await retryWithBackoff(async () => {
              const ai = getAIClient();
              return await ai.models.generateContent({
-                 model: "gemini-2.0-flash",
+                 model: getPreferredModel("gemini-2.0-flash"),
                  contents: {
                      parts: [
                          { inlineData: { mimeType: 'image/jpeg', data: optimizedImage } },
@@ -695,7 +699,7 @@ Sila berikan SATU perenggan diagnosa saintifik dan fakta ringkas tentang ancaman
 Gunakan format markdown yang kemas, profesional, saintifik tetapi difahami awam. Tulis dalam Bahasa Melayu.`;
 
     const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
+        model: getPreferredModel("gemini-2.0-flash"),
         contents: prompt
     });
 
@@ -734,7 +738,7 @@ FORMAT OUTPUT JSON SAHAJA:
         const response = await retryWithBackoff(async () => {
              const ai = getAIClient();
              return await ai.models.generateContent({
-                 model: "gemini-2.0-flash",
+                 model: getPreferredModel("gemini-2.0-flash"),
                  contents: {
                      parts: [
                          { inlineData: { mimeType: 'image/jpeg', data: optimizedImage } },

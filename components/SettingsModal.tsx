@@ -9,6 +9,7 @@ interface SettingsModalProps {
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [apiKey, setApiKey] = useState('');
+  const [geminiModel, setGeminiModel] = useState('');
   const [roboflowKey, setRoboflowKey] = useState('');
   const [roboflowModel, setRoboflowModel] = useState('');
   const [testStatus, setTestStatus] = useState<'idle'|'testing'|'success'|'error'>('idle');
@@ -17,9 +18,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (isOpen) {
       const storedKey = localStorage.getItem('gemini_api_key') || '';
+      const storedModel = localStorage.getItem('gemini_model_preference') || 'gemini-3.1-pro-preview';
       const storedRoboflowKey = localStorage.getItem('roboflow_api_key') || '';
       const storedRoboflowModel = localStorage.getItem('roboflow_model') || 'aegypti-larvae-detection/1';
       setApiKey(storedKey);
+      setGeminiModel(storedModel);
       setRoboflowKey(storedRoboflowKey);
       setRoboflowModel(storedRoboflowModel);
       setTestStatus('idle');
@@ -39,11 +42,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     try {
        const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
        await ai.models.generateContent({
-           model: 'gemini-2.5-flash',
+           model: geminiModel || 'gemini-2.5-flash',
            contents: 'Test connection. Reply OK.'
        });
        setTestStatus('success');
-       setTestMessage('✅ Sambungan Gemini Berjaya!');
+       setTestMessage(`✅ Sambungan Gemini Berjaya! (${geminiModel})`);
     } catch (err: any) {
        setTestStatus('error');
        setTestMessage(`❌ Ralat: ${err.message || 'Gagal disambung'}`);
@@ -55,6 +58,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       localStorage.setItem('gemini_api_key', apiKey.trim());
     } else {
       localStorage.removeItem('gemini_api_key');
+    }
+
+    if (geminiModel.trim()) {
+      localStorage.setItem('gemini_model_preference', geminiModel.trim());
+    } else {
+      localStorage.removeItem('gemini_model_preference');
     }
 
     if (roboflowKey.trim()) {
@@ -109,6 +118,22 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                    {testMessage}
                </div>
             )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Model Enjin Gemini (AI Engine)
+            </label>
+            <select
+              className="w-full bg-slate-800 border border-slate-600 rounded p-3 text-white focus:outline-none focus:border-cyan-500 font-sans text-sm appearance-none"
+              value={geminiModel}
+              onChange={(e) => setGeminiModel(e.target.value)}
+            >
+              <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Terbaik / Pintar)</option>
+              <option value="gemini-2.0-pro">Gemini 2.0 Pro (Stabil / Pintar)</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash (Laju / Sederhana)</option>
+              <option value="gemini-2.0-flash">Gemini 2.0 Flash (Sangat Laju / Jimat)</option>
+              <option value="gemini-1.5-flash">Gemini 1.5 Flash (Alternatif)</option>
+            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
