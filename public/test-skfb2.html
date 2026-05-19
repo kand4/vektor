@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<body>
+<iframe src="" id="api-frame" width="600" height="400"></iframe>
+<script src="https://static.sketchfab.com/api/sketchfab-viewer-1.12.1.js"></script>
+<script>
+    var client = new Sketchfab('1.12.1', document.getElementById('api-frame'));
+    client.init('4ec06fed125e476db97f5edc4179b325', {
+        autostart: 1,
+        transparent: 1,
+        success: function(api) {
+            api.start();
+            api.addEventListener('viewerready', function() {
+                api.getAnnotationList(function(err, ann) {
+                    console.log('ANN_LIST:', JSON.stringify(ann));
+                });
+            });
+        }
+    });
+</script>
+</body>
+</html>

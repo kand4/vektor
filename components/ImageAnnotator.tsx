@@ -358,6 +358,7 @@ const HUDCallout: React.FC<HUDCalloutProps> = ({ risk, isSelected, index, border
       dragControls={undefined}
       dragListener={true}
       dragMomentum={false}
+      dragElastic={0.1}
       dragConstraints={containerRef}
       onDragStart={onSelect}
       onDrag={(e, info) => onDragUpdate(info.delta)}
@@ -368,7 +369,8 @@ const HUDCallout: React.FC<HUDCalloutProps> = ({ risk, isSelected, index, border
         top: isTooHigh ? `${(risk.box_2d?.ymax || 0) / 10}%` : `${(risk.box_2d?.ymin || 0) / 10}%`,
         translateX: translateX,
         translateY: isTooHigh ? '10%' : '-115%',
-        touchAction: "none"
+        touchAction: "none",
+        willChange: 'transform'
       }}
     >
       <div

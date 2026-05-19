@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<body>
+<iframe src="" id="api-frame" width="600" height="400"></iframe>
+<script src="https://static.sketchfab.com/api/sketchfab-viewer-1.12.1.js"></script>
+<script>
+    var iframe = document.getElementById( 'api-frame' );
+    var uid = '4ec06fed125e476db97f5edc4179b325';
+    var client = new Sketchfab( '1.12.1', iframe );
+    client.init( uid, {
+        success: function onSuccess( api ){
+            api.start();
+            api.addEventListener( 'viewerready', function() {
+                console.log('SKFB_READY');
+                api.getNodeMap(function(err, nodes) {
+                    var names = Object.values(nodes).map(n => n.name).filter(n => n && n !== 'Node' && n !== 'RootNode' && !n.match(/Matrix|Geometry|Material/));
+                    console.log('SKFB_NODES:', names.join(' | '));
+                });
+                api.getWorldToScreenCoordinates([0,0,0], function(err, coord) {
+                    if (err) console.log('SKFB_ERR:', err);
+                    console.log('SKFB_COORD:', JSON.stringify(coord));
+                });
+            });
+        },
+        error: function onError() {
+            console.log( 'Viewer error' );
+        }
+    });
+</script>
+</body>
+</html>

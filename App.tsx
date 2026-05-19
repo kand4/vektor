@@ -1,182 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import BioBackground from './components/BioBackground';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import UploadZone from './components/UploadZone';
 import { AnalysisResults } from './components/AnalysisResults';
 import LiveCameraScanner from './components/LiveCameraScanner';
-import BioBackground from './components/BioBackground';
+import { analyzeLandscape } from './services/geminiService';
+import { AnalysisSession, SensitivityLevel, AnalysisMode } from './types';
 import HUDOverlay from './components/HUDOverlay';
 import AboutSystem from './components/AboutSystem';
 import SettingsModal from './components/SettingsModal';
-import { analyzeLandscape, fetchLatestIDengueStats, fetchRegionalDengueStats } from './services/geminiService';
-import { getGlobalOutbreaks } from './services/outbreakService';
+import HeatmapModal from './components/HeatmapModal';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
+import { PredictionChart } from './components/PredictionChart';
 import LarvaeScanner from './components/LarvaeScanner';
 import AdultMosquitoScanner from './components/AdultMosquitoScanner';
-import { AnalysisResponse, AnalysisSession, OutbreakAlert, SensitivityLevel, AnalysisMode, iDengueData, RegionalDengueData } from './types';
-import { useLanguage } from './contexts/LanguageContext';
-import { PredictionChart } from './components/PredictionChart';
-
-const MAX_CONCURRENT_ANALYSIS = 1;
-
-const LoadingDisplay: React.FC<{mode: AnalysisMode}> = ({mode}) => {
-  const { t } = useLanguage();
-  const [progress, setProgress] = useState(0);
-  const [logText, setLogText] = useState(t('log_initializing'));
-  
-  useEffect(() => {
-    // UPDATED PROGRESS LOGIC:
-    // Moves quickly to 20%, then slowly crawls to 90%, then waits.
-    // This prevents the "stuck at 16%" feeling while accommodating the long processing time.
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 98) return 98; // Hold at 98 until complete
-        
-        let increment = 0;
-        
-        if (prev < 20) {
-            increment = 2; // Fast start
-        } else if (prev < 50) {
-            increment = 0.5; // Deep thinking phase
-        } else if (prev < 80) {
-            increment = 0.2; // Complex reasoning
-        } else {
-            increment = 0.05; // Final touches
-        }
-        
-        // Random jitter to look alive
-        if (Math.random() > 0.5) increment += 0.1;
-        
-        return Math.min(prev + increment, 98);
-      });
-    }, 150); // Tick every 150ms
-
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-      if (mode === 'KKM_FOOD_STANDARD') {
-          if (progress < 15) setLogText(t('log_initializing'));
-          else if (progress < 30) setLogText(t('log_deep_thinking'));
-          else if (progress < 50) setLogText(t('log_grid_search'));
-          else if (progress < 70) setLogText(t('log_law_ref'));
-          else if (progress < 90) setLogText(t('log_calculating'));
-          else setLogText(t('log_finalizing'));
-      } else {
-          if (progress < 15) setLogText(t('log_initializing'));
-          else if (progress < 30) setLogText(t('log_deep_thinking'));
-          else if (progress < 50) setLogText(t('log_clutter'));
-          else if (progress < 70) setLogText(t('log_vector'));
-          else if (progress < 90) setLogText(t('log_pathogen'));
-          else setLogText(t('log_generating'));
-      }
-  }, [progress, mode]);
-
-  return (
-    <div className="bg-slate-900/90 border border-emerald-500/30 p-8 md:p-12 rounded-xl text-center min-h-[450px] flex flex-col items-center justify-center relative overflow-hidden backdrop-blur-xl shadow-[0_0_50px_rgba(0,0,0,0.5)]">
-      <div className="relative w-64 h-64 md:w-80 md:h-80 flex items-center justify-center mb-10 scale-90 md:scale-100 transition-transform">
-         <div className="absolute inset-0 rounded-full border border-slate-700 border-t-emerald-500 border-b-emerald-900 opacity-60 animate-[spin_4s_linear_infinite]"></div>
-         <div className="absolute inset-0 m-auto w-40 h-40 rounded-full border border-emerald-400/30 shadow-[0_0_40px_rgba(16,185,129,0.2)] animate-pulse bg-emerald-900/10"></div>
-         <div className="relative z-10 flex flex-col items-center justify-center bg-slate-950/90 w-36 h-36 rounded-full border border-slate-600 shadow-inner">
-             <div className="text-4xl md:text-5xl font-mono-sci font-bold text-white tabular-nums tracking-tighter">{Math.floor(progress)}<span className="text-lg text-emerald-500">%</span></div>
-             <div className="text-[10px] text-cyan-400 font-bold tracking-[0.2em] mt-2 animate-pulse">PRO ANALYSIS</div>
-         </div>
-      </div>
-      <div className="relative z-10 max-w-lg w-full space-y-5 px-4">
-          <h3 className="text-lg md:text-xl font-sci-fi text-emerald-300 tracking-wider font-bold animate-pulse uppercase drop-shadow-md">{logText}</h3>
-          <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-600 relative shadow-lg">
-              <div className="h-full bg-gradient-to-r from-emerald-600 via-emerald-400 to-cyan-500 shadow-[0_0_20px_#10b981] relative overflow-hidden transition-all duration-200" style={{ width: `${progress}%` }}></div>
-          </div>
-          <p className="text-[10px] font-mono-sci text-slate-500 uppercase tracking-widest">{t('processing_time_info')}</p>
-      </div>
-    </div>
-  );
-};
-
-const HeatmapModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpen, onClose }) => {
-    const { t } = useLanguage();
-    const [selectedAlert, setSelectedAlert] = useState<OutbreakAlert | null>(null);
-    const [filter, setFilter] = useState<'ALL' | 'CRITICAL' | 'HIGH'>('ALL');
-    const alerts = getGlobalOutbreaks();
-    const filteredAlerts = filter === 'ALL' ? alerts : alerts.filter(a => a.severity === filter);
-    if (!isOpen) return null;
-    return (
-        <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-md flex items-center justify-center p-0 md:p-4 overflow-hidden">
-             <div className="bg-slate-950 border border-slate-800 w-full max-w-7xl h-full md:h-[90vh] md:rounded-2xl flex flex-col relative overflow-hidden shadow-2xl">
-                 <div className="p-4 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center shrink-0">
-                     <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_red]"></div>
-                        <h3 className="font-sci-fi text-white text-lg tracking-widest uppercase">{t('bio_intelligence')} <span className="text-slate-500 text-sm">| {t('cdc_who_stream')}</span></h3>
-                     </div>
-                     <button onClick={onClose} className="bg-slate-800 p-2 rounded hover:bg-red-600 transition text-white">✕ ESC</button>
-                 </div>
-                 <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-                     <div className="flex-1 relative bg-[#050b14] overflow-hidden border-b lg:border-b-0 lg:border-r border-slate-800 order-2 lg:order-1">
-                         <div className="absolute inset-0 opacity-40 bg-[url('https://upload.wikimedia.org/wikipedia/commons/e/ec/World_map_blank_without_borders.svg')] bg-cover bg-center grayscale contrast-125"></div>
-                         <div className="absolute inset-0 bg-[linear-gradient(rgba(16,185,129,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(16,185,129,0.03)_1px,transparent_1px)] bg-[size:40px_40px]"></div>
-                         {filteredAlerts.map(alert => (
-                             <button
-                                key={alert.id}
-                                onClick={() => setSelectedAlert(alert)}
-                                className={`absolute transform -translate-x-1/2 -translate-y-1/2 group transition-all duration-300 focus:outline-none z-10`}
-                                style={{ left: `${alert.coordinates.x}%`, top: `${alert.coordinates.y}%` }}
-                             >
-                                 <div className={`relative flex items-center justify-center ${selectedAlert?.id === alert.id ? 'scale-150 z-50' : 'scale-100 hover:scale-125'}`}>
-                                     <div className={`w-3 h-3 md:w-4 md:h-4 rounded-full ${alert.severity === 'CRITICAL' ? 'bg-red-500 shadow-[0_0_20px_red]' : alert.severity === 'HIGH' ? 'bg-orange-500 shadow-[0_0_15px_orange]' : 'bg-emerald-500 shadow-[0_0_10px_emerald]'} animate-pulse`}></div>
-                                     <div className={`absolute w-8 h-8 md:w-12 md:h-12 rounded-full border ${alert.severity === 'CRITICAL' ? 'border-red-500/50' : 'border-emerald-500/50'} animate-ping opacity-20`}></div>
-                                     <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-black/80 border border-slate-700 px-2 py-1 rounded text-[10px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                         {alert.disease}
-                                     </div>
-                                 </div>
-                             </button>
-                         ))}
-                         <div className="absolute bottom-4 left-4 p-3 bg-slate-900/80 border border-slate-700 rounded text-[10px] font-mono-sci text-slate-400">
-                             <div>{'>'} {t('source_aggregate')}</div>
-                             <div>{'>'} {t('map_latency')}</div>
-                             <div>{'>'} {t('active_threats')}: {alerts.length}</div>
-                         </div>
-                     </div>
-                     <div className="w-full lg:w-[400px] bg-slate-950 flex flex-col order-1 lg:order-2">
-                         <div className="p-3 border-b border-slate-800 flex gap-2">
-                             {(['ALL', 'CRITICAL', 'HIGH'] as const).map(f => (
-                                 <button 
-                                    key={f}
-                                    onClick={() => setFilter(f)}
-                                    className={`flex-1 py-2 text-[10px] font-bold rounded font-mono-sci transition-colors ${filter === f ? 'bg-emerald-900/50 text-emerald-400 border border-emerald-500/50' : 'bg-slate-900 text-slate-500 border border-slate-800 hover:bg-slate-800'}`}
-                                 >
-                                     {f}
-                                 </button>
-                             ))}
-                         </div>
-                         <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3">
-                             {filteredAlerts.map(alert => (
-                                 <div 
-                                    key={alert.id}
-                                    onClick={() => setSelectedAlert(alert)}
-                                    className={`p-4 rounded border cursor-pointer transition-all ${selectedAlert?.id === alert.id ? 'bg-slate-800 border-emerald-500 shadow-lg' : 'bg-slate-900/50 border-slate-800 hover:border-slate-600 hover:bg-slate-800'}`}
-                                 >
-                                     <div className="flex justify-between items-start mb-2">
-                                         <h4 className={`font-bold text-sm ${alert.severity === 'CRITICAL' ? 'text-red-400' : alert.severity === 'HIGH' ? 'text-orange-400' : 'text-emerald-400'}`}>{alert.disease}</h4>
-                                         <span className="text-[9px] bg-black px-1.5 py-0.5 rounded text-slate-400 border border-slate-700">{alert.source}</span>
-                                     </div>
-                                     <div className="text-xs text-slate-300 mb-1 font-mono-sci">📍 {alert.location}</div>
-                                     <div className="text-[10px] text-slate-500 mb-2">{alert.cases} {t('cases_reported')}</div>
-                                     {selectedAlert?.id === alert.id && (
-                                         <div className="mt-2 pt-2 border-t border-slate-700/50 animate-fade-in">
-                                             <p className="text-xs text-slate-400 italic mb-2 leading-relaxed">"{alert.description}"</p>
-                                             <div className="flex items-center gap-2 text-[10px] font-mono-sci text-red-400">
-                                                 <span>{t('vector_label')}: {alert.vector}</span>
-                                             </div>
-                                         </div>
-                                     )}
-                                 </div>
-                             ))}
-                         </div>
-                     </div>
-                 </div>
-             </div>
-        </div>
-    )
-}
+import { fetchNationalDengueTrend } from './services/dataGovService';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION'>('HOME');
@@ -191,28 +30,16 @@ const App: React.FC = () => {
   const [sensitivity, setSensitivity] = useState<SensitivityLevel>('STANDARD');
   const [analysisMode, setAnalysisMode] = useState<AnalysisMode>('VECTOR_CONTROL');
 
-  // iDengue Persistent Stats
-  const [nationalStats, setNationalStats] = useState<iDengueData | null>(null);
-  const [regionalStats, setRegionalStats] = useState<RegionalDengueData | null>(null);
   const [isStatsLoading, setIsStatsLoading] = useState(false);
   
   const { language, t } = useLanguage();
 
-  // Fetch stats only when triggered manually by the user
   const loadDengueData = async () => {
     setIsStatsLoading(true);
     try {
-        // Fetch sequentially instead of Promise.all to prevent Gemini API 429 Rate Limits
-        const national = await fetchLatestIDengueStats();
-        setNationalStats(national);
-        
-        // Add a 2 seconds delay between the API calls to protect RPM limits
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        const regional = await fetchRegionalDengueStats("Pahang", "Temerloh");
-        setRegionalStats(regional);
+        await fetchNationalDengueTrend();
     } catch (e) {
-        console.error("Critical: Failed to sync iDengue data even with fallback", e);
+        console.error("Failed to sync", e);
     } finally {
         setIsStatsLoading(false);
     }
@@ -243,7 +70,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const processNext = async () => {
         const analyzingCount = sessions.filter(s => s.status === 'ANALYZING').length;
-        if (analyzingCount < MAX_CONCURRENT_ANALYSIS) {
+        if (analyzingCount < 2) {
             const pendingSession = sessions.find(s => s.status === 'PENDING');
             if (pendingSession) {
                 // Enforce minimum 4 seconds between processing to respect 15 RPM free tier limits
@@ -403,8 +230,8 @@ const App: React.FC = () => {
                 <div className="mt-8">
                     {/* Pass lifted stats to PredictionChart */}
                     <PredictionChart 
-                        preloadedNational={nationalStats} 
-                        preloadedRegional={regionalStats} 
+                        preloadedNational={null} 
+                        preloadedRegional={null} 
                         isLoading={isStatsLoading}
                         onSync={loadDengueData}
                     />
@@ -454,7 +281,12 @@ const App: React.FC = () => {
                           <p className="text-slate-400 font-mono-sci tracking-widest text-xs md:text-sm">{t('waiting_queue')}</p>
                        </div>
                     )}
-                    {getActiveSession()!.status === 'ANALYZING' && <LoadingDisplay mode={getActiveSession()!.mode || 'VECTOR_CONTROL'} />}
+                    {getActiveSession()!.status === 'ANALYZING' && (
+                       <div className="bg-emerald-950/20 border border-emerald-500/50 p-8 md:p-12 rounded-lg text-center min-h-[300px] flex flex-col items-center justify-center">
+                          <div className="w-12 h-12 border-4 border-dashed border-emerald-500 rounded-full animate-spin mb-4"></div>
+                          <p className="text-emerald-400 font-mono-sci tracking-widest text-sm animate-pulse">{t('system_processing')}</p>
+                       </div>
+                    )}
                     {getActiveSession()!.status === 'ERROR' && (
                        <div className="bg-red-950/20 border border-red-500/50 p-8 md:p-12 rounded-lg text-center min-h-[300px] flex flex-col items-center justify-center">
                           <div className="text-4xl mb-4">🚫</div>

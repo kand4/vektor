@@ -710,30 +710,30 @@ export const analyzeAdultMosquito = async (base64Image: string): Promise<{ diagn
     try {
         const optimizedImage = await compressImage(base64Image, 1024, 0.8);
         
-        const prompt = `Anda adalah saintis forensik pakar dalam morfologi dan anatomi nyamuk dewasa. Anda mempunyai kepakaran peringkat 5 dalam pengelasan nyamuk (Aedes, Culex, Anopheles, dll).
-
-TUGAS ANDA:
-1. Analisa imej nyamuk dewasa ini secara forensik dan mendalam.
-2. Fokus kepada ciri morfologi utama:
-   - Corak sisik pada toraks/abdomen.
-   - Struktur kaki (jalur putih/gelap).
-   - Bentuk sayap dan venasi sayap.
-   - Proborcis dan palpus.
-3. Kesan bahagian-bahagian anatomi ini dan berikan kotak bounding (box_2d) dalam grid skala 0-1000.
-4. Berikan diagnosa forensik saintifik yang merangkumi pengenalan spesis nyamuk tersebut.
-
-FORMAT OUTPUT JSON SAHAJA:
-{
-  "diagnosis": "Laporan Morfologi Forensik dan Pengesanan Spesis (Markdown)",
-  "predictions": [
-    {
-      "box_2d": [ymin, xmin, ymax, xmax],
-      "class": "Bahagian Anatomi (cth: 'Leg stripe')",
-      "short_desc": "Ciri khas (cth: 'Jalur putih jelas, ciri Aedes aegypti')",
-      "confidence": 0.95
-    }
-  ]
-}`;
+        const prompt = `Anda adalah Pakar Entomologi Forensik dan Pakar Sektor Vektor. Fokus anda ialah pengelasan spesis nyamuk melalui morfologi visual yang ketat.
+ 
+ TUGAS ANDA:
+ 1. Lakukan pengenalan spesis nyamuk yang tepat (contoh: Aedes aegypti, Aedes albopictus, Culex quinquefasciatus).
+ 2. Cari secara khusus ciri diagnostik berikut (SILA SENARAIKAN CIRI INI DALAM PREDIKSI JIKA DITEMUI):
+    - **Toraks**: Cari corak lyre (Aedes aegypti) atau jalur putih median (Aedes albopictus).
+    - **Kaki**: Cari jalur putih pada tarsus atau femur.
+    - **Sayap**: Analisa corak venasi sayap dan kehadiran sisik pada urat sayap.
+    - **Anatomi Tambahan**: Proborcis, palpus maksilari.
+ 3. Bounding box (box_2d) mestilah tepat melingkungi feature anatomi yang disebut.
+ 4. Diagnosis mestilah mengesahkan spesis yang paling berkemungkinan berdasarkan bukti visual kuat yang ditemui.
+ 
+ FORMAT OUTPUT JSON SAHAJA:
+ {
+   "diagnosis": "Laporan Morfologi Forensik dan Pengesanan Spesis (Markdown)",
+   "predictions": [
+     {
+       "box_2d": [ymin, xmin, ymax, xmax],
+       "class": "Bahagian Anatomi (cth: 'Leg stripe')",
+       "short_desc": "Ciri khas (cth: 'Jalur putih jelas, ciri Aedes aegypti')",
+       "confidence": 0.95
+     }
+   ]
+ }`;
 
         const response = await retryWithBackoff(async () => {
              const ai = getAIClient();

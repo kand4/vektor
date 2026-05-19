@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { analyzeAdultMosquito } from '../services/geminiService';
 
 import { useLanguage } from '../contexts/LanguageContext';
+import Mosquito3DViewer from './Mosquito3DViewer';
 
 interface Prediction {
     x: number;
@@ -27,6 +28,7 @@ const AdultMosquitoScanner: React.FC = () => {
     const [diagnosis, setDiagnosis] = useState<string | null>(null);
     const [isGeneratingDiagnosis, setIsGeneratingDiagnosis] = useState(false);
     const [imageDimensions, setImageDimensions] = useState<{naturalWidth: number, naturalHeight: number} | null>(null);
+    const [show3DModel, setShow3DModel] = useState(false);
     
     const imageRef = useRef<HTMLImageElement | null>(null);
 
@@ -105,6 +107,17 @@ const AdultMosquitoScanner: React.FC = () => {
                            <h2 className="text-xl sm:text-2xl font-sci-fi text-cyan-400 uppercase tracking-widest mb-1 shadow-cyan-500/20 drop-shadow-lg">{t('adult_scanner_title')}</h2>
                         </div>
                         <p className="text-xs sm:text-sm text-slate-400 font-mono-sci pl-5">Powered by Gemini Vision Forensic AI</p>
+                    </div>
+                    <div>
+                        <button 
+                            onClick={() => setShow3DModel(true)} 
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-900/50 hover:bg-emerald-800/80 border border-emerald-500/50 rounded-lg text-emerald-300 font-sci-fi text-sm transition-all shadow-[0_0_10px_rgba(16,185,129,0.2)]"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
+                            </svg>
+                            LIHAT MODEL 3D
+                        </button>
                     </div>
                 </div>
 
@@ -287,6 +300,11 @@ const AdultMosquitoScanner: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* 3D Model Modal */}
+            {show3DModel && (
+                <Mosquito3DViewer onClose={() => setShow3DModel(false)} />
+            )}
         </div>
     );
 };
