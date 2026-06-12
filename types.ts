@@ -34,6 +34,7 @@ export interface RiskDetection {
   statistics: string;
   description: string;
   solution: string; 
+  savageCommentary?: string;
   box_2d: BoundingBox;
   citations: Citation[];
   microscopeVideoUrl?: string;

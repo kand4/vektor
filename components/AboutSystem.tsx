@@ -8,9 +8,12 @@ interface AboutSystemProps {
 
 const AboutSystem: React.FC<AboutSystemProps> = ({ isOpen, onClose }) => {
   const { t } = useLanguage();
+  
+  if (!isOpen) return null;
+
   return (
     <div 
-      className={`fixed inset-0 z-[100] transition-transform duration-700 ease-in-out flex flex-col ${isOpen ? 'translate-y-0' : '-translate-y-full'}`}
+      className="fixed inset-0 z-[9999] bg-slate-950/95 backdrop-blur-xl flex flex-col overflow-y-auto animate-fade-in"
     >
       {/* Glass Backdrop */}
       <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl"></div>

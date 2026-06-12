@@ -87,7 +87,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   const [manualContext, setManualContext] = useState("");
   const [isProcessingManual, setIsProcessingManual] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
-  const [cleanImage, setCleanImage] = useState<string | null>(savedSimulationImage || null);
+  const [cleanImages, setCleanImages] = useState<string[]>(savedSimulationImage ? [savedSimulationImage] : []);
   const [showCleanModal, setShowCleanModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showManualSimModal, setShowManualSimModal] = useState(false);
@@ -103,7 +103,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
   const { language, t } = useLanguage();
 
-  useEffect(() => { setCleanImage(savedSimulationImage || null); }, [savedSimulationImage]);
+  useEffect(() => { setCleanImages(savedSimulationImage ? [savedSimulationImage] : []); }, [savedSimulationImage]);
   useEffect(() => { 
       // Only auto-set activeRisk if it's currently null AND there are risks to select.
       if (currentRisks && currentRisks.length > 0 && !activeRisk) {
@@ -201,7 +201,32 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   };
 
   const cancelManualMode = () => { setIsEditing(false); setShowManualModal(false); setManualBox(null); setManualContext(""); };
-  const handleOpenSimulation = () => { cleanImage ? setShowCleanModal(true) : setShowConfigModal(true); };
+  const handleOpenSimulation = () => { cleanImages.length > 0 ? setShowCleanModal(true) : setShowConfigModal(true); };
+
+  const handleRegenerateSimulation = async (customPrompt: string) => {
+      setIsCleaning(true);
+      setShowCleanModal(false);
+      try {
+          const base64Data = imageSrc.split(',')[1];
+          const mimeType = imageSrc.split(';')[0].split(':')[1] || 'image/jpeg';
+          const config: SimulationConfig = {
+              mode: 'SANITIZE_ONLY',
+              humans: 'REMOVE',
+              lighting: 'NATURAL',
+              engine: 'GEMINI_IMAGEN',
+              customPrompt
+          };
+          const generatedImage = await generateCleanSimulation(base64Data, mimeType, config);
+          setCleanImages(prev => [...prev, generatedImage]);
+          onSaveSimulation(generatedImage);
+          setShowCleanModal(true);
+      } catch (error: any) {
+          setToastMsg({ msg: `Regenerasi Gagal: ${error.message}`, type: 'error' });
+          setShowCleanModal(true);
+      } finally {
+          setIsCleaning(false);
+      }
+  };
 
   const startSimulation = async (config: SimulationConfig) => {
       setShowConfigModal(false);
@@ -216,7 +241,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
               setShowManualSimModal(true);
           } else {
               const generatedImage = await generateCleanSimulation(base64Data, mimeType, config);
-              setCleanImage(generatedImage);
+              setCleanImages(prev => [...prev, generatedImage]);
               onSaveSimulation(generatedImage);
               setShowCleanModal(true);
           }
@@ -229,7 +254,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
   const handleManualSimulationPasted = (base64Image: string) => {
       setShowManualSimModal(false);
-      setCleanImage(base64Image);
+      setCleanImages(prev => [...prev, base64Image]);
       onSaveSimulation(base64Image);
       setShowCleanModal(true);
   };
@@ -635,7 +660,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       )}
       {toastMsg && <Toast message={toastMsg.msg} type={toastMsg.type} onClose={() => setToastMsg(null)} />}
       <SimulationConfigModal isOpen={showConfigModal} onClose={() => setShowConfigModal(false)} onStart={startSimulation} />
-      <SimulationResultModal isOpen={showCleanModal} onClose={() => setShowCleanModal(false)} originalImage={imageSrc} generatedImage={cleanImage || ""} />
+      <SimulationResultModal isOpen={showCleanModal} onClose={() => setShowCleanModal(false)} originalImage={imageSrc} generatedImages={cleanImages} onRegenerate={handleRegenerateSimulation} />
       <ManualSimulationModal isOpen={showManualSimModal} onClose={() => setShowManualSimModal(false)} promptText={manualSimPrompt} onImagePasted={handleManualSimulationPasted} />
       
       {/* THE HIDDEN PRINT MODULE */}
@@ -823,7 +848,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                             <div><h4 className="text-emerald-500 font-bold text-xs font-sci-fi uppercase mb-2 flex items-center gap-2">{t('label_analysis')}</h4><p className="text-slate-300 text-sm md:text-base leading-relaxed font-light">{activeRisk.description}</p></div>
                             <div className={`p-4 md:p-5 rounded-lg border relative overflow-hidden transition-colors duration-500 ${isSavageMode ? 'bg-red-900/10 border-red-500/30' : 'bg-emerald-900/10 border-emerald-500/30'}`}>
                                 <h4 className={`font-bold text-xs font-sci-fi uppercase mb-3 flex items-center gap-2 ${isSavageMode ? 'text-red-400' : 'text-emerald-400'}`}>{isSavageMode ? t('card_savage_verdict') : t('card_recommendation')}</h4>
-                                <div className="text-sm md:text-base text-slate-200 leading-relaxed italic mb-4">{isSavageMode && !activeRisk.id.startsWith('manual-') ? `"${result.savageCommentary || t('savage_fallback')}"` : activeRisk.solution}</div>
+                                <div className="text-sm md:text-base text-slate-200 leading-relaxed italic mb-4">{isSavageMode && !activeRisk.id.startsWith('manual-') ? `"${activeRisk.savageCommentary || result.savageCommentary || t('savage_fallback')}"` : activeRisk.solution}</div>
                                 
                                 <div className="flex flex-col sm:flex-row gap-2 mt-4 border-t border-slate-700/50 pt-4">
                                     <a href={generateYoutubeLink(activeRisk)} target="_blank" rel="noopener noreferrer" className={`flex-1 flex items-center justify-center gap-2 py-3 rounded text-xs md:text-sm font-bold text-white transition-colors border ${activeRisk.category === 'SAFETY' ? 'bg-indigo-900/50 border-indigo-500 hover:bg-indigo-800' : 'bg-slate-800 border-slate-600 hover:bg-slate-700'}`}>

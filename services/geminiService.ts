@@ -261,7 +261,8 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
             5. disease: string (**STRICTLY ENGLISH/MEDICAL TERM** e.g., "Food Poisoning", "Typhoid", "Cholera")
             6. description: string (Forensic Observation in ${targetLang})
             7. solution: string (Remedial action in ${targetLang})
-            8. confidence: number (0.0 - 1.0)
+            8. savageCommentary: string (Highly sarcastic, direct, brutal roast/critique of this specific hygiene infraction in ${targetLang}.)
+            9. confidence: number (0.0 - 1.0)
         - hygieneLevel: INTEGER (1-5)
       `;
 
@@ -303,12 +304,13 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
             6. disease: string (**STRICTLY ENGLISH/MEDICAL TERM** e.g., "Dengue Fever".)
             7. description: string (Forensic Observation in ${targetLang})
             8. solution: string (Engineering/Medical Intervention in ${targetLang})
+            9. savageCommentary: string (Highly sarcastic, direct, brutal, varied roast/critique of this specific hazard/breeding site in ${targetLang}. Show extreme frustration at this risk.)
         
         - detected_keywords: string[]
         - hygieneLevel: INTEGER (1-5)
         - safetyLevel: INTEGER (1-5)
         - generalAdvice: string (Technical Summary in ${targetLang})
-        - savageCommentary: string (Direct, Harsh Critique in ${targetLang})
+        - savageCommentary: string (Direct, Harsh, varied overall Critique of the whole place in ${targetLang}. Vary the tone: sarcastic, strictly formal-warning, or aggressively urgent. NEVER repeat similar critiques, use unique analogies for waste/incompetence each time.)
       `;
 
       finalPrompt = `
@@ -421,6 +423,11 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
                   r.category = 'HYGIENE';
               }
           }
+
+          if (!r.savageCommentary) {
+              const itemLabel = r.label || "Ancaman";
+              r.savageCommentary = `Masalah "${itemLabel}" ini sudah terang lagi bersuluh. Malas nak cakap banyak, tapi kalau tak bersihkan memang sengaja cari pasal!`;
+          }
       });
 
       parsedResult.sensitivityUsed = sensitivity;
@@ -493,9 +500,9 @@ export const generateSimulationPrompt = async (base64Image: string, config: Simu
     let basePrompt = "";
     
     if (config.customPrompt && config.customPrompt.trim().length > 0) {
-        basePrompt = `[CRITICAL: EXACTLY MATCH THE ORIGINAL CAMERA ANGLE, PERSPECTIVE, AND FIELD OF VIEW OF THE INPUT IMAGE. DO NOT CHANGE THE CAMERA POSITION.] Clean up the environment exactly according to these instructions: ${config.customPrompt}`;
+        basePrompt = `[CRITICAL: STRICTLY FOLLOW THE USER'S EXACT INSTRUCTIONS. DO NOT ADD ANY EXTRA FEATURES, LAB EQUIPMENT, OR MEDICAL ELEMENTS. EXACTLY MATCH THE ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, AND FIELD OF VIEW.] User instructions: ${config.customPrompt}`;
     } else {
-        basePrompt = "[CRITICAL: EXACTLY MATCH THE ORIGINAL CAMERA ANGLE, PERSPECTIVE, AND FIELD OF VIEW OF THE INPUT IMAGE.] The same exact room but completely cleaned, all trash and dirt removed, organized and neat.";
+        basePrompt = "[CRITICAL: EXACTLY MATCH THE ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, AND FIELD OF VIEW.] The exact same room structure completely cleaned. Only remove trash and dirt. Do not change it into a lab or hospital.";
         
         if (config.mode === 'UPGRADE_FURNITURE') {
             basePrompt += " Upgrade with brand new furniture matching the original layout.";
@@ -528,7 +535,7 @@ export const generateSimulationPrompt = async (base64Image: string, config: Simu
             contents: {
                 parts: [
                     { inlineData: { data: optimizedImage, mimeType: 'image/jpeg' } },
-                    { text: `Analyze the provided image and generate a highly detailed image generation prompt. REQUIRED INSTRUCTIONS to follow: "${basePrompt}". IMPORTANT: Do NOT arbitrarily turn it into a medical lab or hospital unless the user asked for it. Just output the English prompt for Image Generation.` }
+                    { text: `Analyze the provided image and generate a highly detailed prompt for an image regeneration engine. REQUIRED INSTRUCTIONS: "${basePrompt}". IMPORTANT: Focus ONLY on cleaning up garbage/trash or applying the user's specific prompt. Do NOT arbitrarily turn the environment into a medical lab, clinic, or hospital. Keep the original setting (e.g. if it's a backyard, keep it a backyard; if it's an alley, keep it an alley). Just output the English prompt.` }
                 ]
             }
         });
@@ -544,12 +551,51 @@ export const generateSimulationPrompt = async (base64Image: string, config: Simu
 };
 
 export const generateCleanSimulation = async (base64Image: string, mimeType: string, config: SimulationConfig): Promise<string> => {
-    const ai = getAIClient();
-    const optimizedImage = await compressImage(base64Image);
+    let finalPrompt = "";
     
-    const finalPrompt = await generateSimulationPrompt(base64Image, config);
+    // Attempt to generate a smart prompt using Gemini, but fallback gracefully if it fails (e.g. no key or rate limit)
+    try {
+        finalPrompt = await generateSimulationPrompt(base64Image, config);
+    } catch (error) {
+        console.warn("Could not generate smart prompt with Gemini, using config base prompt as fallback:", error);
+        
+        let basePrompt = "";
+        if (config.customPrompt && config.customPrompt.trim().length > 0) {
+            basePrompt = `[CRITICAL: STRICTLY FOLLOW THE USER'S EXACT INSTRUCTIONS. DO NOT ADD ANY EXTRA FEATURES, LAB EQUIPMENT, OR MEDICAL ELEMENTS. EXACTLY MATCH THE ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, AND FIELD OF VIEW.] User instructions: ${config.customPrompt}`;
+        } else {
+            basePrompt = "[CRITICAL: EXACTLY MATCH THE ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, AND FIELD OF VIEW.] The exact same room structure completely cleaned. Only remove trash and dirt. Do not change it into a lab or hospital.";
+            
+            if (config.mode === 'UPGRADE_FURNITURE') {
+                basePrompt += " Upgrade with brand new furniture matching the original layout.";
+            } else if (config.mode === 'FULL_RECONSTRUCTION') {
+                basePrompt += " Complete architectural reconstruction, new clean flooring and walls but strictly keeping the same structural layout.";
+            } else {
+                basePrompt += " Keep existing furniture but make them look squeaky clean and spotless.";
+            }
+            
+            if (config.humans === 'KEEP_PROTECTED') {
+                basePrompt += " Keep existing people in the image but equip them with proper protective gear.";
+            } else {
+                basePrompt += " Zero humans present, completely empty scene.";
+            }
+            
+            if (config.lighting === 'CLINICAL_BLUE') {
+                basePrompt += " Cool blue LED lighting.";
+            } else if (config.lighting === 'WARM') {
+                basePrompt += " Warm soft bright lighting.";
+            } else {
+                basePrompt += " Bright natural sunlight streaming in.";
+            }
+        }
+        
+        basePrompt += " Ultra-photorealistic, 8k resolution, highly detailed photography.";
+        finalPrompt = basePrompt;
+    }
 
     if (config.engine === 'GEMINI_IMAGEN') {
+        const ai = getAIClient();
+        const optimizedImage = await compressImage(base64Image);
+        
         // 1. Try Gemini 2.5 Flash Image-to-Image (Multimodal)
         try {
             console.log("🎨 Attempting Gemini 2.5 Flash Image Generation...");
@@ -559,7 +605,7 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
                     contents: {
                         parts: [
                             { inlineData: { data: optimizedImage, mimeType: 'image/jpeg' } },
-                            { text: `TASK: Reimagine this room as a ${finalPrompt}. Keep layout but remove all dirt.` }
+                            { text: `TASK: Reimagine this scene strictly following these instructions: ${finalPrompt}. CRITICAL: Maintain exact camera perspective and angle.` }
                         ]
                     }
                 });
