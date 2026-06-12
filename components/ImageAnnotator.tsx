@@ -359,7 +359,7 @@ const HUDCallout: React.FC<HUDCalloutProps> = ({ risk, isSelected, index, border
       dragListener={true}
       dragMomentum={false}
       dragElastic={0.1}
-      dragConstraints={containerRef}
+      dragConstraints={false}
       onDragStart={onSelect}
       onDrag={(e, info) => onDragUpdate(info.delta)}
       className={`absolute z-[100] pointer-events-auto ${isTooHigh ? 'origin-top' : 'origin-bottom'} cursor-grab active:cursor-grabbing`}

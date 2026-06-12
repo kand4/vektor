@@ -6,7 +6,7 @@ import UploadZone from './components/UploadZone';
 import { AnalysisResults } from './components/AnalysisResults';
 import LiveCameraScanner from './components/LiveCameraScanner';
 import { analyzeLandscape } from './services/geminiService';
-import { AnalysisSession, SensitivityLevel, AnalysisMode } from './types';
+import { AnalysisSession, SensitivityLevel, AnalysisMode, AnalysisResponse } from './types';
 import HUDOverlay from './components/HUDOverlay';
 import AboutSystem from './components/AboutSystem';
 import SettingsModal from './components/SettingsModal';
@@ -16,6 +16,7 @@ import { PredictionChart } from './components/PredictionChart';
 import LarvaeScanner from './components/LarvaeScanner';
 import AdultMosquitoScanner from './components/AdultMosquitoScanner';
 import { fetchNationalDengueTrend } from './services/dataGovService';
+import { resizeAndCompressImage } from './utils/imageUtils';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION'>('HOME');
@@ -45,26 +46,39 @@ const App: React.FC = () => {
     }
   };
 
-  const readFile = (file: File): Promise<{ base64: string, mimeType: string, preview: string }> => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        resolve({ base64: result.split(',')[1], mimeType: result.split(';')[0].split(':')[1], preview: result });
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
   const handleFilesSelected = async (files: File[]) => {
-    const newSessions: AnalysisSession[] = [];
-    for (const file of files) {
-       const { base64, mimeType, preview } = await readFile(file);
-       newSessions.push({ id: `session-${Date.now()}-${Math.random()}`, fileName: file.name, imageSrc: preview, mimeType: mimeType, status: 'PENDING', mode: analysisMode });
+    try {
+      const filePromises = files.map(async (file, index) => {
+        try {
+          const { base64, mimeType, preview } = await resizeAndCompressImage(file);
+          if (!preview || !base64) return null;
+          return {
+            id: `session-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 9)}`,
+            fileName: file.name,
+            imageSrc: preview,
+            mimeType: mimeType,
+            status: 'PENDING' as const,
+            mode: analysisMode
+          };
+        } catch (err) {
+          console.error("Error reading file:", file.name, err);
+          return null;
+        }
+      });
+
+      const newSessions = (await Promise.all(filePromises))
+        .filter((s): s is NonNullable<typeof s> => s !== null);
+
+      if (newSessions.length > 0) {
+        setSessions(prev => [...prev, ...newSessions]);
+        if (!activeSessionId) {
+          setActiveSessionId(newSessions[0].id);
+        }
+        setIsGalleryExpanded(true);
+      }
+    } catch (error) {
+       console.error("Error batch processing files:", error);
     }
-    setSessions(prev => [...prev, ...newSessions]);
-    if (!activeSessionId && newSessions.length > 0) setActiveSessionId(newSessions[0].id);
-    setIsGalleryExpanded(true);
   };
 
   useEffect(() => {
@@ -284,7 +298,7 @@ const App: React.FC = () => {
                     {getActiveSession()!.status === 'ANALYZING' && (
                        <div className="bg-emerald-950/20 border border-emerald-500/50 p-8 md:p-12 rounded-lg text-center min-h-[300px] flex flex-col items-center justify-center">
                           <div className="w-12 h-12 border-4 border-dashed border-emerald-500 rounded-full animate-spin mb-4"></div>
-                          <p className="text-emerald-400 font-mono-sci tracking-widest text-sm animate-pulse">{t('system_processing')}</p>
+                          <p className="text-emerald-400 font-mono-sci tracking-widest text-sm animate-pulse">{t('processing_target')}</p>
                        </div>
                     )}
                     {getActiveSession()!.status === 'ERROR' && (

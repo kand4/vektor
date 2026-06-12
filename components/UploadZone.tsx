@@ -35,9 +35,16 @@ const UploadZone: React.FC<UploadZoneProps> = ({ onImagesSelected, disabled, isA
     if (!fileList) return;
     const validFiles: File[] = [];
     
+    const isImageFile = (file: File) => {
+      if (file.type && file.type.startsWith('image/')) return true;
+      // If mobile view does not report a mime type, check filename extension
+      const extMatch = /\.(jpe?g|png|gif|webp|heic|heif|bmp|tiff|svg)$/i.test(file.name);
+      return extMatch;
+    };
+
     for (let i = 0; i < fileList.length; i++) {
         const file = fileList[i];
-        if (file.type.startsWith('image/')) {
+        if (isImageFile(file)) {
             validFiles.push(file);
         }
     }

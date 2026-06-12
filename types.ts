@@ -37,6 +37,7 @@ export interface RiskDetection {
   box_2d: BoundingBox;
   citations: Citation[];
   microscopeVideoUrl?: string;
+  confidence: number;
 }
 
 export interface KKMSectionResult {

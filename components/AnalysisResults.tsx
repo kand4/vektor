@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnalysisResponse, RiskDetection, ChatMessage, BoundingBox, RiskCategory, EpidemicTrend, AnalysisSession } from '../types';
 import ImageAnnotator from './ImageAnnotator';
-import { askRiskFollowUp, analyzeManualRegion, generateCleanSimulation, SimulationConfig } from '../services/geminiService';
+import { askRiskFollowUp, analyzeManualRegion, generateCleanSimulation, generateSimulationPrompt, SimulationConfig } from '../services/geminiService';
 import { useLanguage } from '../contexts/LanguageContext';
 import { PrintLayout } from './PrintLayout';
 import KKMReport from './KKMReport';
 import { Toast } from './Toast';
+import { SimulationConfigModal } from './Modals/SimulationConfigModal';
+import { SimulationResultModal } from './Modals/SimulationResultModal';
+import { ManualSimulationModal } from './Modals/ManualSimulationModal';
+import { DualScoreCard } from './DualScoreCard';
 
 const getRiskColorParams = (category: RiskCategory) => {
   switch (category) {
@@ -23,15 +27,6 @@ const getRiskColorParams = (category: RiskCategory) => {
     };
   }
 };
-
-const OptionBtn = ({ label, selected, onClick }: any) => (
-    <button 
-      onClick={onClick} 
-      className={`w-full p-3 rounded text-xs md:text-sm font-bold border transition-all flex items-center justify-center gap-2 ${selected ? 'bg-cyan-600 text-white border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.5)]' : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'}`}
-    >
-      {label}
-    </button>
-);
 
 const RiskListItem: React.FC<{ risk: RiskDetection, index: number, activeId: string | null, onClick: (r: RiskDetection) => void }> = ({ risk, index, activeId, onClick }) => {
   const { t } = useLanguage();
@@ -54,254 +49,6 @@ const RiskListItem: React.FC<{ risk: RiskDetection, index: number, activeId: str
         <div className="text-[10px] md:text-xs text-slate-500 font-mono-sci italic truncate">{risk.agent}</div>
       </div>
     </button>
-  );
-};
-
-// Dual Score Card
-const DualScoreCard: React.FC<{ hygieneLevel: number, safetyLevel: number, isSavage: boolean }> = ({ hygieneLevel, safetyLevel, isSavage }) => {
-    const { t } = useLanguage();
-    const safeLevel = safetyLevel || hygieneLevel;
-    const getColor = (level: number) => {
-        if (level >= 4) return 'text-emerald-400 border-emerald-500';
-        if (level === 3) return 'text-yellow-400 border-yellow-500';
-        return 'text-red-500 border-red-500';
-    };
-
-    return (
-        <div className="w-full relative overflow-hidden rounded-xl border border-slate-700 bg-slate-900/80 p-4 md:p-6 shadow-xl mb-4 transition-all duration-500">
-             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay"></div>
-             <div className="relative z-10 grid grid-cols-2 gap-4 md:gap-8 divide-x divide-slate-700">
-                 <div className="flex flex-col items-center justify-center text-center">
-                     <div className="text-[10px] font-mono-sci uppercase tracking-widest text-slate-400 mb-2">{t('label_hygiene')}</div>
-                     <div className={`w-12 h-12 md:w-16 md:h-16 rounded-full border-4 flex items-center justify-center bg-black/20 backdrop-blur mb-2 ${getColor(hygieneLevel)}`}>
-                        <span className="text-xl md:text-3xl font-bold font-sci-fi">{hygieneLevel}</span>
-                        <span className="text-[10px] opacity-60 mb-2">/5</span>
-                     </div>
-                 </div>
-                 <div className="flex flex-col items-center justify-center text-center pl-4 md:pl-8">
-                     <div className="text-[10px] font-mono-sci uppercase tracking-widest text-slate-400 mb-2">{t('label_safety')}</div>
-                     <div className={`w-12 h-12 md:w-16 md:h-16 rounded-full border-4 flex items-center justify-center bg-black/20 backdrop-blur mb-2 ${getColor(safeLevel)}`}>
-                        <span className="text-xl md:text-3xl font-bold font-sci-fi">{safeLevel}</span>
-                        <span className="text-[10px] opacity-60 mb-2">/5</span>
-                     </div>
-                 </div>
-             </div>
-             <div className="mt-4 pt-3 border-t border-slate-800 text-center">
-                 <span className={`text-xs md:text-sm font-sci-fi font-bold uppercase tracking-widest ${Math.min(hygieneLevel, safeLevel) < 3 ? 'text-red-500 animate-pulse' : 'text-emerald-400'}`}>
-                     {isSavage ? `${t('verdict_honest')}: ` : `${t('verdict_status')}: `} 
-                     {Math.min(hygieneLevel, safeLevel) === 1 ? t('status_closure') : Math.min(hygieneLevel, safeLevel) === 2 ? t('status_notice') : t('status_compliant')}
-                 </span>
-             </div>
-        </div>
-    );
-};
-
-interface SimulationConfigModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onStart: (config: SimulationConfig) => void;
-}
-
-const SimulationConfigModal: React.FC<SimulationConfigModalProps> = ({ isOpen, onClose, onStart }) => {
-  const { t } = useLanguage();
-  const [mode, setMode] = useState<SimulationConfig['mode']>('SANITIZE_ONLY');
-  const [humans, setHumans] = useState<SimulationConfig['humans']>('KEEP_PROTECTED');
-  const [lighting, setLighting] = useState<SimulationConfig['lighting']>('CLINICAL_BLUE');
-  const [engine, setEngine] = useState<SimulationConfig['engine']>('POLLINATIONS');
-  const [customPrompt, setCustomPrompt] = useState('');
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-[160] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in no-print">
-        <div className="bg-slate-900 border border-cyan-500 rounded-xl p-6 w-full max-w-lg shadow-[0_0_50px_rgba(34,211,238,0.3)] max-h-[90vh] overflow-y-auto custom-scrollbar">
-            <h3 className="text-xl font-sci-fi font-bold text-white mb-6 flex items-center gap-2">
-               <span className="text-cyan-400">🧬 {t('sim_title')}</span>
-            </h3>
-
-            <div className="space-y-6">
-                <div>
-                   <label className="text-xs text-slate-400 font-mono-sci uppercase block mb-2">{t('sim_objective')}</label>
-                   <div className="grid grid-cols-1 gap-2">
-                      <OptionBtn label={t('opt_sanitize')} selected={mode === 'SANITIZE_ONLY'} onClick={() => setMode('SANITIZE_ONLY')} />
-                      <OptionBtn label={t('opt_upgrade')} selected={mode === 'UPGRADE_FURNITURE'} onClick={() => setMode('UPGRADE_FURNITURE')} />
-                      <OptionBtn label={t('opt_recon')} selected={mode === 'FULL_RECONSTRUCTION'} onClick={() => setMode('FULL_RECONSTRUCTION')} />
-                   </div>
-                </div>
-
-                <div>
-                   <label className="text-xs text-slate-400 font-mono-sci uppercase block mb-2">{t('sim_protocol')}</label>
-                   <div className="grid grid-cols-2 gap-2">
-                      <OptionBtn label={t('opt_keep_ppe')} selected={humans === 'KEEP_PROTECTED'} onClick={() => setHumans('KEEP_PROTECTED')} />
-                      <OptionBtn label={t('opt_remove_humans')} selected={humans === 'REMOVE'} onClick={() => setHumans('REMOVE')} />
-                   </div>
-                </div>
-                
-                <div>
-                   <label className="text-xs text-slate-400 font-mono-sci uppercase block mb-2">{t('label_atmosphere')}</label>
-                   <div className="grid grid-cols-3 gap-2">
-                      <OptionBtn label={t('opt_clinical')} selected={lighting === 'CLINICAL_BLUE'} onClick={() => setLighting('CLINICAL_BLUE')} />
-                      <OptionBtn label={t('opt_natural')} selected={lighting === 'NATURAL'} onClick={() => setLighting('NATURAL')} />
-                      <OptionBtn label={t('opt_warm')} selected={lighting === 'WARM'} onClick={() => setLighting('WARM')} />
-                   </div>
-                </div>
-
-                <div>
-                   <label className="text-xs text-slate-400 font-mono-sci uppercase block mb-2">{t('label_ai_engine')}</label>
-                   <div className="grid grid-cols-2 gap-2">
-                      <OptionBtn label="✨ GEMINI (Imagen 3)" selected={engine === 'GEMINI_IMAGEN'} onClick={() => setEngine('GEMINI_IMAGEN')} />
-                      <OptionBtn label="🌸 FLUX (Pollinations)" selected={engine === 'POLLINATIONS'} onClick={() => setEngine('POLLINATIONS')} />
-                   </div>
-                   <p className="text-[10px] text-slate-500 mt-2 italic leading-relaxed">
-                       {t('sim_engine_tip')}
-                   </p>
-                </div>
-                
-                <div>
-                    <label className="text-xs text-slate-400 font-mono-sci uppercase block mb-2">{t('sim_prompt')}</label>
-                    <textarea 
-                        className="w-full bg-slate-800 border border-slate-700 rounded p-3 text-white text-sm outline-none focus:border-cyan-500"
-                        rows={3}
-                        placeholder={t('sim_prompt_placeholder')}
-                        value={customPrompt}
-                        onChange={(e) => setCustomPrompt(e.target.value)}
-                    />
-                </div>
-            </div>
-
-            <div className="flex gap-3 justify-end mt-8">
-                <button onClick={onClose} className="px-5 py-2 rounded text-slate-400 font-bold hover:text-white transition">{t('btn_cancel')}</button>
-                <button 
-                  onClick={() => onStart({ mode, humans, lighting, engine, customPrompt })}
-                  className="px-6 py-2 rounded bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold shadow-lg shadow-cyan-500/30 flex items-center gap-2"
-                >
-                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M9 4.5a.75.75 0 01.721.544l.813 2.846a3.75 3.75 0 002.576 2.576l2.846.813a.75.75 0 010 1.442l-2.846.813a3.75 3.75 0 00-2.576 2.576l-.813 2.846a.75.75 0 01-1.442 0l-.813-2.846a3.75 3.75 0 00-2.576-2.576l-2.846-.813a.75.75 0 010-1.442l2.846-.813a3.75 3.75 0 002.576-2.576L8.279 5.044A.75.75 0 019 4.5z" clipRule="evenodd" /></svg>
-                   {t('btn_generate_sim')}
-                </button>
-            </div>
-        </div>
-    </div>
-  )
-}
-
-const SimulationResultModal: React.FC<{ isOpen: boolean, onClose: () => void, originalImage: string, generatedImage: string }> = ({ isOpen, onClose, originalImage, generatedImage }) => {
-  const { t } = useLanguage();
-  const [sliderPos, setSliderPos] = useState(50);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
-
-  const handleMove = (clientX: number) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
-    setSliderPos(Math.max(0, Math.min(100, (x / rect.width) * 100)));
-  };
-
-  const onStart = (clientX: number) => { isDragging.current = true; handleMove(clientX); };
-  const onEnd = () => { isDragging.current = false; };
-  const onMove = (clientX: number) => { if (isDragging.current) handleMove(clientX); };
-
-  useEffect(() => {
-      const handleUp = () => isDragging.current = false;
-      document.addEventListener('mouseup', handleUp);
-      document.addEventListener('touchend', handleUp);
-      return () => { document.removeEventListener('mouseup', handleUp); document.removeEventListener('touchend', handleUp); };
-  }, []);
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-[180] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 no-print">
-        <div className="bg-slate-900 border border-cyan-500 rounded-xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden shadow-[0_0_50px_rgba(6,182,212,0.3)]">
-             <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-950">
-                 <h3 className="text-lg font-sci-fi font-bold text-cyan-400 flex items-center gap-2">
-                    <span className="animate-pulse">✨</span> {t('sim_complete')}
-                 </h3>
-                 <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-white">✕</button>
-             </div>
-             <div className="flex-1 relative bg-black/50 overflow-hidden flex flex-col items-center justify-center p-4 gap-6">
-                 {/* Image Container */}
-                 <div 
-                    ref={containerRef}
-                    className="relative w-full flex-1 max-h-[60vh] aspect-video border border-slate-700 rounded overflow-hidden shadow-2xl group/sim"
-                 >
-                    <img src={generatedImage} className="absolute inset-0 w-full h-full object-contain bg-slate-950" />
-                    <div className="absolute inset-0 bg-slate-950 overflow-hidden" style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}>
-                        <img src={originalImage} className="absolute inset-0 w-full h-full object-contain" />
-                    </div>
-                    {/* Visual Divider Line */}
-                    <div className="absolute top-0 bottom-0 w-0.5 bg-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.8)] pointer-events-none z-20" style={{ left: `${sliderPos}%` }}>
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-6 h-6 bg-cyan-500 rounded-full flex items-center justify-center shadow-lg border border-white/30 text-[10px] text-white">
-                            ↔
-                        </div>
-                    </div>
-                    
-                    {/* Labels */}
-                    <div className="absolute top-4 left-4 z-30 px-2 py-1 bg-black/60 backdrop-blur border border-slate-700 rounded text-[10px] font-mono-sci text-white pointer-events-none uppercase tracking-widest">
-                        ORIGINAL
-                    </div>
-                    <div className="absolute top-4 right-4 z-30 px-2 py-1 bg-cyan-900/60 backdrop-blur border border-cyan-500/50 rounded text-[10px] font-mono-sci text-cyan-400 pointer-events-none uppercase tracking-widest text-right">
-                        SANORAI_SIMULATION
-                    </div>
-                 </div>
-
-                 {/* SLIDER CONTROL BOX (Request 2 Fix) */}
-                 <div className="w-full max-w-2xl bg-slate-950/80 border border-slate-800 rounded-xl p-4 md:p-6 shadow-xl animate-fade-in-up">
-                    <div className="flex justify-between items-center mb-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                                ↔
-                            </div>
-                            <div>
-                                <h4 className="text-xs font-bold text-white uppercase tracking-widest">Kawalan Perbandingan</h4>
-                                <p className="text-[10px] text-slate-500 font-mono-sci italic">Seret untuk melihat perbezaan antara keadaan asal dan simulasi bersih.</p>
-                            </div>
-                        </div>
-                        <div className="text-xs font-mono-sci text-cyan-500 font-bold bg-cyan-500/10 px-2 py-1 rounded border border-cyan-500/20">
-                            {Math.round(sliderPos)}%
-                        </div>
-                    </div>
-                    
-                    <div className="relative pt-2">
-                        <input 
-                            type="range"
-                            min="0"
-                            max="100"
-                            step="0.1"
-                            value={sliderPos}
-                            onChange={(e) => setSliderPos(parseFloat(e.target.value))}
-                            className="w-full accent-cyan-500 h-2 bg-slate-800 rounded-lg appearance-none border border-slate-700 cursor-pointer hover:border-cyan-500/50 transition-colors"
-                        />
-                        <div className="flex justify-between mt-2 px-1">
-                            <span className="text-[9px] font-mono-sci text-slate-600 uppercase">Input Asal</span>
-                            <span className="text-[9px] font-mono-sci text-cyan-600 uppercase tracking-widest font-black">Hasil Simulasi</span>
-                        </div>
-                    </div>
-                 </div>
-
-                 <div className="flex gap-4 no-print">
-                      <button 
-                        onClick={() => {
-                            // Download Logic
-                            const link = document.createElement('a');
-                            link.download = 'sanorai_simulation.jpg';
-                            link.href = generatedImage;
-                            link.click();
-                        }}
-                        className="px-6 py-2 rounded bg-slate-800 border border-slate-700 text-white font-bold text-sm hover:bg-slate-700 transition"
-                      >
-                         Muat Turun Hasil
-                      </button>
-                      <button 
-                        onClick={onClose}
-                        className="px-8 py-2 rounded bg-cyan-600 text-white font-bold text-sm hover:bg-cyan-500 shadow-lg shadow-cyan-500/20 transition"
-                      >
-                         Selesai & Tutup
-                      </button>
-                 </div>
-             </div>
-        </div>
-    </div>
   );
 };
 
@@ -343,7 +90,10 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   const [cleanImage, setCleanImage] = useState<string | null>(savedSimulationImage || null);
   const [showCleanModal, setShowCleanModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [showManualSimModal, setShowManualSimModal] = useState(false);
+  const [manualSimPrompt, setManualSimPrompt] = useState("");
   const [toastMsg, setToastMsg] = useState<{msg: string, type: 'error' | 'success'} | null>(null);
+
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
   const [isPrinting, setIsPrinting] = useState(false);
   const [displayThreshold, setDisplayThreshold] = useState(100); // 0-100 threshold
@@ -403,14 +153,16 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     }
   }
 
-  // Filter risks based on displayThreshold
-  const filteredRisks = currentRisks.filter((_, idx) => {
-      // Simple heuristic: if threshold is 100, show all. 
-      // If threshold is 50, show first 50% of risks.
-      // This matches user's request for "more" or "fewer" boxes.
-      const percentage = ((idx + 1) / currentRisks.length) * 100;
-      return percentage <= displayThreshold;
-  });
+  // Filter risks based on displayThreshold (Smart Percentage-based Sorting)
+  const filteredRisks = (() => {
+    const sorted = [...currentRisks].sort((a, b) => {
+      const confA = a.confidence !== undefined ? a.confidence : 0.9;
+      const confB = b.confidence !== undefined ? b.confidence : 0.9;
+      return confB - confA;
+    });
+    const count = Math.round(sorted.length * (displayThreshold / 100));
+    return sorted.slice(0, count);
+  })();
 
   const bioRisks = filteredRisks.filter(r => r.category === 'VECTOR' || r.category === 'HYGIENE');
   const safetyRisks = filteredRisks.filter(r => r.category === 'SAFETY');
@@ -451,21 +203,35 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   const cancelManualMode = () => { setIsEditing(false); setShowManualModal(false); setManualBox(null); setManualContext(""); };
   const handleOpenSimulation = () => { cleanImage ? setShowCleanModal(true) : setShowConfigModal(true); };
 
-  const startSimulation = async (config: any) => {
+  const startSimulation = async (config: SimulationConfig) => {
       setShowConfigModal(false);
       setIsCleaning(true);
       try {
           const base64Data = imageSrc.split(',')[1];
           const mimeType = imageSrc.split(';')[0].split(':')[1] || 'image/jpeg';
-          const generatedImage = await generateCleanSimulation(base64Data, mimeType, config);
-          setCleanImage(generatedImage);
-          onSaveSimulation(generatedImage);
-          setShowCleanModal(true);
+          
+          if (config.engine === 'MANUAL') {
+              const prompt = await generateSimulationPrompt(base64Data, config);
+              setManualSimPrompt(prompt);
+              setShowManualSimModal(true);
+          } else {
+              const generatedImage = await generateCleanSimulation(base64Data, mimeType, config);
+              setCleanImage(generatedImage);
+              onSaveSimulation(generatedImage);
+              setShowCleanModal(true);
+          }
       } catch (error: any) {
           setToastMsg({ msg: `Simulasi Gagal: ${error.message}`, type: 'error' });
       } finally {
           setIsCleaning(false);
       }
+  };
+
+  const handleManualSimulationPasted = (base64Image: string) => {
+      setShowManualSimModal(false);
+      setCleanImage(base64Image);
+      onSaveSimulation(base64Image);
+      setShowCleanModal(true);
   };
 
   const handleAskAI = async (e: React.FormEvent) => {
@@ -652,7 +418,22 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
              {toastMsg && <Toast message={toastMsg.msg} type={toastMsg.type} onClose={() => setToastMsg(null)} />}
              
              {/* THE HIDDEN PRINT MODULE */}
-             <PrintLayout sessions={allSessions} />
+             <PrintLayout sessions={allSessions.map(session => {
+                if (!session.result?.risks) return session;
+                const sorted = [...session.result.risks].sort((a, b) => {
+                    const confA = a.confidence !== undefined ? a.confidence : 0.9;
+                    const confB = b.confidence !== undefined ? b.confidence : 0.9;
+                    return confB - confA;
+                });
+                const count = Math.round(sorted.length * (displayThreshold / 100));
+                return { 
+                    ...session, 
+                    result: { 
+                        ...session.result, 
+                        risks: sorted.slice(0, count) 
+                    } 
+                };
+             })} />
 
              <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
                 <h2 className="text-2xl font-bold text-blue-400 font-sci-fi">LAPORAN PEMERIKSAAN KKM</h2>
@@ -770,8 +551,8 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                             <div className="flex flex-col gap-3">
                                 <div className="flex justify-between items-center">
                                     <div className="flex flex-col">
-                                        <span className="text-xs font-bold text-blue-400 font-sci-fi tracking-widest">DARJAH PENGESANAN ANALITIS (AI)</span>
-                                        <span className="text-[10px] text-slate-400 font-mono italic">Kawal kepekaan pengesanan; peratusan tinggi akan memaparkan lebih banyak titik risiko.</span>
+                                        <span className="text-xs font-bold text-blue-400 font-sci-fi tracking-widest">DARJAH KEPEKAAN ANALISIS (AI)</span>
+                                        <span className="text-[10px] text-slate-400 font-mono italic">Kawal peratusan penemuan yang dipaparkan mengikut tahap keyakinan AI.</span>
                                     </div>
                                     <div className="px-3 py-1 bg-blue-900/40 border border-blue-500/50 rounded text-blue-300 font-mono-sci font-bold">
                                         {displayThreshold}%
@@ -780,16 +561,16 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                                 <div className="relative pt-1">
                                     <input 
                                         type="range" 
-                                        min="10" 
+                                        min="0" 
                                         max="100" 
-                                        step="10"
+                                        step="1"
                                         value={displayThreshold}
                                         onChange={(e) => setDisplayThreshold(parseInt(e.target.value))}
                                         className="w-full accent-blue-500 h-2 cursor-pointer bg-slate-800 rounded-lg appearance-none border border-slate-700"
                                     />
                                     <div className="flex justify-between mt-2">
-                                        <span className="text-[8px] font-mono-sci text-slate-500 uppercase tracking-tighter">Fokus Kritikal</span>
-                                        <span className="text-[8px] font-mono-sci text-slate-500 uppercase tracking-tighter">Analisis Maksimum</span>
+                                        <span className="text-[8px] font-mono-sci text-slate-500 uppercase tracking-tighter">Fokus Kritikal (0%)</span>
+                                        <span className="text-[8px] font-mono-sci text-slate-500 uppercase tracking-tighter">Analisis Maksimum (100%)</span>
                                     </div>
                                 </div>
                             </div>
@@ -855,6 +636,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       {toastMsg && <Toast message={toastMsg.msg} type={toastMsg.type} onClose={() => setToastMsg(null)} />}
       <SimulationConfigModal isOpen={showConfigModal} onClose={() => setShowConfigModal(false)} onStart={startSimulation} />
       <SimulationResultModal isOpen={showCleanModal} onClose={() => setShowCleanModal(false)} originalImage={imageSrc} generatedImage={cleanImage || ""} />
+      <ManualSimulationModal isOpen={showManualSimModal} onClose={() => setShowManualSimModal(false)} promptText={manualSimPrompt} onImagePasted={handleManualSimulationPasted} />
       
       {/* THE HIDDEN PRINT MODULE */}
       <PrintLayout sessions={allSessions} />
@@ -937,25 +719,25 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     <div className="flex justify-between items-center">
                         <div className="flex flex-col">
                             <span className="text-xs font-bold text-emerald-400 font-sci-fi tracking-widest">TAHAP KEPEKAAN PENGESANAN</span>
-                            <span className="text-[10px] text-slate-400 font-mono italic">Tetapkan sensitiviti analisis AI untuk hasil minimum atau maksimum.</span>
+                            <span className="text-[10px] text-slate-400 font-mono italic text-balance">Tetapkan peratusan penemuan yang ingin dipaparkan dalam laporan.</span>
                         </div>
-                        <div className="px-3 py-1 bg-emerald-900/30 border border-emerald-500/50 rounded text-emerald-400 font-mono-sci font-bold">
+                        <div className="px-3 py-1 bg-emerald-900/30 border border-emerald-500/50 rounded text-emerald-400 font-mono-sci font-bold font-sci-fi">
                             {displayThreshold}%
                         </div>
                     </div>
                     <div className="relative pt-1">
                         <input 
                             type="range" 
-                            min="10" 
+                            min="0" 
                             max="100" 
-                            step="10"
+                            step="1"
                             value={displayThreshold}
                             onChange={(e) => setDisplayThreshold(parseInt(e.target.value))}
                             className="w-full accent-emerald-500 h-2 cursor-pointer bg-slate-800 rounded-lg appearance-none border border-slate-700"
                         />
                         <div className="flex justify-between mt-2">
-                            <span className="text-[8px] font-mono-sci text-slate-500 uppercase tracking-tighter">Ketepatan Tinggi</span>
-                            <span className="text-[8px] font-mono-sci text-slate-500 uppercase tracking-tighter">Liputan Meluas</span>
+                            <span className="text-[8px] font-mono-sci text-slate-500 uppercase tracking-tighter">Tiada Hasil (0%)</span>
+                            <span className="text-[8px] font-mono-sci text-emerald-500 uppercase tracking-tighter font-black underline">Lengkap (100%)</span>
                         </div>
                     </div>
                 </div>

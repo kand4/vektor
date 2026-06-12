@@ -6,7 +6,7 @@ export interface SimulationConfig {
   mode: 'SANITIZE_ONLY' | 'UPGRADE_FURNITURE' | 'FULL_RECONSTRUCTION';
   humans: 'KEEP_PROTECTED' | 'REMOVE';
   lighting: 'NATURAL' | 'CLINICAL_BLUE' | 'WARM';
-  engine: 'GEMINI_IMAGEN' | 'POLLINATIONS'; 
+  engine: 'GEMINI_IMAGEN' | 'POLLINATIONS' | 'MANUAL'; 
   customPrompt?: string;
 }
 
@@ -249,7 +249,7 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
                - demeritReceived: number (Points deducted based on image)
                - violations: string[] (List specific faults if demerit > 0)
 
-        - risks: Array of Objects. Each Object MUST contain specific visual findings for evidence:
+         - risks: Array of Objects. Each Object MUST contain specific visual findings for evidence:
             1. box_2d: [ymin, xmin, ymax, xmax] 
                - DATA TYPE: ARRAY OF 4 INTEGERS.
                - SCALE: 0-1000 (1000x1000 grid).
@@ -261,6 +261,7 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
             5. disease: string (**STRICTLY ENGLISH/MEDICAL TERM** e.g., "Food Poisoning", "Typhoid", "Cholera")
             6. description: string (Forensic Observation in ${targetLang})
             7. solution: string (Remedial action in ${targetLang})
+            8. confidence: number (0.0 - 1.0)
         - hygieneLevel: INTEGER (1-5)
       `;
 
@@ -466,7 +467,7 @@ export const analyzeManualRegion = async (base64Image: string, mimeType: string,
         const ai = getAIClient();
         return await ai.models.generateContent({
             // Using Pro model for higher spatial intelligence and coordinate handling
-            model: getPreferredModel("gemini-2.0-pro"), 
+            model: getPreferredModel("gemini-2.0-flash"), 
             contents: { parts: [{ inlineData: { mimeType: 'image/jpeg', data: optimizedImage } }, { text: prompt }] },
             config: { responseMimeType: "application/json" }
         });
@@ -485,51 +486,68 @@ export const analyzeManualRegion = async (base64Image: string, mimeType: string,
     return result;
 };
 
-export const generateCleanSimulation = async (base64Image: string, mimeType: string, config: SimulationConfig): Promise<string> => {
+export const generateSimulationPrompt = async (base64Image: string, config: SimulationConfig): Promise<string> => {
     const ai = getAIClient();
     const optimizedImage = await compressImage(base64Image);
     
-    // STEP 1: Generate a text-based prompt using gemini-2.5-flash
-    let basePrompt = "Sterile high-tech modern clean room, highly professional medical lab, ultra-safe environment, spotless clean.";
-    if (config.mode === 'UPGRADE_FURNITURE') {
-        basePrompt += " Features brand new stainless steel tables, ergonomic lab chairs, advanced sealed cabinets.";
-    } else if (config.mode === 'FULL_RECONSTRUCTION') {
-        basePrompt += " Complete architectural reconstruction, futuristic modular lab walls, epoxy seamless flooring, negative pressure HVAC vents overhead.";
+    let basePrompt = "";
+    
+    if (config.customPrompt && config.customPrompt.trim().length > 0) {
+        basePrompt = `[CRITICAL: EXACTLY MATCH THE ORIGINAL CAMERA ANGLE, PERSPECTIVE, AND FIELD OF VIEW OF THE INPUT IMAGE. DO NOT CHANGE THE CAMERA POSITION.] Clean up the environment exactly according to these instructions: ${config.customPrompt}`;
+    } else {
+        basePrompt = "[CRITICAL: EXACTLY MATCH THE ORIGINAL CAMERA ANGLE, PERSPECTIVE, AND FIELD OF VIEW OF THE INPUT IMAGE.] The same exact room but completely cleaned, all trash and dirt removed, organized and neat.";
+        
+        if (config.mode === 'UPGRADE_FURNITURE') {
+            basePrompt += " Upgrade with brand new furniture matching the original layout.";
+        } else if (config.mode === 'FULL_RECONSTRUCTION') {
+            basePrompt += " Complete architectural reconstruction, new clean flooring and walls but strictly keeping the same structural layout.";
+        } else {
+            basePrompt += " Keep existing furniture but make them look squeaky clean and spotless.";
+        }
+        
+        if (config.humans === 'KEEP_PROTECTED') {
+            basePrompt += " Keep existing people in the image but equip them with proper protective gear.";
+        } else {
+            basePrompt += " Zero humans present, completely empty scene.";
+        }
+        
+        if (config.lighting === 'CLINICAL_BLUE') {
+            basePrompt += " Cool blue LED lighting.";
+        } else if (config.lighting === 'WARM') {
+            basePrompt += " Warm soft bright lighting.";
+        } else {
+            basePrompt += " Bright natural sunlight streaming in.";
+        }
     }
     
-    if (config.humans === 'KEEP_PROTECTED') {
-        basePrompt += " Includes professional staff wearing full Level A biohazard PPE suits, conducting inspections safely.";
-    } else {
-        basePrompt += " Zero humans present, completely empty and sterile to prevent contamination.";
-    }
-    
-    if (config.lighting === 'CLINICAL_BLUE') {
-        basePrompt += " Clinical cool blue and bright white LED overhead lighting, sharp clinical shadows.";
-    } else if (config.lighting === 'WARM') {
-        basePrompt += " Warm soft incandescent glow, welcoming and safe hospital recovery room lighting.";
-    } else {
-        basePrompt += " Natural sunlight streaming through large sealed windows, bright and airy feel.";
-    }
-    if (config.customPrompt) {
-        basePrompt += ` SPECIFIC INSTRUCTIONS: ${config.customPrompt}`;
-    }
-    basePrompt += " Ultra-photorealistic, 8k resolution, highly detailed, professional cinematography.";
+    basePrompt += " Ultra-photorealistic, 8k resolution, highly detailed photography.";
 
-    // Logic Refinement: Primary -> Multi-modal Gemini 2.5 Flash, Fallback -> Imagen 3, Fallback -> External
     const promptGeneration = async () => {
         const resp = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-2.0-flash',
             contents: {
                 parts: [
                     { inlineData: { data: optimizedImage, mimeType: 'image/jpeg' } },
-                    { text: `Based on this room image, generate a highly detailed image generation prompt for a clean, sterile version of it. Include layout details from the original. Requirements: ${basePrompt}` }
+                    { text: `Analyze the provided image and generate a highly detailed image generation prompt. REQUIRED INSTRUCTIONS to follow: "${basePrompt}". IMPORTANT: Do NOT arbitrarily turn it into a medical lab or hospital unless the user asked for it. Just output the English prompt for Image Generation.` }
                 ]
             }
         });
         return resp.text || basePrompt;
     };
 
-    const finalPrompt = await retryWithBackoff(promptGeneration);
+    try {
+        return await retryWithBackoff(promptGeneration);
+    } catch (error) {
+        console.warn("Prompt generation failed, falling back to base prompt:", error);
+        return basePrompt;
+    }
+};
+
+export const generateCleanSimulation = async (base64Image: string, mimeType: string, config: SimulationConfig): Promise<string> => {
+    const ai = getAIClient();
+    const optimizedImage = await compressImage(base64Image);
+    
+    const finalPrompt = await generateSimulationPrompt(base64Image, config);
 
     if (config.engine === 'GEMINI_IMAGEN') {
         // 1. Try Gemini 2.5 Flash Image-to-Image (Multimodal)
@@ -593,7 +611,7 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
 export const askRiskFollowUp = async (risk: RiskDetection, question: string, language: string = 'ms'): Promise<string> => {
     const ai = getAIClient();
     const response = await ai.models.generateContent({
-        model: getPreferredModel("gemini-2.5-flash"), 
+        model: getPreferredModel("gemini-2.0-flash"), 
         contents: `CONTEXT: RISK ANALYSIS. Risk: "${risk.label}" (${risk.category}). Agent: ${risk.agent}.
         USER QUERY: "${question}".
         INSTRUCTION: Answer as a Senior Public Health Engineer. Be technical but clear. Language: ${language}.`,
@@ -606,21 +624,30 @@ export const deepLarvaeAnalysis = async (base64Image: string): Promise<{ diagnos
         // Kompres gambar sedikit lagi agar tidak terlalu besar untuk dihantar melalui rangkaian
         const optimizedImage = await compressImage(base64Image, 1024, 0.8);
 
-        const prompt = `Anda adalah pakar entomologi dan sistem penglihatan komputer beresolusi tinggi di Kementerian Kesihatan Malaysia. 
-Sila analisa imej ini secara terperinci, kesan kedudukan jentik-jentik (larva nyamuk) dan berikan laporan hasil pengesanan berserta lokasi koordinat bounding box (box_2d) dalam grid skala 0-1000.
-Pastikan lokasi koordinat (ymin, xmin, ymax, xmax) adalah tepat dengan kedudukan larva di dalam gambar.
-Keluarkan output DALAM FORMAT JSON SAHAJA:
-{
-  "diagnosis": "Ayat diagnosa profesional (ringkas)",
-  "predictions": [
-    {
-      "class": "Aedes Larvae / Culex Larvae / dll",
-      "short_desc": "Perincian ringkas (Cth: Larva pada peringkat Instar ke-4)",
-      "confidence": 0.95,
-      "box_2d": [ymin, xmin, ymax, xmax]
-    }
-  ]
-}`;
+        const prompt = `Anda adalah Pakar entomologi forensik dan pakar vektor. Fokus anda adalah pengelasan spesis larva nyamuk (Aedes, Culex, Anopheles, dll.) melalui morfologi visual yang ketat.
+ 
+ TUGAS ANDA:
+ 1. Lakukan pengenalan spesis larva nyamuk yang tepat (contoh: Aedes aegypti, Aedes albopictus, Culex quinquefasciatus).
+ 2. Cari secara khusus ciri diagnostik berikut (SILA SENARAIKAN CIRI INI DALAM PREDIKSI JIKA DITEMUI):
+    - **Siphon**: Perhatikan bentuk, panjang, dan kehadiran 'pecten teeth'.
+    - **Kepala**: Bentuk kapsul kepala dan susunan sesungut (antennae).
+    - **Abdomen**: Struktur segmen anal dan 'saddle'.
+    - **Ciri Tambahan**: Corak pada kulit atau kehadiran 'anal papillae'.
+ 3. Bounding box (box_2d) mestilah tepat melingkungi feature anatomi yang disebut.
+ 4. Diagnosis mestilah mengesahkan spesis yang paling berkemungkinan berdasarkan bukti visual kuat yang ditemui.
+ 
+ FORMAT OUTPUT JSON SAHAJA:
+ {
+   "diagnosis": "Laporan Morfologi Forensik dan Pengesanan Spesis Larva (Markdown)",
+   "predictions": [
+     {
+       "box_2d": [ymin, xmin, ymax, xmax],
+       "class": "Bahagian Anatomi (cth: 'Siphon', 'Head capsule')",
+       "short_desc": "Ciri khas (cth: 'Siphon panjang, ciri Culex')",
+       "confidence": 0.95
+     }
+   ]
+ }`;
         
         const response = await retryWithBackoff(async () => {
              const ai = getAIClient();
