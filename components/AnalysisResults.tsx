@@ -307,8 +307,10 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     try {
       const response = await askRiskFollowUp(activeRisk, newMsg.text, language);
       setChatMessages(prev => [...prev, { role: 'model', text: response }]);
-    } catch (error) {
-      setChatMessages(prev => [...prev, { role: 'model', text: t('chat_error') }]);
+    } catch (error: any) {
+      console.error("Ask AI error:", error);
+      const errMsg = error?.message || String(error);
+      setChatMessages(prev => [...prev, { role: 'model', text: `${t('chat_error')} Ralat: ${errMsg}` }]);
     } finally {
       setIsChatLoading(false);
     }

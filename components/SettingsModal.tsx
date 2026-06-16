@@ -24,7 +24,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       const storedKey2 = localStorage.getItem('gemini_api_key_2') || '';
       const storedKey3 = localStorage.getItem('gemini_api_key_3') || '';
       const storedZaiKey = localStorage.getItem('zai_api_key') || '';
-      const storedModel = localStorage.getItem('gemini_model_preference') || 'gemini-3.1-pro-preview';
+      const storedModel = localStorage.getItem('gemini_model_preference') || 'gemini-2.5-flash';
       const storedRoboflowKey = localStorage.getItem('roboflow_api_key') || '';
       const storedRoboflowModel = localStorage.getItem('roboflow_model') || 'aegypti-larvae-detection/1';
       setApiKey(storedKey);
@@ -212,12 +212,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             >
               <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Terbaik / Pintar)</option>
               <option value="gemini-2.5-flash">Gemini 2.5 Flash (Laju / Sederhana)</option>
-              <option value="z.ai/glm-5v-turbo">Z.ai: glm-5v-turbo (Khusus Imbasan Imej)</option>
+              <option value="z.ai/glm-4.6v">Z.ai: GLM-4.6V (Kadar Limit Tinggi)</option>
             </select>
-            <p className="text-[10px] text-slate-500 mt-1">Pilihan ini digunakan sebagai enjin imbasan. Manakala simulasi janaan imej baharu tetap akan menggunakan Gemini / ImageN 4.</p>
+            <p className="text-[10px] text-slate-500 mt-1">Pilihan ini digunakan sebagai enjin imbasan. Soalan susulan AI, diagnosa, dan simulasi imej tetap menggunakan Gemini / Imagen secara automatik bagi memastikan kualiti premium serta penjimatan kadar limit (RPM) Z.ai anda.</p>
           </div>
 
-          {geminiModel === 'z.ai/glm-5v-turbo' && (
+          {geminiModel.startsWith('z.ai/') && (
               <div className="bg-indigo-950/40 p-4 rounded-lg border border-indigo-800/50 mt-2">
                 <label className="block text-sm font-medium text-indigo-300 mb-1">
                   Z.ai / Zhipu API Key
@@ -229,7 +229,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                   value={zaiKey}
                   onChange={(e) => setZaiKey(e.target.value)}
                 />
-                <p className="text-[10px] text-indigo-400/70 mt-2">Kunci ini akan digunapakai untuk endpoint <b>https://api.z.ai/v1/chat/completions</b></p>
+                <p className="text-[10px] text-indigo-400/70 mt-2">Kunci ini akan digunapakai untuk endpoint <b>https://api.z.ai/api/paas/v4/chat/completions</b></p>
               </div>
           )}
 

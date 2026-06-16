@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/zai",
+      "destination": "https://api.z.ai/api/paas/v4/chat/completions"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

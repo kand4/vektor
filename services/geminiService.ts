@@ -14,6 +14,19 @@ export const getPreferredModel = (defaultModel: string) => {
     return localStorage.getItem('gemini_model_preference') || defaultModel;
 };
 
+export const getPreferredModelForScan = (defaultModel: string) => {
+    return localStorage.getItem('gemini_model_preference') || defaultModel;
+};
+
+export const getPreferredModelForText = (defaultModel: string) => {
+    const pref = localStorage.getItem('gemini_model_preference');
+    if (pref && pref.startsWith('z.ai/')) {
+        // Z.ai models are reserved strictly for scanning. Text and chat followups must use Gemini.
+        return defaultModel; 
+    }
+    return pref || defaultModel;
+};
+
 let activeKeyIndex = 0;
 
 export const getAvailableApiKeys = (): string[] => {
@@ -34,11 +47,7 @@ export const getAvailableApiKeys = (): string[] => {
 
 const getAIClient = (): any => {
   const keys = getAvailableApiKeys();
-  if (keys.length === 0) {
-    throw new Error("API Key tiada. Sila masukkan sekurang-kurangnya satu API Key di ruangan Tetapan (Settings).");
-  }
-
-  const clients = keys.map(key => new GoogleGenAI({ apiKey: key }));
+  const poolSize = keys.length > 0 ? keys.length : 1;
 
   const handler = {
     get(target: any, prop: string | symbol, receiver: any): any {
@@ -48,32 +57,72 @@ const getAIClient = (): any => {
             if (modelsProp === 'generateContent' || modelsProp === 'generateImages') {
               return async (...args: any[]) => {
                 let lastError = null;
-                const poolSize = clients.length;
+                const arg = args[0] || {};
+                
                 for (let i = 0; i < poolSize; i++) {
-                  const currentIndex = (activeKeyIndex + i) % poolSize;
-                  const client = clients[currentIndex];
+                  const currentIndex = keys.length > 0 ? (activeKeyIndex + i) % poolSize : 0;
+                  const key = keys.length > 0 ? keys[currentIndex] : null;
+                  
                   try {
-                    console.log(`🤖 [Attempt ${i + 1}/${poolSize}] Calling ${String(modelsProp)} using Key Slot ${currentIndex + 1}...`);
-                    const result = await (client.models as any)[modelsProp](...args);
-                    activeKeyIndex = (currentIndex + 1) % poolSize;
-                    return result;
+                    console.log(`🤖 [Attempt ${i + 1}/${poolSize}] Proxying ${String(modelsProp)} through server... Key Slot: ${key ? currentIndex + 1 : 'Default Server Key'}`);
+                    const headers: Record<string, string> = {
+                      'Content-Type': 'application/json'
+                    };
+                    if (key) {
+                      headers['Authorization'] = `Bearer ${key}`;
+                    }
+
+                    const bodyPayload = {
+                      method: String(modelsProp),
+                      model: arg.model,
+                      config: arg.config
+                    } as any;
+
+                    if (modelsProp === 'generateContent') {
+                      bodyPayload.contents = arg.contents;
+                    } else if (modelsProp === 'generateImages') {
+                      bodyPayload.prompt = arg.prompt;
+                    }
+
+                    const res = await fetch('/api/gemini', {
+                      method: 'POST',
+                      headers,
+                      body: JSON.stringify(bodyPayload)
+                    });
+
+                    if (!res.ok) {
+                      const errText = await res.text();
+                      let errMessage = `Ralat HTTP ${res.status}`;
+                      try {
+                        const errJson = JSON.parse(errText);
+                        errMessage = errJson?.error?.message || errMessage;
+                      } catch (e) {
+                        errMessage = errText || errMessage;
+                      }
+                      throw new Error(errMessage);
+                    }
+
+                    const data = await res.json();
+                    
+                    if (keys.length > 0) {
+                      activeKeyIndex = (currentIndex + 1) % poolSize;
+                    }
+                    return data;
                   } catch (error: any) {
-                    const errMsg = typeof error === 'string' ? error : (error.message || JSON.stringify(error));
-                    console.warn(`⚠️ [Key Slot ${currentIndex + 1}] failed:`, errMsg);
+                    const errMsg = error?.message || String(error);
+                    console.warn(`⚠️ [Key Slot ${key ? currentIndex + 1 : 'Default Server Key'}] failed:`, errMsg);
                     lastError = error;
                   }
                 }
-                throw lastError || new Error("Semua API Key dalam pusingan rotation telah gagal.");
+                throw lastError || new Error("Semua cubaan panggilan model melalui pelayan telah gagal.");
               };
             }
-            const client = clients[activeKeyIndex % clients.length];
-            return Reflect.get(client.models, modelsProp);
+            throw new Error(`Method ${String(modelsProp)} is not mocked in proxy mode.`);
           }
         };
         return new Proxy({}, modelsHandler);
       }
-      const client = clients[activeKeyIndex % clients.length];
-      return Reflect.get(client, prop, receiver);
+      throw new Error(`Property ${String(prop)} is not mocked in proxy mode.`);
     }
   };
 
@@ -121,7 +170,7 @@ export const fetchLatestIDengueStats = async (): Promise<iDengueData> => {
       Output JSON Structure: { "cumulativeCases": number, "cumulativeDeaths": number, "activeHotspots": number, "topState": string, "epidemiologicalWeek": string, "lastUpdated": string }`;
 
       const response = await ai.models.generateContent({
-        model: getPreferredModel('gemini-2.5-flash'), 
+        model: getPreferredModelForText('gemini-2.5-flash'), 
         contents: { parts: [{ text: prompt }] },
         config: {
           tools: [{ googleSearch: {} }]
@@ -159,7 +208,7 @@ export const fetchRegionalDengueStats = async (state: string, district: string):
         Output JSON: { "stateName": "${state}", "districtName": "${district}", "stateCases": number, "districtCases": number, "districtHotspots": number, "districtRiskLevel": "LOW"|"MEDIUM"|"HIGH"|"EXTREME", "localAdvice": string, "epidemiologicalWeek": string }`;
 
         const response = await ai.models.generateContent({
-          model: getPreferredModel('gemini-2.5-flash'),
+          model: getPreferredModelForText('gemini-2.5-flash'),
           contents: { parts: [{ text: prompt }] },
           config: {
             tools: [{ googleSearch: {} }]
@@ -211,6 +260,28 @@ const compressImage = (base64Str: string, maxWidth = 1600, quality = 0.9): Promi
     });
 };
 
+export const prettifyErrorMessage = (error: any): string => {
+  const msg = error?.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
+  
+  if (msg.includes("Insufficient balance") || msg.includes("1113") || msg.includes("no resource package")) {
+    return "Baki API Z.ai anda tidak mencukupi (Insufficient balance). Sila tambah nilai (recharge) di akaun Zhipu/Z.ai atau tukarkan pilihan Enjin Imbasan kepada model Google Gemini standard di ruangan Tetapan.";
+  }
+
+  if (msg.includes("PERMISSION_DENIED") || msg.includes("does not have permission") || msg.includes("403")) {
+    return "Ralat Kebenaran (API Permission Denied): Kunci API Gemini yang anda gunakan tidak mempunyai kebenaran untuk membuat panggilan ini. Sila pastikan: (1) Kunci API Gemini tidak disekat (restricted) di Google Cloud Console, (2) 'Generative Language API' dibenarkan pada kunci tersebut, (3) Jika guna akaun syarikat/ Workspace, admin mungkin melarang akses Gemini. Sila gunakan akaun Google peribadi untuk menjana API Key percuma baharu di Google AI Studio.";
+  }
+
+  if (msg.includes("429") || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED")) {
+    return "Had Kuota API Gemini telah dicapai (Quota Exceeded) atau terlalu banyak permintaan (Rate Limit). Sila tunggu sebentar (kira-kira 1 minit), atau pergi ke Tetapan (Settings) > Masukkan API Key Google Gemini anda sendiri.";
+  }
+
+  if (msg.includes("API Key tiada")) {
+    return "Tiada API Key dijumpai. Sila masukkan sekurang-kurangnya satu API Key di ruangan Tetapan (Settings).";
+  }
+
+  return msg;
+};
+
 const retryWithBackoff = async <T>(fn: () => Promise<T>, retries = 2, delay = 2000): Promise<T> => {
     try {
         return await fn();
@@ -241,8 +312,8 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
   const targetLang = langMap[language] || 'Bahasa Melayu';
   const optimizedImage = await compressImage(base64Image);
   
-  // Use preferred model or Pro model for higher spatial intelligence
-  const modelId = getPreferredModel("gemini-3.1-pro-preview");
+  // Use preferred model or Flash model for higher spatial intelligence and free API compatibility
+  const modelId = getPreferredModelForScan("gemini-2.5-flash");
 
   let thinkingBudget = 4000; 
   let engineerPersona = "";
@@ -382,47 +453,88 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
 
   try {
       const parsedResult = await retryWithBackoff(async () => {
-          if (modelId === 'z.ai/glm-5v-turbo') {
-               const zaiKey = localStorage.getItem('zai_api_key');
-               if (!zaiKey) throw new Error("Z.ai API Key tiada! Sila masukkan dalam tetapan.");
-               // Zhipu/Z.ai uses standard openAI chat completions
-               const res = await fetch('https://api.z.ai/v1/chat/completions', {
-                   method: 'POST',
-                   headers: {
-                       'Content-Type': 'application/json',
-                       'Authorization': `Bearer ${zaiKey.trim()}`
-                   },
-                   body: JSON.stringify({
-                       model: 'glm-5v-turbo', // The exact name Zhipu API expects
-                       messages: [
-                           {
-                               role: 'user',
-                               content: [
-                                   { type: 'text', text: `${finalPrompt}\n\n${schemaDescription}` },
-                                   {
-                                       type: 'image_url',
-                                       image_url: {
-                                           url: `data:${mimeType};base64,${optimizedImage}`
+          if (modelId.startsWith('z.ai/')) {
+               try {
+                   const zaiModelRaw = modelId.split('/')[1] || 'glm-4.6v';
+                   const zaiKey = localStorage.getItem('zai_api_key');
+                   if (!zaiKey) throw new Error("Z.ai API Key tiada! Sila masukkan dalam tetapan.");
+                   // Use local proxy to avoid CORS
+                   const res = await fetch('/api/zai', {
+                       method: 'POST',
+                       headers: {
+                           'Content-Type': 'application/json',
+                           'Authorization': `Bearer ${zaiKey.trim()}`
+                       },
+                       body: JSON.stringify({
+                           model: zaiModelRaw, // Pass the chosen Z.ai model directly
+                           messages: [
+                               {
+                                   role: 'user',
+                                   content: [
+                                       { type: 'text', text: `${finalPrompt}\n\n${schemaDescription}` },
+                                       {
+                                           type: 'image_url',
+                                           image_url: {
+                                               url: `data:${mimeType};base64,${optimizedImage}`
+                                           }
                                        }
-                                   }
-                               ]
+                                   ]
+                               }
+                           ],
+                           max_tokens: 4096,
+                           // Trying to instruct json mode if supported, otherwise just prompt engineering covers it
+                           response_format: { type: "json_object" }
+                       })
+                   });
+
+                   if (!res.ok) {
+                       const errText = await res.text();
+                       try {
+                           const errJson = JSON.parse(errText);
+                           if (errJson.error?.code === "1113" || res.status === 429) {
+                               throw new Error(`Baki API Z.ai anda tidak mencukupi (Insufficient balance). Sila tambah nilai (recharge) di akaun Zhipu/Z.ai. Maklumat Penuh: ${errJson.error?.message || errText}`);
                            }
-                       ],
-                       max_tokens: 4096,
-                       // Trying to instruct json mode if supported, otherwise just prompt engineering covers it
-                       response_format: { type: "json_object" }
-                   })
-               });
+                       } catch(e) {
+                           if (e.message.includes('Baki API')) throw e;
+                       }
+                       throw new Error(`Z.ai Error [${res.status}]: ${errText}`);
+                   }
 
-               if (!res.ok) {
-                   const errData = await res.text();
-                   throw new Error(`Z.ai Error [${res.status}]: ${errData}`);
+                   const data = await res.json();
+                   let textResponse = data.choices?.[0]?.message?.content || "{}";
+                   textResponse = extractJSON(textResponse);
+                   return JSON.parse(textResponse) as AnalysisResponse;
+               } catch (zaiError: any) {
+                   console.warn("⚠️ Z.ai calling failed, checking fallback:", zaiError);
+                   const keys = getAvailableApiKeys();
+                   if (keys.length > 0) {
+                       console.log("➡️ Falling back to Gemini to complete analysis because of Z.ai error...");
+                       const ai = getAIClient();
+                       const fallbackModel = 'gemini-2.5-flash';
+                       const resp = await ai.models.generateContent({
+                         model: fallbackModel,
+                         contents: {
+                             parts: [
+                                 { inlineData: { mimeType: 'image/jpeg', data: optimizedImage } }, 
+                                 { text: `${finalPrompt}\n\n${schemaDescription}` }
+                             ]
+                         },
+                         config: { 
+                           responseMimeType: "application/json",
+                           thinkingConfig: { thinkingBudget: thinkingBudget } 
+                         }
+                       });
+                       let t = resp.text || "{}";
+                       t = extractJSON(t);
+                       const parsed = JSON.parse(t) as AnalysisResponse;
+                       if (parsed) {
+                           parsed.generalAdvice = `⚠️ [Sambungan Automatik ke Gemini] Z.ai bercelaru atau tiada baki, jadi imbasan diselesaikan menggunakan Google Gemini! ` + (parsed.generalAdvice || "");
+                       }
+                       return parsed;
+                   } else {
+                       throw zaiError;
+                   }
                }
-
-               const data = await res.json();
-               let textResponse = data.choices?.[0]?.message?.content || "{}";
-               textResponse = extractJSON(textResponse);
-               return JSON.parse(textResponse) as AnalysisResponse;
           }
 
           const ai = getAIClient();
@@ -530,11 +642,8 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
   } catch (error: any) {
       console.error("Analysis Error:", error);
       saveLog(`Analysis Error: ${error?.message || error}`, { error, mode: analysisMode, finalPrompt });
-      const msg = error?.message || String(error);
-      if (msg.includes("429") || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED")) {
-          throw new Error("Had Kuota API Gemini telah dicapai (Quota Exceeded) atau terlalu banyak permintaan (Rate Limit). Sila tunggu sebentar, atau pergi ke Tetapan (Settings) > Masukkan API Key Google Gemini anda sendiri.");
-      }
-      throw new Error("Sistem Bio-Analisis sibuk. Sila cuba sebentar lagi. (" + msg + ")");
+      const prettyMsg = prettifyErrorMessage(error);
+      throw new Error(prettyMsg);
   }
 };
 
@@ -563,27 +672,32 @@ export const analyzeManualRegion = async (base64Image: string, mimeType: string,
       "solution": "${isSavageMode ? 'Provide a highly sarcastic, brutal, aggressive roast/commentary instead of real advice.' : 'Provide official, practical recommendations and mitigation strategies'}"
     }`;
     
-    const result = await retryWithBackoff(async () => {
-        const ai = getAIClient();
-        const resp = await ai.models.generateContent({
-            // Using Pro model for higher spatial intelligence and coordinate handling
-            model: getPreferredModel("gemini-2.5-flash"), 
-            contents: { parts: [{ inlineData: { mimeType: 'image/jpeg', data: optimizedImage } }, { text: prompt }] },
-            config: { responseMimeType: "application/json" }
+    try {
+        const result = await retryWithBackoff(async () => {
+            const ai = getAIClient();
+            const resp = await ai.models.generateContent({
+                // Using Pro model for higher spatial intelligence and coordinate handling
+                model: getPreferredModelForText("gemini-2.5-flash"), 
+                contents: { parts: [{ inlineData: { mimeType: 'image/jpeg', data: optimizedImage } }, { text: prompt }] },
+                config: { responseMimeType: "application/json" }
+            });
+            const t = extractJSON(resp.text || "{}");
+            return JSON.parse(t);
         });
-        const t = extractJSON(resp.text || "{}");
-        return JSON.parse(t);
-    });
-    result.id = `manual-${Date.now()}`;
-    result.box_2d = box; 
-    
-    if (!result.category) result.category = 'HYGIENE';
-    if (!result.microbiology) result.microbiology = "Targeted Analysis";
-    if (!result.disease) result.disease = "Localized Risk";
-    if (!result.solution) result.solution = isSavageMode ? "Tiada kata-kata untuk ini. Hanya parah." : "Lakukan pembersihan dan rujuk pakar.";
-    if (!result.description) result.description = "Berdasarkan input manual kawasan ini.";
-    
-    return result;
+        result.id = `manual-${Date.now()}`;
+        result.box_2d = box; 
+        
+        if (!result.category) result.category = 'HYGIENE';
+        if (!result.microbiology) result.microbiology = "Targeted Analysis";
+        if (!result.disease) result.disease = "Localized Risk";
+        if (!result.solution) result.solution = isSavageMode ? "Tiada kata-kata untuk ini. Hanya parah." : "Lakukan pembersihan dan rujuk pakar.";
+        if (!result.description) result.description = "Berdasarkan input manual kawasan ini.";
+        
+        return result;
+    } catch (error: any) {
+        console.error("Manual Analysis Error:", error);
+        throw new Error(prettifyErrorMessage(error));
+    }
 };
 
 export const generateSimulationPrompt = async (base64Image: string, config: SimulationConfig): Promise<string> => {
@@ -771,14 +885,23 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
 };
 
 export const askRiskFollowUp = async (risk: RiskDetection, question: string, language: string = 'ms'): Promise<string> => {
-    const ai = getAIClient();
-    const response = await ai.models.generateContent({
-        model: getPreferredModel("gemini-2.5-flash"), 
-        contents: `CONTEXT: RISK ANALYSIS. Risk: "${risk.label}" (${risk.category}). Agent: ${risk.agent}.
-        USER QUERY: "${question}".
-        INSTRUCTION: Answer as a Senior Public Health Engineer. Be technical but clear. Language: ${language}.`,
-    });
-    return response.text || "Tiada jawapan.";
+    try {
+        const ai = getAIClient();
+        const response = await ai.models.generateContent({
+            model: getPreferredModelForText("gemini-2.5-flash"), 
+            contents: {
+                parts: [{
+                    text: `CONTEXT: RISK ANALYSIS. Risk: "${risk.label}" (${risk.category}). Agent: ${risk.agent}.
+                    USER QUERY: "${question}".
+                    INSTRUCTION: Answer as a Senior Public Health Engineer. Be technical but clear. Language: ${language}.`
+                }]
+            },
+        });
+        return response.text || "Tiada jawapan.";
+    } catch (error: any) {
+        console.error("askRiskFollowUp Error:", error);
+        throw new Error(prettifyErrorMessage(error));
+    }
 };
 
 export const deepLarvaeAnalysis = async (base64Image: string): Promise<{ diagnosis: string, predictions: any[] }> => {
@@ -814,7 +937,7 @@ export const deepLarvaeAnalysis = async (base64Image: string): Promise<{ diagnos
         const parsedResult = await retryWithBackoff(async () => {
              const ai = getAIClient();
              const resp = await ai.models.generateContent({
-                 model: getPreferredModel("gemini-2.5-flash"),
+                 model: getPreferredModelForText("gemini-2.5-flash"),
                  contents: {
                      parts: [
                          { inlineData: { mimeType: 'image/jpeg', data: optimizedImage } },
@@ -858,11 +981,7 @@ export const deepLarvaeAnalysis = async (base64Image: string): Promise<{ diagnos
     } catch (error: any) {
         console.error("deepLarvaeAnalysis Error:", error);
         saveLog(`Larvae Analysis Error: ${error?.message || error}`, { error });
-        const msg = String(error?.message || error);
-        if (msg.includes("429") || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED")) {
-            throw new Error("Had Kuota API Gemini telah dicapai (Quota Exceeded). Sila masukkan API Key Google Gemini anda sendiri di Tetapan.");
-        }
-        throw new Error("Gagal mengimbas jentik-jentik: " + msg);
+        throw new Error(prettifyErrorMessage(error));
     }
 };
 
@@ -887,8 +1006,8 @@ Sila berikan SATU perenggan diagnosa saintifik dan fakta ringkas tentang ancaman
 Gunakan format markdown yang kemas, profesional, saintifik tetapi difahami awam. Tulis dalam Bahasa Melayu.`;
 
     const response = await ai.models.generateContent({
-        model: getPreferredModel("gemini-2.5-flash"),
-        contents: prompt
+        model: getPreferredModelForText("gemini-2.5-flash"),
+        contents: { parts: [{ text: prompt }] }
     });
 
     return response.text || "Tiada diagnosa dapat dijana buat masa ini.";
@@ -926,7 +1045,7 @@ export const analyzeAdultMosquito = async (base64Image: string): Promise<{ diagn
         const parsedResult = await retryWithBackoff(async () => {
              const ai = getAIClient();
              const resp = await ai.models.generateContent({
-                 model: getPreferredModel("gemini-2.5-flash"),
+                 model: getPreferredModelForText("gemini-2.5-flash"),
                  contents: {
                      parts: [
                          { inlineData: { mimeType: 'image/jpeg', data: optimizedImage } },
@@ -967,10 +1086,6 @@ export const analyzeAdultMosquito = async (base64Image: string): Promise<{ diagn
     } catch (error: any) {
         console.error("analyzeAdultMosquito Error:", error);
         saveLog(`Adult Mosquito Analysis Error: ${error?.message || error}`, { error });
-        const msg = String(error?.message || error);
-        if (msg.includes("429") || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED")) {
-            throw new Error("Had Kuota API Gemini telah dicapai (Quota Exceeded). Sila masukkan API Key Google Gemini anda sendiri di Tetapan.");
-        }
-        throw new Error("Gagal mengimbas nyamuk dewasa: " + msg);
+        throw new Error(prettifyErrorMessage(error));
     }
 };
