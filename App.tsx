@@ -117,6 +117,14 @@ const App: React.FC = () => {
       setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, result: newResult } : s));
   };
 
+  const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
+      if (activeSessionId === sessionId) {
+          setActiveSessionId(null);
+      }
+  };
+
   const handleLiveAnalysisCapture = (capturedResult: AnalysisResponse, capturedImageSrc: string) => {
     setIsLiveMode(false);
     const newSession: AnalysisSession = { id: `live-${Date.now()}`, fileName: 'AR_CAPTURE.jpg', imageSrc: capturedImageSrc, mimeType: 'image/jpeg', status: 'SUCCESS', result: capturedResult, mode: 'VECTOR_CONTROL' };
@@ -170,29 +178,11 @@ const App: React.FC = () => {
             <h2 className="text-2xl sm:text-4xl md:text-5xl font-sci-fi font-bold text-white mb-3 md:mb-6 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)] leading-tight">{t('hero_title')} <span className="text-emerald-500">{t('hero_title_highlight')}</span></h2>
             <p className="text-slate-300 max-w-3xl mx-auto mb-6 md:mb-10 font-light tracking-wide text-xs sm:text-sm md:text-xl px-2">{t('hero_subtitle')}</p>
             
-            <div className="flex flex-col items-center justify-center gap-4 mb-6 md:mb-12">
-                <button onClick={() => setIsLiveMode(true)} className="group relative flex items-center gap-2 md:gap-3 bg-red-600/90 text-white px-5 py-3 md:px-10 md:py-5 rounded font-sci-fi font-bold text-sm md:text-lg shadow-[0_0_20px_rgba(220,38,38,0.5)] hover:bg-red-500 hover:shadow-[0_0_40px_rgba(220,38,38,0.8)] transition-all overflow-hidden border border-red-400 active:scale-95">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 md:w-7 md:h-7"><path d="M12 9a3.75 3.75 0 100 7.5A3.75 3.75 0 0012 9z" /><path fillRule="evenodd" d="M9.344 3.071a49.52 49.52 0 015.312 0c.967.052 1.83.585 2.332 1.39l.821 1.317c.24.383.645.643 1.11.71.386.054.77.113 1.152.177 1.432.239 2.429 1.493 2.429 2.909V18a3 3 0 01-3 3h-15a3 3 0 01-3-3V9.574c0-1.416.997-2.67 2.429-2.909.382-.064.766-.123 1.151-.178a1.56 1.56 0 001.11-.71l.822-1.315a2.942 2.942 0 012.332-1.39zM6.75 12.75a5.25 5.25 0 1110.5 0 5.25 5.25 0 01-10.5 0zm12-1.5a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" /></svg>
-                    {t('btn_ar_scan')}
-                </button>
-                <div className="flex justify-center gap-3 w-full max-w-sm">
-                     <button
-                       onClick={() => setCurrentView('LARVAE_DETECTION')}
-                       className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 border border-cyan-500/50 rounded font-sci-fi text-xs tracking-wider transition-colors bg-cyan-900/20 hover:bg-cyan-900/40 text-cyan-400`}
-                     >
-                        <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse shrink-0"></div>
-                        {t('nav_larvae_scanner')}
-                     </button>
-                     <button
-                       onClick={() => setCurrentView('ADULT_MOSQUITO_DETECTION')}
-                       className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 border border-purple-500/50 rounded font-sci-fi text-xs tracking-wider transition-colors bg-purple-900/20 hover:bg-purple-900/40 text-purple-400`}
-                     >
-                        <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse shrink-0"></div>
-                        {t('nav_adult_scanner')}
-                     </button>
-                </div>
+            <div className="max-w-4xl mx-auto mb-6 md:mb-10">
+                <div className="mb-3 text-center text-emerald-500/50 text-[10px] md:text-xs font-mono-sci tracking-[0.2em] md:tracking-[0.3em]">{t('secure_link')}</div>
+                <UploadZone onImagesSelected={handleFilesSelected} disabled={false} isAnalyzing={false} />
             </div>
-            
+
             <div className="max-w-xl mx-auto mb-8 bg-slate-900/50 p-4 md:p-6 rounded-2xl border border-slate-700/50 shadow-2xl backdrop-blur-md relative z-10 pointer-events-auto">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Mode Picker */}
@@ -231,10 +221,30 @@ const App: React.FC = () => {
                </p>
             </div>
             
+            <div className="flex flex-col items-center justify-center gap-4 mb-6 md:mb-12">
+                <button onClick={() => setIsLiveMode(true)} className="group relative flex items-center gap-2 md:gap-3 bg-red-600/90 text-white px-5 py-3 md:px-10 md:py-5 rounded font-sci-fi font-bold text-sm md:text-lg shadow-[0_0_20px_rgba(220,38,38,0.5)] hover:bg-red-500 hover:shadow-[0_0_40px_rgba(220,38,38,0.8)] transition-all overflow-hidden border border-red-400 active:scale-95">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 md:w-7 md:h-7"><path d="M12 9a3.75 3.75 0 100 7.5A3.75 3.75 0 0012 9z" /><path fillRule="evenodd" d="M9.344 3.071a49.52 49.52 0 015.312 0c.967.052 1.83.585 2.332 1.39l.821 1.317c.24.383.645.643 1.11.71.386.054.77.113 1.152.177 1.432.239 2.429 1.493 2.429 2.909V18a3 3 0 01-3 3h-15a3 3 0 01-3-3V9.574c0-1.416.997-2.67 2.429-2.909.382-.064.766-.123 1.151-.178a1.56 1.56 0 001.11-.71l.822-1.315a2.942 2.942 0 012.332-1.39zM6.75 12.75a5.25 5.25 0 1110.5 0 5.25 5.25 0 01-10.5 0zm12-1.5a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" /></svg>
+                    {t('btn_ar_scan')}
+                </button>
+                <div className="flex justify-center gap-3 w-full max-w-sm">
+                     <button
+                       onClick={() => setCurrentView('LARVAE_DETECTION')}
+                       className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 border border-cyan-500/50 rounded font-sci-fi text-xs tracking-wider transition-colors bg-cyan-900/20 hover:bg-cyan-900/40 text-cyan-400`}
+                     >
+                        <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse shrink-0"></div>
+                        {t('nav_larvae_scanner')}
+                     </button>
+                     <button
+                       onClick={() => setCurrentView('ADULT_MOSQUITO_DETECTION')}
+                       className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 border border-purple-500/50 rounded font-sci-fi text-xs tracking-wider transition-colors bg-purple-900/20 hover:bg-purple-900/40 text-purple-400`}
+                     >
+                        <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse shrink-0"></div>
+                        {t('nav_adult_scanner')}
+                     </button>
+                </div>
+            </div>
+            
             <div className="max-w-4xl mx-auto">
-                <div className="mb-3 text-center text-emerald-500/50 text-[10px] md:text-xs font-mono-sci tracking-[0.2em] md:tracking-[0.3em]">{t('secure_link')}</div>
-                <UploadZone onImagesSelected={handleFilesSelected} disabled={false} isAnalyzing={false} />
-                
                 <div className="mt-8 flex justify-center animate-fade-in-up">
                     <button onClick={() => setShowHeatmap(true)} className="bg-slate-800 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 px-6 py-3 rounded-xl font-bold hover:bg-emerald-900/30 hover:border-emerald-400 transition-all flex items-center gap-3">
                         <span className="font-sci-fi tracking-widest text-sm">{t('btn_outbreak_map')}</span>
@@ -254,9 +264,11 @@ const App: React.FC = () => {
             </div>
             </div>
         )}
+            </>
+        )}
 
         {sessions.length > 0 && (
-           <div className="space-y-4 md:space-y-6">
+           <div className="space-y-4 md:space-y-6 mt-8 mb-8 z-50">
               <div className="bg-slate-900/80 border border-slate-700 rounded-lg backdrop-blur-md overflow-hidden animate-fade-in-up shadow-xl transition-all duration-300">
                  <div className="flex justify-between items-center bg-slate-950/50 p-3 md:p-4 cursor-pointer group/header select-none border-b border-slate-800 hover:bg-slate-900 transition-colors" onClick={() => setIsGalleryExpanded(!isGalleryExpanded)}>
                     <div className="flex items-center gap-2 md:gap-3">
@@ -273,15 +285,21 @@ const App: React.FC = () => {
                     <div className="p-3 md:p-4 flex gap-2 md:gap-3 overflow-x-auto pb-4 custom-scrollbar snap-x">
                         <button onClick={() => document.getElementById('add-more-input')?.click()} className="flex-shrink-0 w-16 h-16 md:w-28 md:h-28 rounded-lg border-2 border-dashed border-slate-700 hover:border-emerald-500/50 flex flex-col items-center justify-center gap-2 text-slate-600 hover:text-emerald-500 transition bg-slate-900/50"><span className="text-xl">+</span></button>
                         {sessions.map((session, idx) => (
-                        <button key={session.id} onClick={() => { setActiveSessionId(session.id); setIsGalleryExpanded(false); }} className={`relative flex-shrink-0 w-16 h-16 md:w-28 md:h-28 rounded-lg overflow-hidden border-2 transition-all duration-300 snap-center group ${activeSessionId === session.id ? 'border-emerald-400 scale-105 shadow-[0_0_15px_rgba(52,211,153,0.5)] z-10' : 'border-slate-700 opacity-70 hover:opacity-100 hover:border-slate-500'}`}>
-                            <img src={session.imageSrc} className="w-full h-full object-cover" alt="thumbnail" />
-                            <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                                {session.status === 'PENDING' && <span className="text-[8px] font-mono-sci text-slate-300 bg-black/60 px-1 rounded backdrop-blur-sm">Q</span>}
-                                {session.status === 'ANALYZING' && (<div className="absolute inset-0 bg-emerald-900/80 flex flex-col items-center justify-center backdrop-blur-[2px]"><div className="w-4 h-4 md:w-6 md:h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mb-1"></div></div>)}
-                                {session.status === 'SUCCESS' && (<div className="absolute top-1 right-1"><div className="w-3 h-3 md:w-4 md:h-4 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-2 h-2 md:w-3 md:h-3 text-black font-bold"><path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" /></svg></div></div>)}
-                                {session.status === 'ERROR' && (<div className="absolute inset-0 bg-red-900/80 flex items-center justify-center"><span className="text-sm">⚠️</span></div>)}
-                            </div>
-                        </button>
+                        <div key={session.id} className="relative flex-shrink-0 w-16 h-16 md:w-28 md:h-28 snap-center group">
+                          <button onClick={() => { setActiveSessionId(session.id); setIsGalleryExpanded(false); }} className={`relative w-full h-full rounded-lg overflow-hidden border-2 transition-all duration-300 ${activeSessionId === session.id ? 'border-emerald-400 scale-105 shadow-[0_0_15px_rgba(52,211,153,0.5)] z-10' : 'border-slate-700 opacity-70 hover:opacity-100 hover:border-slate-500'}`}>
+                              <img src={session.imageSrc} className="w-full h-full object-cover" alt="thumbnail" />
+                              <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                                  {session.status === 'PENDING' && <span className="text-[8px] font-mono-sci text-slate-300 bg-black/60 px-1 rounded backdrop-blur-sm">Q</span>}
+                                  {session.status === 'ANALYZING' && (<div className="absolute inset-0 bg-emerald-900/80 flex flex-col items-center justify-center backdrop-blur-[2px]"><div className="w-4 h-4 md:w-6 md:h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mb-1"></div></div>)}
+                                  {session.status === 'SUCCESS' && (<div className="absolute top-1 right-1"><div className="w-3 h-3 md:w-4 md:h-4 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-2 h-2 md:w-3 md:h-3 text-black font-bold"><path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" /></svg></div></div>)}
+                                  {session.status === 'ERROR' && (<div className="absolute inset-0 bg-red-900/80 flex items-center justify-center"><span className="text-sm">⚠️</span></div>)}
+                              </div>
+                              {session.simulationImage && (
+                                   <div className="absolute bottom-1 left-1 bg-cyan-900/80 text-[10px] border border-cyan-400 p-0.5 rounded shadow-lg backdrop-blur-sm z-20 tooltip tooltip-right hover:scale-110 transition-transform" data-tip="Simulasi Tersedia">✨</div>
+                              )}
+                          </button>
+                          <button onClick={(e) => handleDeleteSession(session.id, e)} className="absolute -top-2 -right-2 bg-red-600/90 text-white w-5 h-5 md:w-6 md:h-6 rounded-full z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity print:hidden shadow-lg border border-red-400 hover:bg-red-500 hover:scale-110">✖</button>
+                        </div>
                         ))}
                     </div>
                  </div>
@@ -322,8 +340,6 @@ const App: React.FC = () => {
                  </div>
               ) : null}
            </div>
-        )}
-            </>
         )}
       </main>
       <Footer onOpenAbout={() => setShowAbout(true)} />
