@@ -77,7 +77,7 @@ const AboutSystem: React.FC<AboutSystemProps> = ({ isOpen, onClose }) => {
 
                 <div>
                     <h2 className="text-3xl font-sci-fi font-bold text-white mb-1">PKAK MAIL</h2>
-                    <p className="text-slate-400 text-sm font-mono-sci mb-4">INNOVATOR | EHO | DEVELOPER</p>
+                    <p className="text-slate-400 text-sm font-mono-sci mb-4">INNOVATOR | EHO | DevOps</p>
                     <p className="text-slate-300 text-sm leading-relaxed max-w-xs mx-auto italic border-t border-b border-slate-800 py-4">
                         {t('architect_quote')}
                     </p>
@@ -89,7 +89,7 @@ const AboutSystem: React.FC<AboutSystemProps> = ({ isOpen, onClose }) => {
                 <div>
                    <h3 className="text-emerald-400 font-mono-sci tracking-[0.3em] uppercase text-sm mb-2">{t('sys_core')}</h3>
                    <h2 className="text-3xl md:text-5xl font-sci-fi font-bold text-white leading-tight mb-6 flex items-center gap-4">
-                      {t('powered_by')} <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">GEMINI 3.0 PRO</span>
+                      {t('powered_by')} <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">GEMINI 3.1 PRO</span>
                    </h2>
                 </div>
 

@@ -202,10 +202,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               onChange={(e) => setGeminiModel(e.target.value)}
             >
               <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Terbaik / Pintar)</option>
-              <option value="gemini-2.0-pro">Gemini 2.0 Pro (Stabil / Pintar)</option>
               <option value="gemini-2.5-flash">Gemini 2.5 Flash (Laju / Sederhana)</option>
-              <option value="gemini-2.0-flash">Gemini 2.0 Flash (Sangat Laju / Jimat)</option>
-              <option value="gemini-1.5-flash">Gemini 1.5 Flash (Alternatif)</option>
             </select>
           </div>
 

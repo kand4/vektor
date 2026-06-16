@@ -120,7 +120,7 @@ export const fetchLatestIDengueStats = async (): Promise<iDengueData> => {
       Output JSON Structure: { "cumulativeCases": number, "cumulativeDeaths": number, "activeHotspots": number, "topState": string, "epidemiologicalWeek": string, "lastUpdated": string }`;
 
       const response = await ai.models.generateContent({
-        model: getPreferredModel('gemini-2.0-flash'), 
+        model: getPreferredModel('gemini-2.5-flash'), 
         contents: { parts: [{ text: prompt }] },
         config: {
           tools: [{ googleSearch: {} }]
@@ -158,7 +158,7 @@ export const fetchRegionalDengueStats = async (state: string, district: string):
         Output JSON: { "stateName": "${state}", "districtName": "${district}", "stateCases": number, "districtCases": number, "districtHotspots": number, "districtRiskLevel": "LOW"|"MEDIUM"|"HIGH"|"EXTREME", "localAdvice": string, "epidemiologicalWeek": string }`;
 
         const response = await ai.models.generateContent({
-          model: getPreferredModel('gemini-2.0-flash'),
+          model: getPreferredModel('gemini-2.5-flash'),
           contents: { parts: [{ text: prompt }] },
           config: {
             tools: [{ googleSearch: {} }]
@@ -522,7 +522,7 @@ export const analyzeManualRegion = async (base64Image: string, mimeType: string,
         const ai = getAIClient();
         return await ai.models.generateContent({
             // Using Pro model for higher spatial intelligence and coordinate handling
-            model: getPreferredModel("gemini-2.0-flash"), 
+            model: getPreferredModel("gemini-2.5-flash"), 
             contents: { parts: [{ inlineData: { mimeType: 'image/jpeg', data: optimizedImage } }, { text: prompt }] },
             config: { responseMimeType: "application/json" }
         });
@@ -579,7 +579,7 @@ export const generateSimulationPrompt = async (base64Image: string, config: Simu
 
     const promptGeneration = async () => {
         const resp = await ai.models.generateContent({
-            model: 'gemini-2.0-flash',
+            model: 'gemini-2.5-flash',
             contents: {
                 parts: [
                     { inlineData: { data: optimizedImage, mimeType: 'image/jpeg' } },
@@ -705,7 +705,7 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
 export const askRiskFollowUp = async (risk: RiskDetection, question: string, language: string = 'ms'): Promise<string> => {
     const ai = getAIClient();
     const response = await ai.models.generateContent({
-        model: getPreferredModel("gemini-2.0-flash"), 
+        model: getPreferredModel("gemini-2.5-flash"), 
         contents: `CONTEXT: RISK ANALYSIS. Risk: "${risk.label}" (${risk.category}). Agent: ${risk.agent}.
         USER QUERY: "${question}".
         INSTRUCTION: Answer as a Senior Public Health Engineer. Be technical but clear. Language: ${language}.`,
@@ -746,7 +746,7 @@ export const deepLarvaeAnalysis = async (base64Image: string): Promise<{ diagnos
         const response = await retryWithBackoff(async () => {
              const ai = getAIClient();
              return await ai.models.generateContent({
-                 model: getPreferredModel("gemini-2.0-flash"),
+                 model: getPreferredModel("gemini-2.5-flash"),
                  contents: {
                      parts: [
                          { inlineData: { mimeType: 'image/jpeg', data: optimizedImage } },
@@ -820,7 +820,7 @@ Sila berikan SATU perenggan diagnosa saintifik dan fakta ringkas tentang ancaman
 Gunakan format markdown yang kemas, profesional, saintifik tetapi difahami awam. Tulis dalam Bahasa Melayu.`;
 
     const response = await ai.models.generateContent({
-        model: getPreferredModel("gemini-2.0-flash"),
+        model: getPreferredModel("gemini-2.5-flash"),
         contents: prompt
     });
 
@@ -859,7 +859,7 @@ export const analyzeAdultMosquito = async (base64Image: string): Promise<{ diagn
         const response = await retryWithBackoff(async () => {
              const ai = getAIClient();
              return await ai.models.generateContent({
-                 model: getPreferredModel("gemini-2.0-flash"),
+                 model: getPreferredModel("gemini-2.5-flash"),
                  contents: {
                      parts: [
                          { inlineData: { mimeType: 'image/jpeg', data: optimizedImage } },
