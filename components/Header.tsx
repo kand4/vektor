@@ -24,7 +24,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAbout, onOpenSettings, onGoHome, 
   ];
 
   return (
-    <header className="fixed w-full top-0 z-50 border-b border-emerald-900/30 bg-slate-950/80 backdrop-blur-md transition-all duration-300 h-16 md:h-24">
+    <header className="fixed w-full top-0 z-[150] border-b border-emerald-900/30 bg-slate-950/80 backdrop-blur-md transition-all duration-300 h-16 md:h-24">
       <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 h-full flex items-center justify-between">
         
         {/* Logo Section - Primary Home Navigation */}
@@ -46,7 +46,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAbout, onOpenSettings, onGoHome, 
           
           <div className="flex flex-col justify-center overflow-hidden min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="text-[13px] sm:text-xl md:text-3xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 drop-shadow-sm leading-tight truncate group-hover:from-white group-hover:to-emerald-400 transition-all">
+              <h1 className="text-[13px] sm:text-xl md:text-3xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 drop-shadow-sm leading-tight truncate group-hover:from-white group-hover:to-emerald-400 transition-all whitespace-nowrap">
                 VECTOR<span className="text-slate-100">GUARD</span><span className="hidden sm:inline">.AI</span>
               </h1>
               {/* Home Indicator */}
@@ -59,7 +59,7 @@ const Header: React.FC<HeaderProps> = ({ onOpenAbout, onOpenSettings, onGoHome, 
             </div>
             <div className="flex items-center gap-1.5 md:gap-2">
                <span className="w-1 h-1 md:w-2 md:h-2 bg-red-500 rounded-full animate-ping shrink-0"></span>
-               <p className="text-[9px] md:text-sm text-emerald-500 font-mono-sci tracking-[0.1em] md:tracking-[0.2em] uppercase truncate">
+               <p className="text-[9px] md:text-sm text-emerald-500 font-mono-sci tracking-[0.1em] md:tracking-[0.2em] uppercase truncate whitespace-nowrap">
                  {t('app_subtitle')}
                </p>
             </div>

@@ -157,7 +157,7 @@ const App: React.FC = () => {
          currentView={currentView}
       />
 
-      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-20 md:mt-32 relative z-[9999] w-full transition-all duration-300 pointer-events-auto">
+      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-20 md:mt-32 relative z-10 w-full transition-all duration-300 pointer-events-auto">
         
         {currentView === 'LARVAE_DETECTION' ? (
             <LarvaeScanner />
@@ -193,7 +193,7 @@ const App: React.FC = () => {
                 </div>
             </div>
             
-            <div className="max-w-xl mx-auto mb-8 bg-slate-900/50 p-4 md:p-6 rounded-2xl border border-slate-700/50 shadow-2xl backdrop-blur-md relative z-[9999] pointer-events-auto">
+            <div className="max-w-xl mx-auto mb-8 bg-slate-900/50 p-4 md:p-6 rounded-2xl border border-slate-700/50 shadow-2xl backdrop-blur-md relative z-10 pointer-events-auto">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Mode Picker */}
                   <div className="space-y-3">
