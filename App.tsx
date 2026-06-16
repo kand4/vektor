@@ -15,6 +15,7 @@ import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { PredictionChart } from './components/PredictionChart';
 import LarvaeScanner from './components/LarvaeScanner';
 import AdultMosquitoScanner from './components/AdultMosquitoScanner';
+import { SimulationGallery } from './components/SimulationGallery';
 import { fetchNationalDengueTrend } from './services/dataGovService';
 import { resizeAndCompressImage } from './utils/imageUtils';
 
@@ -26,6 +27,7 @@ const App: React.FC = () => {
   const [showAbout, setShowAbout] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
+  const [showSimulationGallery, setShowSimulationGallery] = useState(false);
   const [isGalleryExpanded, setIsGalleryExpanded] = useState(true);
   
   const [sensitivity, setSensitivity] = useState<SensitivityLevel>('STANDARD');
@@ -150,6 +152,22 @@ const App: React.FC = () => {
       <AboutSystem isOpen={showAbout} onClose={() => setShowAbout(false)} />
       <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
       <HeatmapModal isOpen={showHeatmap} onClose={() => setShowHeatmap(false)} />
+      {showSimulationGallery && (
+        <SimulationGallery 
+          sessions={sessions} 
+          onClose={() => setShowSimulationGallery(false)} 
+          onDeleteSimulation={(sessionId) => {
+            setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, simulationImage: undefined } : s));
+          }}
+          onRegenerate={async (sessionId) => {
+            const sessionToRegen = sessions.find(s => s.id === sessionId);
+            if (sessionToRegen && sessionToRegen.result) {
+                setActiveSessionId(sessionId);
+                setShowSimulationGallery(false);
+            }
+          }}
+        />
+      )}
 
       {isLiveMode && <LiveCameraScanner onCaptureAnalysis={handleLiveAnalysisCapture} onClose={() => setIsLiveMode(false)} />}
 
@@ -245,9 +263,12 @@ const App: React.FC = () => {
             </div>
             
             <div className="max-w-4xl mx-auto">
-                <div className="mt-8 flex justify-center animate-fade-in-up">
-                    <button onClick={() => setShowHeatmap(true)} className="bg-slate-800 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 px-6 py-3 rounded-xl font-bold hover:bg-emerald-900/30 hover:border-emerald-400 transition-all flex items-center gap-3">
+                <div className="mt-8 flex flex-col md:flex-row justify-center gap-4 animate-fade-in-up">
+                    <button onClick={() => setShowHeatmap(true)} className="bg-slate-800 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 px-6 py-3 rounded-xl font-bold hover:bg-emerald-900/30 hover:border-emerald-400 transition-all flex items-center justify-center gap-3">
                         <span className="font-sci-fi tracking-widest text-sm">{t('btn_outbreak_map')}</span>
+                    </button>
+                    <button onClick={() => setShowSimulationGallery(true)} className="bg-slate-800 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)] text-cyan-400 px-6 py-3 rounded-xl font-bold hover:bg-cyan-900/30 hover:border-cyan-400 transition-all flex items-center justify-center gap-3">
+                        <span className="font-sci-fi tracking-widest text-sm">✨ LIHAT SIMULASI LEPAS</span>
                     </button>
                 </div>
 

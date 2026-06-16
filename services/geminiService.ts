@@ -223,7 +223,9 @@ const retryWithBackoff = async <T>(fn: () => Promise<T>, retries = 2, delay = 20
         }
 
         const isRateLimitError = msg.includes("429") || msg.includes("503") || msg.includes("overloaded");
-        if (isRateLimitError && retries > 0) {
+        const isJsonParsingError = error instanceof SyntaxError || msg.includes("JSON") || msg.includes("parse");
+        
+        if ((isRateLimitError || isJsonParsingError) && retries > 0) {
             await new Promise(resolve => setTimeout(resolve, delay));
             return retryWithBackoff(fn, retries - 1, delay * 2);
         }
@@ -378,9 +380,9 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
   }
 
   try {
-      const response = await retryWithBackoff(async () => {
+      const parsedResult = await retryWithBackoff(async () => {
           const ai = getAIClient();
-          return await ai.models.generateContent({
+          const resp = await ai.models.generateContent({
             model: modelId,
             contents: {
                 parts: [
@@ -392,12 +394,11 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
               responseMimeType: "application/json",
               thinkingConfig: { thinkingBudget: thinkingBudget } 
             }
-        });
+          });
+          let t = resp.text || "{}";
+          t = extractJSON(t);
+          return JSON.parse(t) as AnalysisResponse;
       });
-
-      let text = response.text || "{}";
-      text = extractJSON(text);
-      const parsedResult = JSON.parse(text) as AnalysisResponse;
 
       // Watchdog Logic
       const detectedWords = (parsedResult.detected_keywords || []).map(w => w.toLowerCase());
@@ -518,17 +519,17 @@ export const analyzeManualRegion = async (base64Image: string, mimeType: string,
       "solution": "${isSavageMode ? 'Provide a highly sarcastic, brutal, aggressive roast/commentary instead of real advice.' : 'Provide official, practical recommendations and mitigation strategies'}"
     }`;
     
-    const response = await retryWithBackoff(async () => {
+    const result = await retryWithBackoff(async () => {
         const ai = getAIClient();
-        return await ai.models.generateContent({
+        const resp = await ai.models.generateContent({
             // Using Pro model for higher spatial intelligence and coordinate handling
             model: getPreferredModel("gemini-2.5-flash"), 
             contents: { parts: [{ inlineData: { mimeType: 'image/jpeg', data: optimizedImage } }, { text: prompt }] },
             config: { responseMimeType: "application/json" }
         });
+        const t = extractJSON(resp.text || "{}");
+        return JSON.parse(t);
     });
-    const text = extractJSON(response.text || "{}");
-    const result = JSON.parse(text);
     result.id = `manual-${Date.now()}`;
     result.box_2d = box; 
     
@@ -743,9 +744,9 @@ export const deepLarvaeAnalysis = async (base64Image: string): Promise<{ diagnos
    ]
  }`;
         
-        const response = await retryWithBackoff(async () => {
+        const parsedResult = await retryWithBackoff(async () => {
              const ai = getAIClient();
-             return await ai.models.generateContent({
+             const resp = await ai.models.generateContent({
                  model: getPreferredModel("gemini-2.5-flash"),
                  contents: {
                      parts: [
@@ -757,11 +758,10 @@ export const deepLarvaeAnalysis = async (base64Image: string): Promise<{ diagnos
                      responseMimeType: "application/json"
                  }
              });
+             let t = resp.text || "{}";
+             t = extractJSON(t);
+             return JSON.parse(t);
         });
-
-        let text = response.text || "{}";
-        text = extractJSON(text);
-        const parsedResult = JSON.parse(text);
 
         // Ensure predictions have standard structure x, y, width, height for the canvas
         const formattedPredictions = (parsedResult.predictions || []).map((p: any) => {
@@ -856,9 +856,9 @@ export const analyzeAdultMosquito = async (base64Image: string): Promise<{ diagn
    ]
  }`;
 
-        const response = await retryWithBackoff(async () => {
+        const parsedResult = await retryWithBackoff(async () => {
              const ai = getAIClient();
-             return await ai.models.generateContent({
+             const resp = await ai.models.generateContent({
                  model: getPreferredModel("gemini-2.5-flash"),
                  contents: {
                      parts: [
@@ -870,11 +870,10 @@ export const analyzeAdultMosquito = async (base64Image: string): Promise<{ diagn
                      responseMimeType: "application/json"
                  }
              });
+             let t = resp.text || "{}";
+             t = extractJSON(t);
+             return JSON.parse(t);
         });
-
-        let text = response.text || "{}";
-        text = extractJSON(text);
-        const parsedResult = JSON.parse(text);
 
         const formattedPredictions = (parsedResult.predictions || []).map((p: any) => {
             const coords = p.box_2d;
