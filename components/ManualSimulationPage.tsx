@@ -340,52 +340,53 @@ ${additionalDirectives ? `6. ARAHAN TAMBAHAN PENGGUNA: ${additionalDirectives}` 
               </div>
 
               {/* Interative Slider Component */}
-              <div 
-                ref={sliderContainerRef}
-                onMouseMove={(e) => { if (isResizing) handleSliderMove(e.clientX); }}
-                onTouchMove={handleTouchMove}
-                onMouseDown={() => setIsResizing(true)}
-                onTouchStart={() => setIsResizing(true)}
-                onMouseLeave={() => setIsResizing(false)}
-                onMouseUp={() => setIsResizing(false)}
-                onTouchEnd={() => setIsResizing(false)}
-                className="relative h-[320px] md:h-[400px] w-full rounded-xl overflow-hidden cursor-ew-resize select-none border border-slate-800"
-              >
-                {/* Simulated Clean Image (Base Layer) */}
-                <img 
-                  src={simulatedImage} 
-                  alt="Simulasi Pasca Pembersihan" 
-                  className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute bottom-3 right-3 bg-emerald-600/95 border border-emerald-400 text-white font-bold text-[10px] py-1 px-2.5 rounded shadow font-sans tracking-wide">
-                  PASCA SIMULASI (SELEPAS)
-                </div>
-
-                {/* Original Dirty Image (Overridden Layer via Clip Path) */}
+              <div className="flex items-center justify-center w-full bg-slate-950/80 rounded-xl overflow-hidden border border-slate-800 p-1 md:p-3 shadow-inner">
                 <div 
-                  className="absolute inset-0 overflow-hidden pointer-events-none"
-                  style={{ clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)` }}
+                  ref={sliderContainerRef}
+                  onMouseMove={(e) => { if (isResizing) handleSliderMove(e.clientX); }}
+                  onTouchMove={handleTouchMove}
+                  onMouseDown={() => setIsResizing(true)}
+                  onTouchStart={() => setIsResizing(true)}
+                  onMouseLeave={() => setIsResizing(false)}
+                  onMouseUp={() => setIsResizing(false)}
+                  onTouchEnd={() => setIsResizing(false)}
+                  className="relative cursor-ew-resize select-none overflow-hidden rounded-lg shadow-2xl max-h-[80vh]"
                 >
+                  {/* Simulated Clean Image (Base Layer) */}
                   <img 
-                    src={originalImage} 
-                    alt="Pemandangan Asal" 
-                    className="absolute inset-0 w-[100%] h-[100%] object-cover pointer-events-none"
-                    style={{ width: sliderContainerRef.current?.getBoundingClientRect().width, height: '100%' }}
+                    src={simulatedImage} 
+                    alt="Simulasi Pasca Pembersihan" 
+                    className="w-auto h-auto max-w-full max-h-[80vh] object-contain pointer-events-none block"
                     referrerPolicy="no-referrer"
                   />
-                  <div className="absolute bottom-3 left-3 bg-red-600/95 border border-red-400 text-white font-bold text-[10px] py-1 px-2.5 rounded shadow font-sans tracking-wide pointer-events-none">
-                    LOKASI ASAL (SEBELUM)
+                  <div className="absolute bottom-3 right-3 bg-emerald-600/95 border border-emerald-400 text-white font-bold text-[10px] py-1 px-2.5 rounded shadow font-sans tracking-wide pointer-events-none z-10">
+                    PASCA SIMULASI (SELEPAS)
                   </div>
-                </div>
 
-                {/* Slider Handle Divider bar */}
-                <div 
-                  className="absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_10px_white] z-20 pointer-events-none"
-                  style={{ left: `${sliderPosition}%` }}
-                >
-                  <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white text-slate-900 border border-slate-900 flex items-center justify-center font-bold text-xs shadow-xl pointer-events-auto">
-                    ↔
+                  {/* Original Dirty Image (Overridden Layer via Clip Path) */}
+                  <div 
+                    className="absolute inset-0 overflow-hidden pointer-events-none"
+                    style={{ clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)` }}
+                  >
+                    <img 
+                      src={originalImage} 
+                      alt="Pemandangan Asal" 
+                      className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute bottom-3 left-3 bg-red-600/95 border border-red-400 text-white font-bold text-[10px] py-1 px-2.5 rounded shadow font-sans tracking-wide pointer-events-none z-10">
+                      LOKASI ASAL (SEBELUM)
+                    </div>
+                  </div>
+
+                  {/* Slider Handle Divider bar */}
+                  <div 
+                    className="absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_10px_white] z-20 pointer-events-none"
+                    style={{ left: `${sliderPosition}%` }}
+                  >
+                    <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white text-slate-900 border border-slate-900 flex items-center justify-center font-bold text-xs shadow-xl pointer-events-auto">
+                      ↔
+                    </div>
                   </div>
                 </div>
               </div>

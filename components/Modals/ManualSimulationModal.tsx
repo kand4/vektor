@@ -22,10 +22,12 @@ export const ManualSimulationModal: React.FC<ManualSimulationModalProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleCopyAndOpenGemini = () => {
-    navigator.clipboard.writeText(promptText);
+  const handleCopyAndOpenGemini = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    navigator.clipboard.writeText(promptText).catch(console.error);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    // Note: Do not e.preventDefault() so the native href target="_blank" can execute.
+    // If it's blocked by the iframe sandbox, the native link is the best bet.
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -92,6 +94,9 @@ export const ManualSimulationModal: React.FC<ManualSimulationModalProps> = ({
                     >
                         <span>🚀 {copied ? 'TELAH DISALIN! KLIK UNTUK BUKA GEMINI AI' : 'SALIN PROMPT & BUKA GEMINI WEB'}</span>
                     </a>
+                    <p className="text-[10px] text-slate-500 mt-2 text-center">
+                        Jika tab baharu tidak dibuka, sila klik kanan butang di atas dan pilih "Buka pautan di tab baharu", atau pergi ke: <span className="text-cyan-400 select-all">https://gemini.google.com/app</span>
+                    </p>
                 </div>
 
                 <div className="bg-slate-800 border border-slate-700 rounded p-6 mt-4 text-center border-dashed">

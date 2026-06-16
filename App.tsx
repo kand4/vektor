@@ -39,6 +39,7 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showSimulationGallery, setShowSimulationGallery] = useState(false);
+  const [showEmptyScansAlert, setShowEmptyScansAlert] = useState(false);
   const [isGalleryExpanded, setIsGalleryExpanded] = useState(true);
   const [toastMsg, setToastMsg] = useState<{ msg: string; type: 'error' | 'success' } | null>(null);
   
@@ -215,6 +216,18 @@ const App: React.FC = () => {
         />
       )}
 
+      {showEmptyScansAlert && (
+          <div className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+             <div className="bg-slate-900 border border-indigo-500/50 rounded-2xl p-8 max-w-md w-full text-center relative overflow-hidden">
+                <button onClick={() => setShowEmptyScansAlert(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-500 transition-colors z-20">✕</button>
+                <div className="text-5xl mb-4">🗂️</div>
+                <h2 className="text-xl font-sci-fi font-bold text-indigo-400 mb-2">TIADA IMBASAN</h2>
+                <p className="text-slate-400 text-sm">Tiada rekod imbasan lepas dijumpai. Sila muat naik atau tangkap imej terlebih dahulu untuk memulakan sesi.</p>
+                <button onClick={() => setShowEmptyScansAlert(false)} className="mt-6 bg-slate-800 text-slate-300 px-6 py-2 rounded-lg font-bold hover:bg-slate-700 w-full tracking-widest uppercase">Tutup</button>
+             </div>
+          </div>
+      )}
+
       {isLiveMode && <LiveCameraScanner onCaptureAnalysis={handleLiveAnalysisCapture} onClose={() => setIsLiveMode(false)} />}
 
       <Header 
@@ -334,7 +347,7 @@ const App: React.FC = () => {
                         </button>
                         <button onClick={() => {
                             if (sessions.length === 0) {
-                                alert("Tiada rekod imbasan lepas. Sila muat naik atau tangkap imej terlebih dahulu.");
+                                setShowEmptyScansAlert(true);
                                 return;
                             }
                             setIsGalleryExpanded(true);
