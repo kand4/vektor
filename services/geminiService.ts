@@ -668,14 +668,14 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
             }
             throw new Error("No inlineData image from Gemini");
         } catch (error) {
-            console.warn("Gemini 2.5 Flash Image Failed, falling back to Imagen 3.0:", error);
+            console.warn("Gemini 2.5 Flash Image Failed, falling back to Imagen 4.0:", error);
             
-            // 2. Try Imagen 3.0 Generate (Google Engine Fallback)
+            // 2. Try Imagen 4.0 Generate (Google Engine Upgrade)
             try {
-                console.log("🎨 Attempting Google Imagen 3.0...");
+                console.log("🎨 Attempting Google Imagen 4.0 (imagen-4.0-generate-001)...");
                 const imagenResponse = await retryWithBackoff(async () => {
                     return await ai.models.generateImages({
-                        model: "imagen-3.0-generate-001",
+                        model: "imagen-4.0-generate-001",
                         prompt: finalPrompt,
                         config: {
                             numberOfImages: 1,
@@ -688,10 +688,33 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
                 if (bytes) {
                     return `data:image/png;base64,${bytes}`;
                 }
-                throw new Error("No image bytes from Imagen 3.0");
-            } catch (imagenError) {
-                console.error("Google Imagen 3.0 Failed:", imagenError);
-                // Fallthrough to external
+                throw new Error("No image bytes from Imagen 4.0");
+            } catch (imagen4Error: any) {
+                console.warn("Google Imagen 4.0 Failed, trying legacy Imagen 3.0 fallback:", imagen4Error);
+                
+                // 3. Try Imagen 3.0 Generate (Legacy Fallback)
+                try {
+                    console.log("🎨 Attempting Google Imagen 3.0...");
+                    const imagen3Response = await retryWithBackoff(async () => {
+                        return await ai.models.generateImages({
+                            model: "imagen-3.0-generate-001",
+                            prompt: finalPrompt,
+                            config: {
+                                numberOfImages: 1,
+                                aspectRatio: "16:9"
+                            }
+                        });
+                    });
+
+                    const bytes = imagen3Response.generatedImages?.[0]?.image?.imageBytes;
+                    if (bytes) {
+                        return `data:image/png;base64,${bytes}`;
+                    }
+                    throw new Error("No image bytes from Imagen 3.0");
+                } catch (imagen3Error) {
+                    console.error("Google Imagen 3.0 Failed:", imagen3Error);
+                    // Fallthrough to external
+                }
             }
         }
     }
