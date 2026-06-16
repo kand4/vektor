@@ -18,6 +18,16 @@ import AdultMosquitoScanner from './components/AdultMosquitoScanner';
 import { SimulationGallery } from './components/SimulationGallery';
 import { fetchNationalDengueTrend } from './services/dataGovService';
 import { resizeAndCompressImage } from './utils/imageUtils';
+import { Toast } from './components/Toast';
+
+const MANUAL_SIMULATION_DEFAULT_PROMPT = `Sila gunakan tool penjana imej (Imagen) untuk mengubah imej yang saya kongsikan ini:
+
+[PANDUAN UTAMA / CRITICAL INSTRUCTIONS]:
+1. KEKALKAN SUDUT KAMERA, PERSPEKTIF, ELEVASI, DAN FIELD OF VIEW YANG SAMA SEPERTI IMEJ ASAL.
+2. Bersihkan semua kotoran, sampah sarap, takungan air, jentik-jentik, sisa makanan, dan apa-apa tanda kotoran di kawasan tersebut.
+3. Jadikan kawasan tersebut kelihatan sangat bersih, kemas, steril, dan mematuhi standard kebersihan bertaraf tinggi (Medical/Hospital Grade cleanliness).
+4. Sila tukar permukaan lantai atau dinding yang rosak/retak/kotor kepada rekaan baru yang bersih dan kukuh, tetapi struktur asal bilik/kawasan mestilah kekal 100% sama tanpa diubah.
+5. Hasilkan imej yang ultra-fotorealistik, resolusi tinggi (8k), dengan pencahayaan semula jadi yang terang.`;
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION'>('HOME');
@@ -29,6 +39,7 @@ const App: React.FC = () => {
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showSimulationGallery, setShowSimulationGallery] = useState(false);
   const [isGalleryExpanded, setIsGalleryExpanded] = useState(true);
+  const [toastMsg, setToastMsg] = useState<{ msg: string; type: 'error' | 'success' } | null>(null);
   
   const [sensitivity, setSensitivity] = useState<SensitivityLevel>('STANDARD');
   const [analysisMode, setAnalysisMode] = useState<AnalysisMode>('VECTOR_CONTROL');
@@ -136,6 +147,18 @@ const App: React.FC = () => {
   };
 
   const resetApp = () => { setSessions([]); setActiveSessionId(null); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  
+  const handleManualSimulation = () => {
+    try {
+      navigator.clipboard.writeText(MANUAL_SIMULATION_DEFAULT_PROMPT);
+      setToastMsg({ msg: "Prompt Simulasi Manual diduplikasi ke clipboard! Membuka tab baru Gemini AI...", type: 'success' });
+      window.open("https://gemini.google.com/app", "_blank");
+    } catch (err) {
+      console.error(err);
+      setToastMsg({ msg: "Sistem gagal menyalin prompt secara automatik, sila buka Gemini Web secara manual.", type: 'error' });
+    }
+  };
+
   const handleGoHome = () => { 
     setIsLiveMode(false); 
     setActiveSessionId(null); 
@@ -264,10 +287,20 @@ const App: React.FC = () => {
             
             <div className="max-w-4xl mx-auto">
                 <div className="mt-8 flex flex-col items-center gap-3 animate-fade-in-up">
-                    <button onClick={() => setShowHeatmap(true)} className="w-full sm:w-auto bg-slate-800 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 px-6 py-3 rounded-xl font-bold hover:bg-emerald-900/30 hover:border-emerald-400 transition-all flex items-center justify-center gap-3">
-                        <span className="font-sci-fi tracking-widest text-sm">{t('btn_outbreak_map')}</span>
+                    {/* MOD SIMULASI MANUAL DIRECT ACTION */}
+                    <button 
+                        onClick={handleManualSimulation} 
+                        className="w-full sm:w-auto bg-gradient-to-r from-cyan-600 to-indigo-600 border border-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.3)] text-white px-8 py-4 rounded-xl font-bold hover:from-cyan-500 hover:to-indigo-500 hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] transition-all flex items-center justify-center gap-3 active:scale-95 group/manual-sim"
+                    >
+                        <span className="text-xl group-hover/manual-sim:animate-bounce">🚀</span>
+                        <div className="text-left">
+                            <span className="block font-sci-fi tracking-widest text-sm leading-tight">MOD SIMULASI MANUAL</span>
+                            <span className="block text-[9px] text-cyan-200 font-mono-sci uppercase opacity-80">Salin Prompt & Buka Gemini Web</span>
+                        </div>
                     </button>
-                    <div className="flex justify-center gap-2 w-full sm:w-auto">
+
+                    {/* Previous Simulations and Scans buttons moved here */}
+                    <div className="flex justify-center gap-2 w-full sm:w-auto mt-2">
                         <button onClick={() => setShowSimulationGallery(true)} className="flex-1 sm:flex-none bg-slate-800/80 border border-cyan-500/30 text-cyan-400 px-4 py-2 rounded-lg text-xs font-bold hover:bg-cyan-900/40 hover:border-cyan-400 transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(6,182,212,0.15)]">
                             <span>✨</span> <span className="font-sci-fi tracking-widest">SIMULASI LEPAS</span>
                         </button>
@@ -284,6 +317,11 @@ const App: React.FC = () => {
                             <span>🗂️</span> <span className="font-sci-fi tracking-widest">IMBASAN LEPAS</span>
                         </button>
                     </div>
+
+                    {/* Outbreak Map button repositioned to the bottom */}
+                    <button onClick={() => setShowHeatmap(true)} className="w-full sm:w-auto bg-slate-800 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 px-6 py-3 rounded-xl font-bold hover:bg-emerald-900/30 hover:border-emerald-400 transition-all flex items-center justify-center gap-3 mt-1">
+                        <span className="font-sci-fi tracking-widest text-sm">{t('btn_outbreak_map')}</span>
+                    </button>
                 </div>
 
                 <div className="mt-8">
@@ -378,6 +416,7 @@ const App: React.FC = () => {
         )}
       </main>
       <Footer onOpenAbout={() => setShowAbout(true)} />
+      {toastMsg && <Toast message={toastMsg.msg} type={toastMsg.type} onClose={() => setToastMsg(null)} />}
     </div>
   );
 };
