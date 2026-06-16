@@ -16,6 +16,7 @@ import { PredictionChart } from './components/PredictionChart';
 import LarvaeScanner from './components/LarvaeScanner';
 import AdultMosquitoScanner from './components/AdultMosquitoScanner';
 import { SimulationGallery } from './components/SimulationGallery';
+import { ManualSimulationPage } from './components/ManualSimulationPage';
 import { fetchNationalDengueTrend } from './services/dataGovService';
 import { resizeAndCompressImage } from './utils/imageUtils';
 import { Toast } from './components/Toast';
@@ -30,7 +31,7 @@ const MANUAL_SIMULATION_DEFAULT_PROMPT = `Sila gunakan tool penjana imej (Imagen
 5. Hasilkan imej yang ultra-fotorealistik, resolusi tinggi (8k), dengan pencahayaan semula jadi yang terang.`;
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION'>('HOME');
+  const [currentView, setCurrentView] = useState<'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION' | 'MANUAL_SIMULATION'>('HOME');
   const [sessions, setSessions] = useState<AnalysisSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [isLiveMode, setIsLiveMode] = useState(false);
@@ -148,14 +149,36 @@ const App: React.FC = () => {
 
   const resetApp = () => { setSessions([]); setActiveSessionId(null); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   
+  const handleSaveManualSimulation = (originalImageBase64: string, simulatedImageBase64: string) => {
+    const newSession: AnalysisSession = {
+      id: `manual-sim-${Date.now()}`,
+      fileName: `Manual_Sim_${new Date().toISOString().slice(0,10)}.jpg`,
+      imageSrc: originalImageBase64,
+      mimeType: 'image/jpeg',
+      status: 'SUCCESS',
+      simulationImage: simulatedImageBase64,
+      mode: 'VECTOR_CONTROL',
+      result: {
+        risks: [],
+        generalAdvice: "Simulasi Kebersihan Manual Berjaya Diselamatkan! Sila guna tab simulasi lepas/sejarah simulasi untuk banding semula data.",
+        hygieneLevel: 1, 
+        safetyLevel: 1,
+      }
+    };
+    setSessions(prev => [newSession, ...prev]);
+    setActiveSessionId(newSession.id);
+  };
+
   const handleManualSimulation = () => {
     try {
       navigator.clipboard.writeText(MANUAL_SIMULATION_DEFAULT_PROMPT);
-      setToastMsg({ msg: "Prompt Simulasi Manual diduplikasi ke clipboard! Membuka tab baru Gemini AI...", type: 'success' });
+      setToastMsg({ msg: "Prompt disalin secara automatik! Membuka halaman simulasi khas & Gemini Web...", type: 'success' });
       window.open("https://gemini.google.com/app", "_blank");
+      setCurrentView('MANUAL_SIMULATION');
     } catch (err) {
       console.error(err);
-      setToastMsg({ msg: "Sistem gagal menyalin prompt secara automatik, sila buka Gemini Web secara manual.", type: 'error' });
+      setToastMsg({ msg: "Membuka halaman simulasi khas secara manual.", type: 'error' });
+      setCurrentView('MANUAL_SIMULATION');
     }
   };
 
@@ -212,6 +235,11 @@ const App: React.FC = () => {
             <LarvaeScanner />
         ) : currentView === 'ADULT_MOSQUITO_DETECTION' ? (
             <AdultMosquitoScanner />
+        ) : currentView === 'MANUAL_SIMULATION' ? (
+            <ManualSimulationPage 
+                onBack={() => setCurrentView('HOME')} 
+                onSaveSimulation={handleSaveManualSimulation} 
+            />
         ) : (
             <>
                 {!activeSessionId && (
