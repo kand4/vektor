@@ -22,6 +22,12 @@ export const ManualSimulationModal: React.FC<ManualSimulationModalProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleCopyAndOpenGemini = () => {
+    navigator.clipboard.writeText(promptText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
@@ -61,7 +67,7 @@ export const ManualSimulationModal: React.FC<ManualSimulationModalProps> = ({
             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2">
                 <div className="bg-slate-800 border border-slate-700 rounded p-4">
                     <p className="text-sm text-slate-300 font-mono-sci uppercase mb-3 text-emerald-400">
-                      1. Muat Naik Imej Asal & Tampal Prompt ini di Gemini (gemini.google.com/chat)
+                      1. Muat Naik Imej Asal & Tampal Prompt ini di Gemini Web
                     </p>
                     <div className="relative">
                         <textarea 
@@ -76,6 +82,16 @@ export const ManualSimulationModal: React.FC<ManualSimulationModalProps> = ({
                             {copied ? 'DISALIN!' : 'SALIN'}
                         </button>
                     </div>
+
+                    <a
+                        href="https://gemini.google.com/app"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={handleCopyAndOpenGemini}
+                        className="mt-4 w-full py-3 bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(34,211,238,0.3)] hover:shadow-[0_0_25px_rgba(34,211,238,0.5)] uppercase tracking-wider text-xs md:text-sm text-center border border-cyan-400/30"
+                    >
+                        <span>🚀 {copied ? 'TELAH DISALIN! KLIK UNTUK BUKA GEMINI AI' : 'SALIN PROMPT & BUKA GEMINI WEB'}</span>
+                    </a>
                 </div>
 
                 <div className="bg-slate-800 border border-slate-700 rounded p-6 mt-4 text-center border-dashed">
