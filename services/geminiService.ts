@@ -58,7 +58,8 @@ const getAIClient = (): any => {
                     activeKeyIndex = (currentIndex + 1) % poolSize;
                     return result;
                   } catch (error: any) {
-                    console.error(`❌ [Key Slot ${currentIndex + 1}] Failed with error:`, error.message || error);
+                    const errMsg = typeof error === 'string' ? error : (error.message || JSON.stringify(error));
+                    console.warn(`⚠️ [Key Slot ${currentIndex + 1}] failed:`, errMsg);
                     lastError = error;
                   }
                 }

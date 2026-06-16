@@ -263,13 +263,27 @@ const App: React.FC = () => {
             </div>
             
             <div className="max-w-4xl mx-auto">
-                <div className="mt-8 flex flex-col md:flex-row justify-center gap-4 animate-fade-in-up">
-                    <button onClick={() => setShowHeatmap(true)} className="bg-slate-800 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 px-6 py-3 rounded-xl font-bold hover:bg-emerald-900/30 hover:border-emerald-400 transition-all flex items-center justify-center gap-3">
+                <div className="mt-8 flex flex-col items-center gap-3 animate-fade-in-up">
+                    <button onClick={() => setShowHeatmap(true)} className="w-full sm:w-auto bg-slate-800 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 px-6 py-3 rounded-xl font-bold hover:bg-emerald-900/30 hover:border-emerald-400 transition-all flex items-center justify-center gap-3">
                         <span className="font-sci-fi tracking-widest text-sm">{t('btn_outbreak_map')}</span>
                     </button>
-                    <button onClick={() => setShowSimulationGallery(true)} className="bg-slate-800 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)] text-cyan-400 px-6 py-3 rounded-xl font-bold hover:bg-cyan-900/30 hover:border-cyan-400 transition-all flex items-center justify-center gap-3">
-                        <span className="font-sci-fi tracking-widest text-sm">✨ LIHAT SIMULASI LEPAS</span>
-                    </button>
+                    <div className="flex justify-center gap-2 w-full sm:w-auto">
+                        <button onClick={() => setShowSimulationGallery(true)} className="flex-1 sm:flex-none bg-slate-800/80 border border-cyan-500/30 text-cyan-400 px-4 py-2 rounded-lg text-xs font-bold hover:bg-cyan-900/40 hover:border-cyan-400 transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(6,182,212,0.15)]">
+                            <span>✨</span> <span className="font-sci-fi tracking-widest">SIMULASI LEPAS</span>
+                        </button>
+                        <button onClick={() => {
+                            if (sessions.length === 0) {
+                                alert("Tiada rekod imbasan lepas. Sila muat naik atau tangkap imej terlebih dahulu.");
+                                return;
+                            }
+                            setIsGalleryExpanded(true);
+                            setTimeout(() => {
+                                document.getElementById('evidence-board')?.scrollIntoView({ behavior: 'smooth' });
+                            }, 100);
+                        }} className="flex-1 sm:flex-none bg-slate-800/80 border border-indigo-500/30 text-indigo-400 px-4 py-2 rounded-lg text-xs font-bold hover:bg-indigo-900/40 hover:border-indigo-400 transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(99,102,241,0.15)]">
+                            <span>🗂️</span> <span className="font-sci-fi tracking-widest">IMBASAN LEPAS</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div className="mt-8">
@@ -289,7 +303,7 @@ const App: React.FC = () => {
         )}
 
         {sessions.length > 0 && (
-           <div className="space-y-4 md:space-y-6 mt-8 mb-8 z-50">
+           <div id="evidence-board" className="space-y-4 md:space-y-6 mt-8 mb-8 z-50">
               <div className="bg-slate-900/80 border border-slate-700 rounded-lg backdrop-blur-md overflow-hidden animate-fade-in-up shadow-xl transition-all duration-300">
                  <div className="flex justify-between items-center bg-slate-950/50 p-3 md:p-4 cursor-pointer group/header select-none border-b border-slate-800 hover:bg-slate-900 transition-colors" onClick={() => setIsGalleryExpanded(!isGalleryExpanded)}>
                     <div className="flex items-center gap-2 md:gap-3">

@@ -167,7 +167,7 @@ const LarvaeScanner: React.FC = () => {
                     <div>
                         <div className="flex items-center gap-3">
                            <div className="w-2 h-8 bg-cyan-500 rounded-sm animate-pulse"></div>
-                           <h2 className="text-xl sm:text-2xl font-sci-fi text-cyan-400 uppercase tracking-widest mb-1 shadow-cyan-500/20 drop-shadow-lg">Mosquito Larvae Scanner</h2>
+                           <h2 className="text-xl sm:text-2xl font-sci-fi text-cyan-400 uppercase tracking-widest mb-1 shadow-cyan-500/20 drop-shadow-lg">Pengimbas Larva Nyamuk</h2>
                         </div>
                         <p className="text-xs sm:text-sm text-slate-400 font-mono-sci pl-5">Powered by Universal Roboflow Inference API <span className="text-purple-400 font-bold">& Gemini Vision</span></p>
                     </div>
