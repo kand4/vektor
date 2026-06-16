@@ -14,21 +14,69 @@ export const getPreferredModel = (defaultModel: string) => {
     return localStorage.getItem('gemini_model_preference') || defaultModel;
 };
 
-const getAIClient = () => {
-  let apiKey = "";
+let activeKeyIndex = 0;
+
+export const getAvailableApiKeys = (): string[] => {
+  const keys: string[] = [];
   if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
-    apiKey = process.env.GEMINI_API_KEY;
+    keys.push(process.env.GEMINI_API_KEY.trim());
   }
   if (typeof window !== 'undefined') {
-    const userKey = localStorage.getItem('gemini_api_key');
-    if (userKey && userKey.trim()) {
-      apiKey = userKey.trim();
+    const key1 = localStorage.getItem('gemini_api_key');
+    const key2 = localStorage.getItem('gemini_api_key_2');
+    const key3 = localStorage.getItem('gemini_api_key_3');
+    if (key1 && key1.trim()) keys.push(key1.trim());
+    if (key2 && key2.trim()) keys.push(key2.trim());
+    if (key3 && key3.trim()) keys.push(key3.trim());
+  }
+  return Array.from(new Set(keys)).filter(Boolean);
+};
+
+const getAIClient = (): any => {
+  const keys = getAvailableApiKeys();
+  if (keys.length === 0) {
+    throw new Error("API Key tiada. Sila masukkan sekurang-kurangnya satu API Key di ruangan Tetapan (Settings).");
+  }
+
+  const clients = keys.map(key => new GoogleGenAI({ apiKey: key }));
+
+  const handler = {
+    get(target: any, prop: string | symbol, receiver: any): any {
+      if (prop === 'models') {
+        const modelsHandler = {
+          get(modelsTarget: any, modelsProp: string | symbol) {
+            if (modelsProp === 'generateContent' || modelsProp === 'generateImages') {
+              return async (...args: any[]) => {
+                let lastError = null;
+                const poolSize = clients.length;
+                for (let i = 0; i < poolSize; i++) {
+                  const currentIndex = (activeKeyIndex + i) % poolSize;
+                  const client = clients[currentIndex];
+                  try {
+                    console.log(`🤖 [Attempt ${i + 1}/${poolSize}] Calling ${String(modelsProp)} using Key Slot ${currentIndex + 1}...`);
+                    const result = await (client.models as any)[modelsProp](...args);
+                    activeKeyIndex = (currentIndex + 1) % poolSize;
+                    return result;
+                  } catch (error: any) {
+                    console.error(`❌ [Key Slot ${currentIndex + 1}] Failed with error:`, error.message || error);
+                    lastError = error;
+                  }
+                }
+                throw lastError || new Error("Semua API Key dalam pusingan rotation telah gagal.");
+              };
+            }
+            const client = clients[activeKeyIndex % clients.length];
+            return Reflect.get(client.models, modelsProp);
+          }
+        };
+        return new Proxy({}, modelsHandler);
+      }
+      const client = clients[activeKeyIndex % clients.length];
+      return Reflect.get(client, prop, receiver);
     }
-  }
-  if (!apiKey) {
-    throw new Error("API Key tiada. Sila masukkan API Key di ruangan Tetapan (Settings).");
-  }
-  return new GoogleGenAI({ apiKey });
+  };
+
+  return new Proxy({}, handler);
 };
 
 const extractJSON = (text: string): string => {

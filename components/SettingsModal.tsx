@@ -9,6 +9,8 @@ interface SettingsModalProps {
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [apiKey, setApiKey] = useState('');
+  const [apiKey2, setApiKey2] = useState('');
+  const [apiKey3, setApiKey3] = useState('');
   const [geminiModel, setGeminiModel] = useState('');
   const [roboflowKey, setRoboflowKey] = useState('');
   const [roboflowModel, setRoboflowModel] = useState('');
@@ -18,10 +20,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (isOpen) {
       const storedKey = localStorage.getItem('gemini_api_key') || '';
+      const storedKey2 = localStorage.getItem('gemini_api_key_2') || '';
+      const storedKey3 = localStorage.getItem('gemini_api_key_3') || '';
       const storedModel = localStorage.getItem('gemini_model_preference') || 'gemini-3.1-pro-preview';
       const storedRoboflowKey = localStorage.getItem('roboflow_api_key') || '';
       const storedRoboflowModel = localStorage.getItem('roboflow_model') || 'aegypti-larvae-detection/1';
       setApiKey(storedKey);
+      setApiKey2(storedKey2);
+      setApiKey3(storedKey3);
       setGeminiModel(storedModel);
       setRoboflowKey(storedRoboflowKey);
       setRoboflowModel(storedRoboflowModel);
@@ -33,23 +39,44 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   const testGeminiConnection = async () => {
-    if (!apiKey.trim()) {
+    const keysToTest = [apiKey, apiKey2, apiKey3].map(k => k.trim()).filter(Boolean);
+    if (keysToTest.length === 0) {
        setTestStatus('error');
-       setTestMessage('Sila masukkan API Key dahulu.');
+       setTestMessage('Sila masukkan sekurang-kurangnya satu API Key dahulu.');
        return;
     }
     setTestStatus('testing');
     try {
-       const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
-       await ai.models.generateContent({
-           model: geminiModel || 'gemini-2.5-flash',
-           contents: 'Test connection. Reply OK.'
-       });
-       setTestStatus('success');
-       setTestMessage(`✅ Sambungan Gemini Berjaya! (${geminiModel})`);
+        const results: string[] = [];
+        for (let i = 0; i < keysToTest.length; i++) {
+            const key = keysToTest[i];
+            try {
+                const ai = new GoogleGenAI({ apiKey: key });
+                await ai.models.generateContent({
+                    model: geminiModel || 'gemini-2.5-flash',
+                    contents: 'Test connection. Reply OK.'
+                });
+                results.push(`Kunci ${i + 1}: ✅ Berjaya disambung`);
+            } catch (err: any) {
+                results.push(`Kunci ${i + 1}: ❌ Ralat (${err.message || 'Gagal disambung'})`);
+            }
+        }
+        
+        const allOk = results.every(res => res.includes('✅'));
+        const someOk = results.some(res => res.includes('✅'));
+        if (allOk) {
+            setTestStatus('success');
+            setTestMessage(`Muat naik berjaya! Semua ${keysToTest.length} Kunci aktif:\n\n` + results.join('\n'));
+        } else if (someOk) {
+            setTestStatus('success');
+            setTestMessage(`Selesai dengan amaran! Sebahagian kunci berjaya:\n\n` + results.join('\n'));
+        } else {
+            setTestStatus('error');
+            setTestMessage(`❌ Semua sambung kunci gagal:\n\n` + results.join('\n'));
+        }
     } catch (err: any) {
-       setTestStatus('error');
-       setTestMessage(`❌ Ralat: ${err.message || 'Gagal disambung'}`);
+        setTestStatus('error');
+        setTestMessage(`❌ Ralat: ${err.message || 'Gagal disambung'}`);
     }
   };
 
@@ -58,6 +85,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       localStorage.setItem('gemini_api_key', apiKey.trim());
     } else {
       localStorage.removeItem('gemini_api_key');
+    }
+
+    if (apiKey2.trim()) {
+      localStorage.setItem('gemini_api_key_2', apiKey2.trim());
+    } else {
+      localStorage.removeItem('gemini_api_key_2');
+    }
+
+    if (apiKey3.trim()) {
+      localStorage.setItem('gemini_api_key_3', apiKey3.trim());
+    } else {
+      localStorage.removeItem('gemini_api_key_3');
     }
 
     if (geminiModel.trim()) {
@@ -82,7 +121,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 max-w-md w-full shadow-2xl my-auto">
+      <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 max-w-md w-full shadow-2xl my-auto max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-white uppercase tracking-wider">Tetapan Sistem</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
@@ -93,32 +132,66 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         <div className="space-y-4">
-          <div>
-            <div className="flex justify-between items-center mb-1">
-               <label className="block text-sm font-medium text-slate-300">
-                 Gemini API Key
+          <div className="bg-slate-950/40 p-4 rounded-lg border border-slate-800 space-y-3">
+            <div className="flex justify-between items-center">
+               <label className="block text-xs font-bold text-cyan-400 uppercase tracking-widest">
+                 Sistem Penggiliran Kunci API (Max 3)
                </label>
                <button 
                   onClick={testGeminiConnection}
                   disabled={testStatus === 'testing'}
-                  className="text-[10px] uppercase font-bold bg-slate-800 hover:bg-slate-700 border border-slate-600 px-2 py-1 rounded text-cyan-400 disabled:opacity-50"
+                  className="text-[10px] uppercase font-bold bg-slate-800 hover:bg-slate-700 border border-slate-600 px-2 py-1 rounded text-cyan-400 disabled:opacity-50 transition-colors"
                >
-                  {testStatus === 'testing' ? 'Menguji...' : 'Uji Sambungan'}
+                  {testStatus === 'testing' ? 'Menguji...' : 'Uji Semua Kunci'}
                </button>
             </div>
-            <input
-              type="password"
-              className="w-full bg-slate-800 border border-slate-600 rounded p-3 text-white focus:outline-none focus:border-cyan-500 font-mono text-sm"
-              placeholder="Masukkan API Key anda..."
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-            />
+            
+            <div className="space-y-2">
+              <div>
+                <span className="text-[10px] text-slate-400 font-mono block mb-1">KUNCI 1 (UTAMA)</span>
+                <input
+                  type="password"
+                  className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-cyan-500 font-mono text-xs"
+                  placeholder="Masukkan API Key Utama..."
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <span className="text-[10px] text-slate-400 font-mono block mb-1">KUNCI 2 (CADANGAN)</span>
+                <input
+                  type="password"
+                  className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-cyan-500 font-mono text-xs"
+                  placeholder="Masukkan API Key Kedua (Pilihan)..."
+                  value={apiKey2}
+                  onChange={(e) => setApiKey2(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <span className="text-[10px] text-slate-400 font-mono block mb-1">KUNCI 3 (CADANGAN)</span>
+                <input
+                  type="password"
+                  className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-cyan-500 font-mono text-xs"
+                  placeholder="Masukkan API Key Ketiga (Pilihan)..."
+                  value={apiKey3}
+                  onChange={(e) => setApiKey3(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <p className="text-[10px] text-slate-500 leading-normal">
+              Sistem akan menjalankan giliran pusingan (Round-Robin Style) antara kunci-kunci aktif di atas bagi mengelak limitasi rate harian (RPM/RPD). Sekiranya salah satu kunci gagal, sistem akan terus mencuba kunci seterusnya secara automatik!
+            </p>
+
             {testMessage && (
-               <div className={`mt-2 text-xs p-2 rounded ${testStatus === 'success' ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-500/30' : 'bg-red-900/30 text-red-400 border border-red-500/30'}`}>
+               <div className={`mt-2 text-xs p-2 rounded whitespace-pre-line ${testStatus === 'success' ? 'bg-emerald-950/50 text-emerald-400 border border-emerald-500/30' : 'bg-red-950/50 text-red-400 border border-red-500/30'}`}>
                    {testMessage}
                </div>
             )}
           </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
               Model Enjin Gemini (AI Engine)
@@ -135,6 +208,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               <option value="gemini-1.5-flash">Gemini 1.5 Flash (Alternatif)</option>
             </select>
           </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
               Roboflow API Key
@@ -147,6 +221,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               onChange={(e) => setRoboflowKey(e.target.value)}
             />
           </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
               Roboflow Model ID / Version
