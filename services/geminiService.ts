@@ -382,6 +382,49 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
 
   try {
       const parsedResult = await retryWithBackoff(async () => {
+          if (modelId === 'z.ai/glm-5v-turbo') {
+               const zaiKey = localStorage.getItem('zai_api_key');
+               if (!zaiKey) throw new Error("Z.ai API Key tiada! Sila masukkan dalam tetapan.");
+               // Zhipu/Z.ai uses standard openAI chat completions
+               const res = await fetch('https://api.z.ai/v1/chat/completions', {
+                   method: 'POST',
+                   headers: {
+                       'Content-Type': 'application/json',
+                       'Authorization': `Bearer ${zaiKey.trim()}`
+                   },
+                   body: JSON.stringify({
+                       model: 'glm-5v-turbo', // The exact name Zhipu API expects
+                       messages: [
+                           {
+                               role: 'user',
+                               content: [
+                                   { type: 'text', text: `${finalPrompt}\n\n${schemaDescription}` },
+                                   {
+                                       type: 'image_url',
+                                       image_url: {
+                                           url: `data:${mimeType};base64,${optimizedImage}`
+                                       }
+                                   }
+                               ]
+                           }
+                       ],
+                       max_tokens: 4096,
+                       // Trying to instruct json mode if supported, otherwise just prompt engineering covers it
+                       response_format: { type: "json_object" }
+                   })
+               });
+
+               if (!res.ok) {
+                   const errData = await res.text();
+                   throw new Error(`Z.ai Error [${res.status}]: ${errData}`);
+               }
+
+               const data = await res.json();
+               let textResponse = data.choices?.[0]?.message?.content || "{}";
+               textResponse = extractJSON(textResponse);
+               return JSON.parse(textResponse) as AnalysisResponse;
+          }
+
           const ai = getAIClient();
           const resp = await ai.models.generateContent({
             model: modelId,

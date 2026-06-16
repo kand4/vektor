@@ -14,6 +14,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [geminiModel, setGeminiModel] = useState('');
   const [roboflowKey, setRoboflowKey] = useState('');
   const [roboflowModel, setRoboflowModel] = useState('');
+  const [zaiKey, setZaiKey] = useState('');
   const [testStatus, setTestStatus] = useState<'idle'|'testing'|'success'|'error'>('idle');
   const [testMessage, setTestMessage] = useState('');
 
@@ -22,12 +23,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       const storedKey = localStorage.getItem('gemini_api_key') || '';
       const storedKey2 = localStorage.getItem('gemini_api_key_2') || '';
       const storedKey3 = localStorage.getItem('gemini_api_key_3') || '';
+      const storedZaiKey = localStorage.getItem('zai_api_key') || '';
       const storedModel = localStorage.getItem('gemini_model_preference') || 'gemini-3.1-pro-preview';
       const storedRoboflowKey = localStorage.getItem('roboflow_api_key') || '';
       const storedRoboflowModel = localStorage.getItem('roboflow_model') || 'aegypti-larvae-detection/1';
       setApiKey(storedKey);
       setApiKey2(storedKey2);
       setApiKey3(storedKey3);
+      setZaiKey(storedZaiKey);
       setGeminiModel(storedModel);
       setRoboflowKey(storedRoboflowKey);
       setRoboflowModel(storedRoboflowModel);
@@ -103,6 +106,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       localStorage.setItem('gemini_model_preference', geminiModel.trim());
     } else {
       localStorage.removeItem('gemini_model_preference');
+    }
+
+    if (zaiKey.trim()) {
+      localStorage.setItem('zai_api_key', zaiKey.trim());
+    } else {
+      localStorage.removeItem('zai_api_key');
     }
 
     if (roboflowKey.trim()) {
@@ -194,7 +203,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
-              Model Enjin Gemini (AI Engine)
+              Model Enjin Analisa AI Visual
             </label>
             <select
               className="w-full bg-slate-800 border border-slate-600 rounded p-3 text-white focus:outline-none focus:border-cyan-500 font-sans text-sm appearance-none"
@@ -203,8 +212,26 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             >
               <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Terbaik / Pintar)</option>
               <option value="gemini-2.5-flash">Gemini 2.5 Flash (Laju / Sederhana)</option>
+              <option value="z.ai/glm-5v-turbo">Z.ai: glm-5v-turbo (Khusus Imbasan Imej)</option>
             </select>
+            <p className="text-[10px] text-slate-500 mt-1">Pilihan ini digunakan sebagai enjin imbasan. Manakala simulasi janaan imej baharu tetap akan menggunakan Gemini / ImageN 4.</p>
           </div>
+
+          {geminiModel === 'z.ai/glm-5v-turbo' && (
+              <div className="bg-indigo-950/40 p-4 rounded-lg border border-indigo-800/50 mt-2">
+                <label className="block text-sm font-medium text-indigo-300 mb-1">
+                  Z.ai / Zhipu API Key
+                </label>
+                <input
+                  type="password"
+                  className="w-full bg-slate-900 border border-indigo-700/50 rounded p-3 text-white focus:outline-none focus:border-indigo-500 font-mono text-sm"
+                  placeholder="Masukkan API Key dari Z.ai..."
+                  value={zaiKey}
+                  onChange={(e) => setZaiKey(e.target.value)}
+                />
+                <p className="text-[10px] text-indigo-400/70 mt-2">Kunci ini akan digunapakai untuk endpoint <b>https://api.z.ai/v1/chat/completions</b></p>
+              </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">

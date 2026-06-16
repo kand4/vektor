@@ -39,7 +39,7 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showSimulationGallery, setShowSimulationGallery] = useState(false);
-  const [showEmptyScansAlert, setShowEmptyScansAlert] = useState(false);
+  const [emptyAlertType, setEmptyAlertType] = useState<'imbasan' | 'simulasi' | null>(null);
   const [isGalleryExpanded, setIsGalleryExpanded] = useState(true);
   const [toastMsg, setToastMsg] = useState<{ msg: string; type: 'error' | 'success' } | null>(null);
   
@@ -216,14 +216,18 @@ const App: React.FC = () => {
         />
       )}
 
-      {showEmptyScansAlert && (
+      {emptyAlertType && (
           <div className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
              <div className="bg-slate-900 border border-indigo-500/50 rounded-2xl p-8 max-w-md w-full text-center relative overflow-hidden">
-                <button onClick={() => setShowEmptyScansAlert(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-500 transition-colors z-20">✕</button>
+                <button onClick={() => setEmptyAlertType(null)} className="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-500 transition-colors z-20">✕</button>
                 <div className="text-5xl mb-4">🗂️</div>
-                <h2 className="text-xl font-sci-fi font-bold text-indigo-400 mb-2">TIADA IMBASAN</h2>
-                <p className="text-slate-400 text-sm">Tiada rekod imbasan lepas dijumpai. Sila muat naik atau tangkap imej terlebih dahulu untuk memulakan sesi.</p>
-                <button onClick={() => setShowEmptyScansAlert(false)} className="mt-6 bg-slate-800 text-slate-300 px-6 py-2 rounded-lg font-bold hover:bg-slate-700 w-full tracking-widest uppercase">Tutup</button>
+                <h2 className="text-xl font-sci-fi font-bold text-indigo-400 mb-2">TIADA {emptyAlertType === 'simulasi' ? 'SIMULASI' : 'IMBASAN'}</h2>
+                <p className="text-slate-400 text-sm">
+                   {emptyAlertType === 'simulasi' 
+                      ? 'Tiada rekod simulasi lepas dijumpai. Sila muat naik atau tangkap imej, buat analisis, dan jana simulasi terlebih dahulu.' 
+                      : 'Tiada rekod imbasan lepas dijumpai. Sila muat naik atau tangkap imej terlebih dahulu untuk memulakan sesi.'}
+                </p>
+                <button onClick={() => setEmptyAlertType(null)} className="mt-6 bg-slate-800 text-slate-300 px-6 py-2 rounded-lg font-bold hover:bg-slate-700 w-full tracking-widest uppercase">Tutup</button>
              </div>
           </div>
       )}
@@ -342,12 +346,18 @@ const App: React.FC = () => {
 
                     {/* Previous Simulations and Scans buttons moved here */}
                     <div className="flex justify-center gap-2 w-full sm:w-auto mt-2">
-                        <button onClick={() => setShowSimulationGallery(true)} className="flex-1 sm:flex-none bg-slate-800/80 border border-cyan-500/30 text-cyan-400 px-4 py-2 rounded-lg text-xs font-bold hover:bg-cyan-900/40 hover:border-cyan-400 transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(6,182,212,0.15)]">
+                        <button onClick={() => {
+                            if (sessions.filter(s => s.simulationImage).length === 0) {
+                                setEmptyAlertType('simulasi');
+                                return;
+                            }
+                            setShowSimulationGallery(true);
+                        }} className="flex-1 sm:flex-none bg-slate-800/80 border border-cyan-500/30 text-cyan-400 px-4 py-2 rounded-lg text-xs font-bold hover:bg-cyan-900/40 hover:border-cyan-400 transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(6,182,212,0.15)]">
                             <span>✨</span> <span className="font-sci-fi tracking-widest">SIMULASI LEPAS</span>
                         </button>
                         <button onClick={() => {
                             if (sessions.length === 0) {
-                                setShowEmptyScansAlert(true);
+                                setEmptyAlertType('imbasan');
                                 return;
                             }
                             setIsGalleryExpanded(true);
