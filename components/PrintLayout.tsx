@@ -173,11 +173,11 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ sessions }) => {
                                   const r = s.result!;
                                   const dominantRisk = r.risks?.[0];
                                   return (
-                                      <tr key={s.id} className={r.hygieneLevel < 3 || (r.safetyLevel && r.safetyLevel < 3) ? "bg-red-50 print:bg-transparent" : ""}>
+                                      <tr key={s.id} className={r.hygieneLevel >= 3 || (r.safetyLevel && r.safetyLevel >= 3) ? "bg-red-50 print:bg-transparent" : ""}>
                                           <td className="border border-black p-2 text-center font-bold">{idx + 1}</td>
                                           <td className="border border-black p-2 truncate max-w-[200px]" title={s.fileName}>{s.fileName || `Imej ${idx + 1}`}</td>
-                                          <td className={`border border-black p-2 text-center font-bold ${r.hygieneLevel < 3 ? 'text-red-600' : ''}`}>{r.hygieneLevel}/5</td>
-                                          <td className={`border border-black p-2 text-center font-bold ${(r.safetyLevel || r.hygieneLevel) < 3 ? 'text-red-600' : ''}`}>{r.safetyLevel || r.hygieneLevel}/5</td>
+                                          <td className={`border border-black p-2 text-center font-bold ${r.hygieneLevel >= 3 ? 'text-red-600' : ''}`}>{r.hygieneLevel}/5</td>
+                                          <td className={`border border-black p-2 text-center font-bold ${(r.safetyLevel || r.hygieneLevel) >= 3 ? 'text-red-600' : ''}`}>{r.safetyLevel || r.hygieneLevel}/5</td>
                                           <td className="border border-black p-2 text-[10px] uppercase truncate max-w-[200px]">
                                               {dominantRisk ? dominantRisk.label : "TIADA ISU KRITIKAL"}
                                           </td>
@@ -294,12 +294,12 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ sessions }) => {
                     <div className="border border-black p-4 text-center">
                         <div className="text-xs uppercase font-bold text-gray-600 mb-1">SKOR KEBERSIHAN</div>
                         <div className="text-3xl font-extrabold">{result.hygieneLevel}/5</div>
-                        <div className="text-[10px] mt-1 uppercase tracking-wider">{result.hygieneLevel < 3 ? 'GAGAL / KRITIKAL' : 'LULUS / MEMUASKAN'}</div>
+                        <div className="text-[10px] mt-1 uppercase tracking-wider">{result.hygieneLevel >= 3 ? 'GAGAL / KRITIKAL' : 'LULUS / MEMUASKAN'}</div>
                     </div>
                     <div className="border border-black p-4 text-center">
                         <div className="text-xs uppercase font-bold text-gray-600 mb-1">SKOR KESELAMATAN</div>
                         <div className="text-3xl font-extrabold">{result.safetyLevel || result.hygieneLevel}/5</div>
-                        <div className="text-[10px] mt-1 uppercase tracking-wider">{result.safetyLevel < 3 ? 'BERISIKO TINGGI' : 'TERKAWAL'}</div>
+                        <div className="text-[10px] mt-1 uppercase tracking-wider">{(result.safetyLevel || result.hygieneLevel) >= 3 ? 'BERISIKO TINGGI' : 'TERKAWAL'}</div>
                     </div>
                 </div>
 

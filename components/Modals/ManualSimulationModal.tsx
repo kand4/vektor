@@ -61,13 +61,13 @@ export const ManualSimulationModal: React.FC<ManualSimulationModalProps> = ({
             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2">
                 <div className="bg-slate-800 border border-slate-700 rounded p-4">
                     <p className="text-sm text-slate-300 font-mono-sci uppercase mb-3 text-emerald-400">
-                      1. Salin Prompt Ini & Tampal di Gemini (gemini.google.com)
+                      1. Muat Naik Imej Asal & Tampal Prompt ini di Gemini (gemini.google.com/chat)
                     </p>
                     <div className="relative">
                         <textarea 
                             readOnly 
                             value={promptText} 
-                            className="w-full h-32 bg-slate-950 border border-slate-800 rounded p-3 text-slate-300 text-sm font-mono-sci focus:outline-none" 
+                            className="w-full h-64 bg-slate-950 border border-slate-800 rounded p-4 text-slate-300 text-xs md:text-sm font-mono focus:outline-none whitespace-pre-wrap" 
                         />
                         <button 
                             onClick={handleCopy}

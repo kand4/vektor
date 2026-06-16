@@ -314,7 +314,7 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
             7. solution: string (Remedial action in ${targetLang})
             8. savageCommentary: string (Highly sarcastic, direct, brutal roast/critique of this specific hygiene infraction in ${targetLang}.)
             9. confidence: number (0.0 - 1.0)
-        - hygieneLevel: INTEGER (1-5)
+        - hygieneLevel: INTEGER (1-5, where 1 is CLEANEST/SAFEST and 5 is WORST/CLOSE PREMISE)
       `;
 
       finalPrompt = `
@@ -358,8 +358,8 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
             9. savageCommentary: string (Highly sarcastic, direct, brutal, varied roast/critique of this specific hazard/breeding site in ${targetLang}. Show extreme frustration at this risk.)
         
         - detected_keywords: string[]
-        - hygieneLevel: INTEGER (1-5)
-        - safetyLevel: INTEGER (1-5)
+        - hygieneLevel: INTEGER (1-5, where 1 is CLEANEST/SAFEST and 5 is WORST/CLOSE PREMISE)
+        - safetyLevel: INTEGER (1-5, where 1 is CLEANEST/SAFEST and 5 is WORST/CLOSE PREMISE)
         - generalAdvice: string (Technical Summary in ${targetLang})
         - savageCommentary: string (Direct, Harsh, varied overall Critique of the whole place in ${targetLang}. Vary the tone: sarcastic, strictly formal-warning, or aggressively urgent. NEVER repeat similar critiques, use unique analogies for waste/incompetence each time.)
       `;

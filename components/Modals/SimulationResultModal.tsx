@@ -7,10 +7,11 @@ interface SimulationResultModalProps {
   originalImage: string;
   generatedImages: string[];
   onRegenerate: (customPrompt: string) => void;
+  onManualFallback?: (customPrompt: string) => void;
 }
 
 export const SimulationResultModal: React.FC<SimulationResultModalProps> = ({ 
-  isOpen, onClose, originalImage, generatedImages, onRegenerate 
+  isOpen, onClose, originalImage, generatedImages, onRegenerate, onManualFallback 
 }) => {
   const { t } = useLanguage();
   const [sliderPos, setSliderPos] = useState(50);
@@ -48,13 +49,13 @@ export const SimulationResultModal: React.FC<SimulationResultModalProps> = ({
   const currentGeneratedImage = generatedImages[selectedIndex];
 
   return (
-    <div className="fixed inset-0 z-[180] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 no-print overflow-y-auto"
+    <div className="fixed inset-0 z-[180] bg-black/95 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 no-print overflow-y-auto"
       onMouseMove={(e) => onMove(e.clientX)}
       onTouchMove={(e) => onMove(e.touches[0].clientX)}
       onMouseUp={onEnd}
       onTouchEnd={onEnd}
     >
-        <div className="bg-slate-900 border border-cyan-500 rounded-xl w-full max-w-5xl h-[95vh] md:h-[85vh] flex flex-col overflow-hidden shadow-[0_0_50px_rgba(6,182,212,0.3)] my-auto">
+        <div className="bg-slate-900 border border-cyan-500 rounded-xl w-full max-w-[95vw] sm:max-w-7xl h-[98vh] md:h-[95vh] flex flex-col overflow-hidden shadow-[0_0_50px_rgba(6,182,212,0.3)] my-auto">
              <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-950 shrink-0">
                  <h3 className="text-lg font-sci-fi font-bold text-cyan-400 flex items-center gap-2">
                     <span className="animate-pulse">✨</span> {t('sim_complete')}
@@ -67,7 +68,7 @@ export const SimulationResultModal: React.FC<SimulationResultModalProps> = ({
                     ref={containerRef}
                     onMouseDown={(e) => onStart(e.clientX)}
                     onTouchStart={(e) => onStart(e.touches[0].clientX)}
-                    className="relative w-full max-h-[50vh] aspect-video border border-slate-700 rounded overflow-hidden shadow-2xl group/sim select-none shrink-0 cursor-ew-resize"
+                    className="relative w-full min-h-[50vh] md:min-h-[70vh] border border-slate-700 rounded overflow-hidden shadow-xl group/sim select-none shrink-0 cursor-ew-resize bg-slate-950"
                  >
                     <img src={currentGeneratedImage} className="absolute inset-0 w-full h-full object-contain bg-slate-950 pointer-events-none" />
                     <div className="absolute inset-0 bg-slate-950 overflow-hidden pointer-events-none" style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}>
@@ -166,6 +167,18 @@ export const SimulationResultModal: React.FC<SimulationResultModalProps> = ({
                          >
                              Jana Semula
                          </button>
+                         {onManualFallback && (
+                             <button
+                                 onClick={() => {
+                                     onManualFallback(customPrompt.trim());
+                                     setCustomPrompt('');
+                                 }}
+                                 className="bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 px-4 rounded text-sm transition-colors uppercase whitespace-nowrap whitespace-normal md:whitespace-nowrap flex items-center gap-2"
+                                 title="Jika anda mengalami ralat Limit/Quota API, gunakan kaedah ini."
+                             >
+                                 <span>⚠️ Ralat Kuota? Guna Kaedah Manual</span>
+                             </button>
+                         )}
                      </div>
                  </div>
 

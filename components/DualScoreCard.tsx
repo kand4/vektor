@@ -5,9 +5,9 @@ export const DualScoreCard: React.FC<{ hygieneLevel: number, safetyLevel: number
     const { t } = useLanguage();
     const safeLevel = safetyLevel || hygieneLevel;
     const getColor = (level: number) => {
-        if (level >= 4) return 'text-emerald-400 border-emerald-500';
+        if (level <= 2) return 'text-emerald-400 border-emerald-500';
         if (level === 3) return 'text-yellow-400 border-yellow-500';
-        return 'text-red-500 border-red-500';
+        return 'text-red-500 border-red-500 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.5)]';
     };
 
     return (
@@ -30,9 +30,9 @@ export const DualScoreCard: React.FC<{ hygieneLevel: number, safetyLevel: number
                  </div>
              </div>
              <div className="mt-4 pt-3 border-t border-slate-800 text-center">
-                 <span className={`text-xs md:text-sm font-sci-fi font-bold uppercase tracking-widest ${Math.min(hygieneLevel, safeLevel) < 3 ? 'text-red-500 animate-pulse' : 'text-emerald-400'}`}>
+                 <span className={`text-xs md:text-sm font-sci-fi font-bold uppercase tracking-widest ${Math.max(hygieneLevel, safeLevel) >= 4 ? 'text-red-500 animate-pulse' : 'text-emerald-400'}`}>
                      {isSavage ? `${t('verdict_honest')}: ` : `${t('verdict_status')}: `} 
-                     {Math.min(hygieneLevel, safeLevel) === 1 ? t('status_closure') : Math.min(hygieneLevel, safeLevel) === 2 ? t('status_notice') : t('status_compliant')}
+                     {Math.max(hygieneLevel, safeLevel) === 5 ? t('status_closure') : Math.max(hygieneLevel, safeLevel) >= 3 ? t('status_notice') : t('status_compliant')}
                  </span>
              </div>
         </div>

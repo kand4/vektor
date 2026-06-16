@@ -221,8 +221,35 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
           onSaveSimulation(generatedImage);
           setShowCleanModal(true);
       } catch (error: any) {
-          setToastMsg({ msg: `Regenerasi Gagal: ${error.message}`, type: 'error' });
+          setToastMsg({ msg: `Regenerasi Gagal: ${error.message}. Cuba butang manual di bawah.`, type: 'error' });
           setShowCleanModal(true);
+      } finally {
+          setIsCleaning(false);
+      }
+  };
+
+  const handleManualFallback = async (customPrompt: string = '') => {
+      setShowCleanModal(false);
+      setIsCleaning(true);
+      try {
+          const base64Data = imageSrc.split(',')[1];
+          const config: SimulationConfig = {
+              mode: 'SANITIZE_ONLY',
+              humans: 'REMOVE',
+              lighting: 'NATURAL',
+              engine: 'MANUAL',
+              customPrompt
+          };
+          const textPrompt = await generateSimulationPrompt(base64Data, config);
+          const jsonPrompt = JSON.stringify({
+              instruction: "Sila gunakan tool imej generator (Imagen 3) di Gemini AI untuk mengubah imej ini berdasarkan parameters berikut:",
+              image_prompt: textPrompt,
+              configuration: config
+          }, null, 2);
+          setManualSimPrompt(jsonPrompt);
+          setShowManualSimModal(true);
+      } catch (error: any) {
+          setToastMsg({ msg: `Ralat mod manual: ${error.message}`, type: 'error' });
       } finally {
           setIsCleaning(false);
       }
@@ -236,8 +263,13 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
           const mimeType = imageSrc.split(';')[0].split(':')[1] || 'image/jpeg';
           
           if (config.engine === 'MANUAL') {
-              const prompt = await generateSimulationPrompt(base64Data, config);
-              setManualSimPrompt(prompt);
+              const textPrompt = await generateSimulationPrompt(base64Data, config);
+              const jsonPrompt = JSON.stringify({
+                  instruction: "Sila gunakan tool imej generator (Imagen 3) di Gemini AI untuk mengubah imej ini berdasarkan parameters berikut:",
+                  image_prompt: textPrompt,
+                  configuration: config
+              }, null, 2);
+              setManualSimPrompt(jsonPrompt);
               setShowManualSimModal(true);
           } else {
               const generatedImage = await generateCleanSimulation(base64Data, mimeType, config);
@@ -246,7 +278,13 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
               setShowCleanModal(true);
           }
       } catch (error: any) {
-          setToastMsg({ msg: `Simulasi Gagal: ${error.message}`, type: 'error' });
+          setToastMsg({ msg: `Simulasi Gagal: ${error.message}. API Limit/Quota dicapai. Sila cuba kaedah manual.`, type: 'error' });
+          // If automatic fails, we fallback to manual seamlessly or ask user via toast.
+          // Since the user is asked to use button, they can click "✨ LIHAT SIMULASI LEPAS" then click the manual button if we left cleanImages intact...
+          // Wait, if cleanImages is empty, they can't open the modal! We should auto trigger flow.
+          if (cleanImages.length === 0) {
+              handleManualFallback();
+          }
       } finally {
           setIsCleaning(false);
       }
@@ -627,14 +665,14 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                                      <td className="p-3">
                                          <div className="flex items-center gap-2">
                                              <div className="w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                                 <div className={`h-full ${s.result!.hygieneLevel < 3 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${(s.result!.hygieneLevel / 5) * 100}%` }}></div>
+                                                 <div className={`h-full ${s.result!.hygieneLevel >= 3 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${(s.result!.hygieneLevel / 5) * 100}%` }}></div>
                                              </div>
                                              <span className="font-bold">{s.result!.hygieneLevel}/5</span>
                                          </div>
                                      </td>
                                      <td className="p-3 text-center">
-                                         <span className={`text-[9px] px-2 py-0.5 rounded border uppercase font-bold ${s.result!.hygieneLevel < 3 ? 'bg-red-900/20 text-red-500 border-red-500/50' : 'bg-emerald-900/20 text-emerald-500 border-emerald-500/50'}`}>
-                                             {s.result!.hygieneLevel < 3 ? 'GAGAL' : 'LULUS'}
+                                         <span className={`text-[9px] px-2 py-0.5 rounded border uppercase font-bold ${s.result!.hygieneLevel >= 3 ? 'bg-red-900/20 text-red-500 border-red-500/50' : 'bg-emerald-900/20 text-emerald-500 border-emerald-500/50'}`}>
+                                             {s.result!.hygieneLevel >= 3 ? 'GAGAL' : 'LULUS'}
                                          </span>
                                      </td>
                                  </tr>
@@ -660,7 +698,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       )}
       {toastMsg && <Toast message={toastMsg.msg} type={toastMsg.type} onClose={() => setToastMsg(null)} />}
       <SimulationConfigModal isOpen={showConfigModal} onClose={() => setShowConfigModal(false)} onStart={startSimulation} />
-      <SimulationResultModal isOpen={showCleanModal} onClose={() => setShowCleanModal(false)} originalImage={imageSrc} generatedImages={cleanImages} onRegenerate={handleRegenerateSimulation} />
+      <SimulationResultModal isOpen={showCleanModal} onClose={() => setShowCleanModal(false)} originalImage={imageSrc} generatedImages={cleanImages} onRegenerate={handleRegenerateSimulation} onManualFallback={handleManualFallback} />
       <ManualSimulationModal isOpen={showManualSimModal} onClose={() => setShowManualSimModal(false)} promptText={manualSimPrompt} onImagePasted={handleManualSimulationPasted} />
       
       {/* THE HIDDEN PRINT MODULE */}
@@ -696,11 +734,11 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                  <div className="flex items-center gap-6">
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] md:text-xs text-slate-400 font-mono-sci uppercase">{t('label_hygiene')}</span>
-                        <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center font-bold text-sm md:text-base border ${result.hygieneLevel >= 4 ? 'border-emerald-500 text-emerald-400 bg-emerald-950/30' : 'border-red-500 text-red-500 bg-red-950/30'}`}>{result.hygieneLevel}</div>
+                        <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center font-bold text-sm md:text-base border ${result.hygieneLevel <= 2 ? 'border-emerald-500 text-emerald-400 bg-emerald-950/30' : result.hygieneLevel === 3 ? 'border-yellow-500 text-yellow-400 bg-yellow-950/30' : 'border-red-500 text-red-500 bg-red-950/30'}`}>{result.hygieneLevel}</div>
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] md:text-xs text-slate-400 font-mono-sci uppercase">{t('label_safety')}</span>
-                        <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center font-bold text-sm md:text-base border ${result.safetyLevel >= 4 ? 'border-blue-500 text-blue-400 bg-blue-950/30' : 'border-orange-500 text-orange-500 bg-orange-950/30'}`}>{result.safetyLevel || result.hygieneLevel}</div>
+                        <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center font-bold text-sm md:text-base border ${result.safetyLevel <= 2 ? 'border-blue-500 text-blue-400 bg-blue-950/30' : result.safetyLevel === 3 ? 'border-yellow-500 text-yellow-400 bg-yellow-950/30' : 'border-orange-500 text-orange-500 bg-orange-950/30'}`}>{result.safetyLevel || result.hygieneLevel}</div>
                     </div>
                  </div>
                  {result.sensitivityUsed && (
@@ -787,8 +825,8 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                 </div>
               )}
               
-              {/* Logic Fix: Only show "No Risks" if Hygiene is decent (>4). If it's dirty but no risks found, show Warning. */}
-              {currentRisks.length === 0 && result.hygieneLevel >= 5 && (
+              {/* Logic Fix: Only show "No Risks" if Hygiene is decent (<=2). If it's dirty but no risks found, show Warning. */}
+              {currentRisks.length === 0 && result.hygieneLevel <= 2 && (
                   <div className="bg-emerald-900/20 border border-emerald-500/50 rounded-lg p-6 text-center">
                       <div className="text-3xl mb-2">✅</div>
                       <h3 className="text-emerald-400 font-bold font-sci-fi">{t('no_risk_detected')}</h3>
@@ -796,7 +834,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                   </div>
               )}
               
-              {currentRisks.length === 0 && result.hygieneLevel < 5 && (
+              {currentRisks.length === 0 && result.hygieneLevel > 2 && (
                   <div className="bg-amber-900/20 border border-amber-500/50 rounded-lg p-6 text-center animate-pulse">
                       <div className="text-3xl mb-2">⚠️</div>
                       <h3 className="text-amber-400 font-bold font-sci-fi">{t('hidden_risk_warning')}</h3>
