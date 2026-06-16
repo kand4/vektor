@@ -259,7 +259,7 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
         severityThreshold = "THRESHOLD: POTENTIAL BREEDING SITES & NON-COMPLIANCE WITH ACT 154.";
         break;
     case 'EXTREME':
-        thinkingBudget = 32000;
+        thinkingBudget = 20000;
         engineerPersona = "SYSTEM: FORENSIC PATHOGEN & BIO-SAFETY AUDITOR (LEVEL 5).";
         severityThreshold = "THRESHOLD: ZERO TOLERANCE. ANY ORGANIC RESIDUE IS A CRITICAL DEFECT.";
         break;
