@@ -20,15 +20,16 @@ import { ManualSimulationPage } from './components/ManualSimulationPage';
 import { fetchNationalDengueTrend } from './services/dataGovService';
 import { resizeAndCompressImage } from './utils/imageUtils';
 import { Toast } from './components/Toast';
+import { ManualJsonBypassPanel } from './components/ManualJsonBypassPanel';
 
 const MANUAL_SIMULATION_DEFAULT_PROMPT = `Sila gunakan tool penjana imej (Imagen) untuk mengubah imej yang saya kongsikan ini:
 
 [PANDUAN UTAMA / CRITICAL INSTRUCTIONS]:
 1. KEKALKAN SUDUT KAMERA, PERSPEKTIF, ELEVASI, DAN FIELD OF VIEW YANG SAMA SEPERTI IMEJ ASAL.
-2. Bersihkan semua kotoran, sampah sarap, takungan air, jentik-jentik, sisa makanan, dan apa-apa tanda kotoran di kawasan tersebut.
-3. Jadikan kawasan tersebut kelihatan sangat bersih, kemas, steril, dan mematuhi standard kebersihan bertaraf tinggi (Medical/Hospital Grade cleanliness).
-4. Sila tukar permukaan lantai atau dinding yang rosak/retak/kotor kepada rekaan baru yang bersih dan kukuh, tetapi struktur asal bilik/kawasan mestilah kekal 100% sama tanpa diubah.
-5. Hasilkan imej yang ultra-fotorealistik, resolusi tinggi (8k), dengan pencahayaan semula jadi yang terang.`;
+2. Jadikan kawasan ini kelihatan sangat bersih, kemas, kering sepenuhnya, tersusun rapi, dan mematuhi standard kebersihan yang sangat tinggi (spotless, immaculate, and pristine).
+3. Pastikan seluruh lantai, dinding, dan permukaan rata kelihatan sangat bersih, kering, licin berkilat tanpa sebarang cela atau kotoran.
+4. Semua objek, peranti, atau perabot diaturkan dengan sangat kemas, teratur, dan tersusun rapi mengikut susun atur asal.
+5. Hasilkan imej yang ultra-fotorealistik, fotografi resolusi tinggi (8k), dengan pencahayaan semula jadi yang bersih, terang, dan bergemerlapan.`;
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION' | 'MANUAL_SIMULATION'>('HOME');
@@ -39,6 +40,7 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [showSimulationGallery, setShowSimulationGallery] = useState(false);
+  const [showBypassModal, setShowBypassModal] = useState(false);
   const [emptyAlertType, setEmptyAlertType] = useState<'imbasan' | 'simulasi' | null>(null);
   const [isGalleryExpanded, setIsGalleryExpanded] = useState(true);
   const [toastMsg, setToastMsg] = useState<{ msg: string; type: 'error' | 'success' } | null>(null);
@@ -126,6 +128,29 @@ const App: React.FC = () => {
 
   const handleSimulationSave = (sessionId: string, image: string) => {
       setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, simulationImage: image } : s));
+  };
+
+  const RADAR_GRID_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 1000 1000" style="background:%23020617"><defs><radialGradient id="r" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="%2310b981" stop-opacity="0.15"/><stop offset="100%" stop-color="%23020617" stop-opacity="0.9"/></radialGradient></defs><rect width="1000" height="1000" fill="url(%23r)"/><g stroke="%2310b981" stroke-opacity="0.2" stroke-width="1"><path d="M 0,100 L 1000,100 M 0,200 L 1000,200 M 0,300 L 1000,300 M 0,400 L 1000,400 M 0,500 L 1000,500 M 0,600 L 1000,600 M 0,700 L 1000,700 M 0,800 L 1000,800 M 0,900 L 1000,900"/><path d="M 100,0 L 100,1000 M 200,0 L 200,1000 M 300,0 L 300,1000 M 400,0 L 400,1000 M 500,0 L 500,1000 M 600,0 L 600,1000 M 700,0 L 700,1000 M 800,0 L 800,1000 M 900,0 L 900,1000"/></g><circle cx="500" cy="500" r="100" fill="none" stroke="%2310b981" stroke-opacity="0.5" stroke-dasharray="8 8" stroke-width="2"></circle><circle cx="500" cy="500" r="300" fill="none" stroke="%2310b981" stroke-opacity="0.3" stroke-width="1.5"/><circle cx="500" cy="500" r="450" fill="none" stroke="%2310b981" stroke-opacity="0.15" stroke-width="1"/><line x1="500" y1="0" x2="500" y2="1000" stroke="%2310b981" stroke-opacity="0.3" stroke-width="2"/><line x1="0" y1="500" x2="1000" y2="500" stroke="%2310b981" stroke-opacity="0.3" stroke-width="2"/><text x="50" y="80" fill="%2310b981" font-family="monospace" font-size="20" opacity="0.6">ANOMALY DETECTOR // MONITOR ACTIVE</text></svg>`;
+
+  const handleApplyExternalJson = (parsedResult: AnalysisResponse) => {
+    if (activeSessionId) {
+      setSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, status: 'SUCCESS', result: parsedResult } : s));
+      setIsGalleryExpanded(false);
+    } else {
+      const newSessionId = `session-external-${Date.now()}`;
+      const newSession: AnalysisSession = {
+        id: newSessionId,
+        fileName: 'PENGESANAN_KUPASAN_AI_LUARAN.jpg',
+        imageSrc: RADAR_GRID_SVG,
+        mimeType: 'image/jpeg',
+        status: 'SUCCESS',
+        result: parsedResult,
+        mode: analysisMode
+      };
+      setSessions(prev => [newSession, ...prev]);
+      setActiveSessionId(newSessionId);
+      setIsGalleryExpanded(false);
+    }
   };
 
   const handleUpdateSessionResult = (sessionId: string, newResult: AnalysisResponse) => {
@@ -332,17 +357,31 @@ const App: React.FC = () => {
             
             <div className="max-w-4xl mx-auto">
                 <div className="mt-8 flex flex-col items-center gap-3 animate-fade-in-up">
-                    {/* MOD SIMULASI MANUAL DIRECT ACTION */}
-                    <button 
-                        onClick={handleManualSimulation} 
-                        className="w-full sm:w-auto bg-gradient-to-r from-cyan-600 to-indigo-600 border border-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.3)] text-white px-8 py-4 rounded-xl font-bold hover:from-cyan-500 hover:to-indigo-500 hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] transition-all flex items-center justify-center gap-3 active:scale-95 group/manual-sim"
-                    >
-                        <span className="text-xl group-hover/manual-sim:animate-bounce">🚀</span>
-                        <div className="text-left">
-                            <span className="block font-sci-fi tracking-widest text-sm leading-tight">MOD SIMULASI MANUAL</span>
-                            <span className="block text-[9px] text-cyan-200 font-mono-sci uppercase opacity-80">Salin Prompt & Buka Gemini Web</span>
-                        </div>
-                    </button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-2xl">
+                        {/* MOD SIMULASI MANUAL DIRECT ACTION */}
+                        <button 
+                            onClick={handleManualSimulation} 
+                            className="bg-gradient-to-r from-cyan-600 to-indigo-600 border border-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.3)] text-white px-5 py-4 rounded-xl font-bold hover:from-cyan-500 hover:to-indigo-500 hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] transition-all flex items-center justify-center gap-3 active:scale-95 group/manual-sim"
+                        >
+                            <span className="text-xl group-hover/manual-sim:animate-bounce">🚀</span>
+                            <div className="text-left">
+                                <span className="block font-sci-fi tracking-widest text-xs lg:text-sm leading-tight">MOD SIMULASI MANUAL</span>
+                                <span className="block text-[8px] text-cyan-200 font-mono-sci uppercase opacity-80">Salin Prompt & Buka Gemini Web</span>
+                            </div>
+                        </button>
+
+                        {/* MOD FORENSIK LUARAN TAMPAL JSON BYPASS */}
+                        <button 
+                            onClick={() => setShowBypassModal(true)} 
+                            className="bg-gradient-to-r from-emerald-600 to-teal-600 border border-emerald-400/50 shadow-[0_0_20px_rgba(16,185,129,0.3)] text-white px-5 py-4 rounded-xl font-bold hover:from-emerald-500 hover:to-teal-500 hover:shadow-[0_0_35px_rgba(16,185,129,0.6)] transition-all flex items-center justify-center gap-3 active:scale-95 group/bypass-json"
+                        >
+                            <span className="text-xl group-hover/bypass-json:scale-110 transition-transform">🧬</span>
+                            <div className="text-left">
+                                <span className="block font-sci-fi tracking-widest text-xs lg:text-sm leading-tight">MOD PENGESANAN LUARAN</span>
+                                <span className="block text-[8px] text-emerald-200 font-mono-sci uppercase opacity-80">Tampal JSON Arena.ai / Bypass Kuota</span>
+                            </div>
+                        </button>
+                    </div>
 
                     {/* Previous Simulations and Scans buttons moved here */}
                     <div className="flex justify-center gap-2 w-full sm:w-auto mt-2">
@@ -444,9 +483,20 @@ const App: React.FC = () => {
                        </div>
                     )}
                     {getActiveSession()!.status === 'ERROR' && (
-                       <div className="bg-red-950/20 border border-red-500/50 p-8 md:p-12 rounded-lg text-center min-h-[300px] flex flex-col items-center justify-center">
-                          <div className="text-4xl mb-4">🚫</div>
-                          <button onClick={() => triggerAnalysis(activeSessionId!)} className="bg-red-800 text-white px-6 py-2 rounded font-bold hover:bg-red-700 text-xs md:text-sm">{t('btn_retry')}</button>
+                       <div className="bg-red-950/20 border border-red-500/50 p-6 md:p-10 rounded-xl text-center min-h-[300px] flex flex-col items-center justify-center max-w-lg mx-auto">
+                          <div className="text-4xl mb-3">⚠️</div>
+                          <h4 className="text-lg font-sci-fi font-bold text-red-200 mb-2">ANALISIS TERGANGGU / HAD KUOTA</h4>
+                          <p className="text-xs text-slate-400 font-mono-sci mb-6">
+                             Sistem mengesan ralat sambungan atau had kuota API pelayan telah tamat. Jangan risau! Anda boleh memintas had ini dengan menggunakan Mod Pengesanan Luaran secara percuma di Google AI Studio atau LMSYS.
+                          </p>
+                          <div className="flex flex-col sm:flex-row gap-3 w-full">
+                             <button onClick={() => triggerAnalysis(activeSessionId!)} className="flex-1 bg-red-900 border border-red-500 text-red-200 px-6 py-3 rounded-lg font-bold hover:bg-red-800 text-xs uppercase tracking-widest transition-all">
+                                {t('btn_retry')}
+                             </button>
+                             <button onClick={() => setShowBypassModal(true)} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2">
+                                <span>🧬</span> TAMPAL JSON LUARAN
+                             </button>
+                          </div>
                        </div>
                     )}
                     {getActiveSession()!.status === 'SUCCESS' && getActiveSession()!.result && (
@@ -468,6 +518,14 @@ const App: React.FC = () => {
       </main>
       <Footer onOpenAbout={() => setShowAbout(true)} />
       {toastMsg && <Toast message={toastMsg.msg} type={toastMsg.type} onClose={() => setToastMsg(null)} />}
+      
+      <ManualJsonBypassPanel 
+        isOpen={showBypassModal}
+        onClose={() => setShowBypassModal(false)}
+        activeImageSrc={activeSessionId ? getActiveSession()?.imageSrc : undefined}
+        activeMode={analysisMode}
+        onApplyJson={handleApplyExternalJson}
+      />
     </div>
   );
 };

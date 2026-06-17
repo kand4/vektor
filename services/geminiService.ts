@@ -709,32 +709,32 @@ export const generateSimulationPrompt = async (base64Image: string, config: Simu
     if (config.customPrompt && config.customPrompt.trim().length > 0) {
         basePrompt = `[CRITICAL: STRICTLY FOLLOW THE USER'S EXACT INSTRUCTIONS. DO NOT ADD ANY EXTRA FEATURES, LAB EQUIPMENT, OR MEDICAL ELEMENTS. EXACTLY MATCH THE ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, AND FIELD OF VIEW.] User instructions: ${config.customPrompt}`;
     } else {
-        basePrompt = "[CRITICAL: EXACTLY MATCH THE ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, AND FIELD OF VIEW.] The exact same room structure completely cleaned. Only remove trash and dirt. Do not change it into a lab or hospital.";
+        basePrompt = "[CRITICAL: EXACTLY MATCH THE ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, AND FIELD OF VIEW.] The exact same room structure, but now represented as exceptionally clean, tidy, dry, and pristine. Do not change the general location type into a medical lab, clinic, or clinic hospital.";
         
         if (config.mode === 'UPGRADE_FURNITURE') {
-            basePrompt += " Upgrade with brand new furniture matching the original layout.";
+            basePrompt += " Upgrade all equipment or furniture with brand new, modern, perfectly organized alternatives matching the original layout.";
         } else if (config.mode === 'FULL_RECONSTRUCTION') {
-            basePrompt += " Complete architectural reconstruction, new clean flooring and walls but strictly keeping the same structural layout.";
+            basePrompt += " Complete architectural renovation with dry sparkling floors, newly painted immaculate walls, keeping the same structural layout.";
         } else {
-            basePrompt += " Keep existing furniture but make them look squeaky clean and spotless.";
+            basePrompt += " All surfaces are completely clean, empty of clutter, looking pristine, spotless, and highly organized.";
         }
         
         if (config.humans === 'KEEP_PROTECTED') {
-            basePrompt += " Keep existing people in the image but equip them with proper protective gear.";
+            basePrompt += " Keep existing people in the image but dressed professionally in clean safety clothing.";
         } else {
-            basePrompt += " Zero humans present, completely empty scene.";
+            basePrompt += " Zero humans present, completely quiet empty tidy scene.";
         }
         
         if (config.lighting === 'CLINICAL_BLUE') {
-            basePrompt += " Cool blue LED lighting.";
+            basePrompt += " Cool bright blue lighting.";
         } else if (config.lighting === 'WARM') {
-            basePrompt += " Warm soft bright lighting.";
+            basePrompt += " Warm soft bright cozy lighting.";
         } else {
             basePrompt += " Bright natural sunlight streaming in.";
         }
     }
     
-    basePrompt += " Ultra-photorealistic, 8k resolution, highly detailed photography.";
+    basePrompt += " Ultra-photorealistic, 8k resolution, highly detailed pristine photography.";
 
     const promptGeneration = async () => {
         const resp = await ai.models.generateContent({
@@ -742,7 +742,14 @@ export const generateSimulationPrompt = async (base64Image: string, config: Simu
             contents: {
                 parts: [
                     { inlineData: { data: optimizedImage, mimeType: 'image/jpeg' } },
-                    { text: `Analyze the provided image and generate a highly detailed prompt for an image regeneration engine. REQUIRED INSTRUCTIONS: "${basePrompt}". IMPORTANT: Focus ONLY on cleaning up garbage/trash or applying the user's specific prompt. Do NOT arbitrarily turn the environment into a medical lab, clinic, or hospital. Keep the original setting (e.g. if it's a backyard, keep it a backyard; if it's an alley, keep it an alley). Just output the English prompt.` }
+                    { text: `Analyze the provided image and generate a highly detailed prompt describing this exact setting for an image generation engine. 
+                    
+                    REQUIRED INSTRUCTIONS: "${basePrompt}"
+                    
+                    CRITICAL NEGATIVE-PROMPT AVOIDANCE PROTCOLS:
+                    1. The final prompt must NEVER contain negative or dirty words such as "trash", "garbage", "rubbish", "litter", "dirt", "cleaning", "clean up", "remove", "grime", "filth", "clutter", "stains", "debris", "puddle", "standing water", "mud", "disorganized", "waste", "stagnant", "grease", "cockroach", "mosquitoes", "larvae". Mentioning these words will cause image generators to put dirt and trash IN the image!
+                    2. Describe the scene ONLY by emphasizing positive clean attributes. Use words like: "dry sparkling surfaces", "spotless flooring", "gleaming shiny table", "neatly organized workspace", "immaculately sterile environment", "tidy shelf", "well-maintained layout", "sparkling and clear dry area". No water logging, no trash.
+                    3. Ensure the prompt describes a beautifully sanitised and completely dry version of the input scene, maintaining the exact layout, geometry, and perspective. Just output the final English prompt as a single descriptive paragraph.` }
                 ]
             }
         });
@@ -770,24 +777,24 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
         if (config.customPrompt && config.customPrompt.trim().length > 0) {
             basePrompt = `[CRITICAL: STRICTLY FOLLOW THE USER'S EXACT INSTRUCTIONS. DO NOT ADD ANY EXTRA FEATURES, LAB EQUIPMENT, OR MEDICAL ELEMENTS. EXACTLY MATCH THE ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, AND FIELD OF VIEW.] User instructions: ${config.customPrompt}`;
         } else {
-            basePrompt = "[CRITICAL: EXACTLY MATCH THE ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, AND FIELD OF VIEW.] The exact same room structure completely cleaned. Only remove trash and dirt. Do not change it into a lab or hospital.";
+            basePrompt = "[CRITICAL: EXACTLY MATCH THE ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, AND FIELD OF VIEW.] The exact same room structure, but represented as exceptionally clean, tidy, dry, and pristine. Do not change it into a lab or hospital.";
             
             if (config.mode === 'UPGRADE_FURNITURE') {
                 basePrompt += " Upgrade with brand new furniture matching the original layout.";
             } else if (config.mode === 'FULL_RECONSTRUCTION') {
-                basePrompt += " Complete architectural reconstruction, new clean flooring and walls but strictly keeping the same structural layout.";
+                basePrompt += " Complete architectural reconstruction, clean dry flooring and walls but strictly keeping the same structural layout.";
             } else {
-                basePrompt += " Keep existing furniture but make them look squeaky clean and spotless.";
+                basePrompt += " Keep existing furniture but make them look squeaky clean, dry, bright, and spotless.";
             }
             
             if (config.humans === 'KEEP_PROTECTED') {
-                basePrompt += " Keep existing people in the image but equip them with proper protective gear.";
+                basePrompt += " Keep existing people in the image but dressed professionally in clean safety gear.";
             } else {
                 basePrompt += " Zero humans present, completely empty scene.";
             }
             
             if (config.lighting === 'CLINICAL_BLUE') {
-                basePrompt += " Cool blue LED lighting.";
+                basePrompt += " Cool blue sterile lighting.";
             } else if (config.lighting === 'WARM') {
                 basePrompt += " Warm soft bright lighting.";
             } else {
@@ -795,7 +802,7 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
             }
         }
         
-        basePrompt += " Ultra-photorealistic, 8k resolution, highly detailed photography.";
+        basePrompt += " Ultra-photorealistic, 8k resolution, highly detailed pristine photography.";
         finalPrompt = basePrompt;
     }
 

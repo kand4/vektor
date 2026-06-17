@@ -38,9 +38,9 @@ const KKMReport: React.FC<KKMReportProps> = ({ result }) => {
       {/* Main Content Table */}
       <div className="p-4 md:p-6 bg-white">
           {/* Ulasan Eksekutif - High Contrast Box */}
-          <div className="mb-6 bg-white p-4 border-2 border-black rounded shadow-md">
-             <h3 className="font-black text-sm uppercase mb-2 text-black border-b-2 border-black pb-1 inline-block">ULASAN HASIL PEMERIKSAAN (PPKP):</h3>
-             <p className="text-sm text-black font-bold leading-relaxed italic mt-2">"{summary}"</p>
+          <div className="mb-6 bg-amber-50/10 p-6 border-2 border-black rounded-lg shadow-[6px_6px_0px_rgba(0,0,0,1)]">
+             <h3 className="font-black text-base uppercase mb-3 text-black border-b-2 border-black pb-1 inline-block tracking-wide">ULASAN HASIL PEMERIKSAAN (PPKP):</h3>
+             <p className="text-lg text-black font-extrabold leading-relaxed italic mt-2">"{summary}"</p>
           </div>
 
           <div className="overflow-x-auto">

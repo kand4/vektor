@@ -276,9 +276,11 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
                 <div 
                   className={`absolute pointer-events-auto transition-all duration-300 group/box
                     ${isEditing ? 'opacity-30 pointer-events-none' : 'opacity-90 hover:opacity-100 cursor-pointer'} 
-                    ${isSelected ? 'z-[60]' : 'z-[40]'}
                   `}
-                  style={getStyle(risk.box_2d)}
+                  style={{
+                    ...getStyle(risk.box_2d),
+                    zIndex: isSelected ? 90 : 40
+                  }}
                   onClick={(e) => handleBoxClick(e, risk)} 
                 >
                     {/* Crosshair Reticles for Tech Look */}
@@ -371,11 +373,12 @@ const HUDCallout: React.FC<HUDCalloutProps> = ({ risk, isSelected, index, border
       dragConstraints={containerRef}
       onDragStart={onSelect}
       onDrag={(e, info) => onDragUpdate(info.delta)}
-      className="absolute z-[100] pointer-events-auto cursor-grab active:cursor-grabbing"
+      className="absolute pointer-events-auto cursor-grab active:cursor-grabbing"
       style={{
         left: `calc(${leftPercent}% + ${offsetX}px)`,
         top: isTooHigh ? `calc(${(risk.box_2d?.ymax || 0) / 10}% + ${offsetY}px)` : `calc(${(risk.box_2d?.ymin || 0) / 10}% + ${offsetY}px)`,
         touchAction: "none",
+        zIndex: isSelected ? 300 : 100,
       }}
     >
         <div

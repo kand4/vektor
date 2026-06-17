@@ -126,7 +126,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ sessions }) => {
           const totalPoints = validSessions.length;
           const avgHygiene = Math.round(validSessions.reduce((sum, s) => sum + (s.result?.hygieneLevel || 0), 0) / (totalPoints || 1) * 10) / 10;
           const avgSafety = Math.round(validSessions.reduce((sum, s) => sum + (s.result?.safetyLevel || s.result?.hygieneLevel || 0), 0) / (totalPoints || 1) * 10) / 10;
-          const isFailing = avgHygiene < 3 || avgSafety < 3;
+          const isFailing = avgHygiene >= 3 || avgSafety >= 3;
           let verdict = isFailing ? "TIDAK MEMUASKAN & KRITIKAL" : "MEMUASKAN & TERKAWAL";
           let actionLabel = isFailing ? "NOTIS AMARAN / KOMPAUN" : "TIADA TINDAKAN LANJUT";
 
@@ -146,12 +146,12 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ sessions }) => {
                       <div className="border-[3px] border-black p-4 text-center bg-gray-50 flex flex-col items-center justify-center">
                           <div className="text-xs uppercase font-bold text-gray-800 mb-1">PURATA SKOR KEBERSIHAN</div>
                           <div className="text-5xl font-extrabold mb-1">{avgHygiene.toFixed(1)} <span className="text-lg">/ 5</span></div>
-                          <div className="text-xs font-bold uppercase mt-1 tracking-wider">{avgHygiene < 3 ? 'GAGAL' : 'LULUS'}</div>
+                          <div className="text-xs font-bold uppercase mt-1 tracking-wider">{avgHygiene >= 3 ? 'GAGAL' : 'LULUS'}</div>
                       </div>
                       <div className="border-[3px] border-black p-4 text-center bg-gray-50 flex flex-col items-center justify-center">
                           <div className="text-xs uppercase font-bold text-gray-800 mb-1">PURATA SKOR KESELAMATAN</div>
                           <div className="text-5xl font-extrabold mb-1">{avgSafety.toFixed(1)} <span className="text-lg">/ 5</span></div>
-                          <div className="text-xs font-bold uppercase mt-1 tracking-wider">{avgSafety < 3 ? 'GAGAL' : 'LULUS'}</div>
+                          <div className="text-xs font-bold uppercase mt-1 tracking-wider">{avgSafety >= 3 ? 'GAGAL' : 'LULUS'}</div>
                       </div>
                   </div>
 
@@ -277,10 +277,10 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ sessions }) => {
                     {session.simulationImage && (
                         <div>
                             <h4 className="font-bold text-xs border-b border-gray-300 mb-1 pb-1 uppercase">SIMULASI AI (CADANGAN PEMBAIKAN):</h4>
-                            <div className="w-full h-[250px] border border-black border-dashed bg-gray-50 flex items-center justify-center overflow-hidden">
+                            <div className="w-full p-2 border border-black bg-gray-50 flex items-center justify-center">
                                 <img 
                                     src={session.simulationImage} 
-                                    className="max-h-full max-w-full object-contain" 
+                                    className="max-h-[350px] max-w-full block" 
                                     alt={`Simulasi AI ${index + 1}`} 
                                     crossOrigin="anonymous"
                                 />

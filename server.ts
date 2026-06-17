@@ -54,11 +54,51 @@ async function startServer() {
           });
         }
         console.log(`🤖 Backend calling Gemini model: ${model}`);
-        const response = await ai.models.generateContent({
-          model,
-          contents,
-          config
-        });
+        
+        // Define a list of fallback models
+        const modelFallbackList = [model];
+        if (model.includes("3.5-flash")) {
+          modelFallbackList.push("gemini-2.5-flash");
+          modelFallbackList.push("gemini-1.5-flash");
+        } else if (model.includes("2.5-flash")) {
+          modelFallbackList.push("gemini-1.5-flash");
+        } else if (model.includes("2.5-pro") || model.includes("1.5-pro")) {
+          modelFallbackList.push("gemini-2.5-flash");
+          modelFallbackList.push("gemini-1.5-flash");
+        }
+
+        const uniqueModels = Array.from(new Set(modelFallbackList));
+        let response = null;
+        let lastError: any = null;
+
+        for (const targetModel of uniqueModels) {
+          try {
+            if (targetModel !== model) {
+              console.log(`🔄 Attempting fallback model: ${targetModel} due to a block or demand spike on ${model}`);
+            }
+            response = await ai.models.generateContent({
+              model: targetModel,
+              contents,
+              config
+            });
+            break; // Success! Break out of the loop
+          } catch (err: any) {
+            lastError = err;
+            const errStatus = err?.status || err?.code || 500;
+            const errMsg = err?.message || String(err);
+            console.warn(`⚠️ Model ${targetModel} call failed with status ${errStatus}: ${errMsg}`);
+            
+            // If it's a client 400 error (excluding quota), don't try other models as it's a syntax / prompt issue
+            if (errStatus === 400 && !errMsg.toLowerCase().includes("quota")) {
+              throw err;
+            }
+          }
+        }
+
+        if (!response) {
+          throw lastError || new Error(`Sistem gagal mengakses model Gemini ${model} dan semua fallback dialiri ralat.`);
+        }
+
         return res.json({ text: response.text });
       }
     } catch (error: any) {

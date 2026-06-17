@@ -567,42 +567,48 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                             />
                             
                             {activeRisk && (
-                                <div className="p-4 bg-slate-950 border-t border-slate-700">
-                                    <h4 className="text-emerald-500 font-bold text-xs font-sci-fi uppercase mb-1">{t('label_analysis') || 'ANALISIS KESELAMATAN & KESIHATAN MAKANAN'}</h4>
-                                    <p className="text-slate-300 text-sm leading-relaxed">{activeRisk.description}</p>
+                                <div className="p-6 bg-slate-950 border-t border-slate-700 space-y-5">
+                                    <div>
+                                        <h4 className="text-emerald-400 font-extrabold text-sm font-sci-fi uppercase mb-2 tracking-wider">{t('label_analysis') || 'ANALISIS KESELAMATAN & KESIHATAN MAKANAN'}</h4>
+                                        <p className="text-slate-100 text-base md:text-lg leading-relaxed font-normal">{activeRisk.description}</p>
+                                    </div>
                                     
                                     {(activeRisk.agent || activeRisk.microbiology || activeRisk.disease) && (
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-4 p-3 bg-slate-900 border border-slate-800 rounded-lg">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 my-4 p-4 bg-slate-900 border border-slate-800 rounded-lg">
                                             {activeRisk.agent && (
                                                 <div>
-                                                    <h4 className="text-[9px] font-mono-sci text-slate-500 uppercase tracking-widest mb-1">{t('label_agent') || 'AGEN MIKROB'}</h4>
-                                                    <div className="text-xs text-emerald-400 font-mono italic break-words">{activeRisk.agent}</div>
+                                                    <h4 className="text-[10px] font-mono-sci text-slate-400 uppercase tracking-widest mb-1">{t('label_agent') || 'AGEN MIKROB'}</h4>
+                                                    <div className="text-sm text-emerald-400 font-mono font-bold italic break-words">{activeRisk.agent}</div>
                                                 </div>
                                             )}
                                             {activeRisk.microbiology && (
                                                 <div>
-                                                    <h4 className="text-[9px] font-mono-sci text-emerald-500 uppercase tracking-widest mb-1">{t('label_pathogen') || 'PATOGEN'}</h4>
-                                                    <div className="text-xs text-white font-mono italic break-words">{activeRisk.microbiology}</div>
+                                                    <h4 className="text-[10px] font-mono-sci text-emerald-400 uppercase tracking-widest mb-1">{t('label_pathogen') || 'PATOGEN'}</h4>
+                                                    <div className="text-sm text-white font-mono font-bold italic break-words">{activeRisk.microbiology}</div>
                                                 </div>
                                             )}
                                             {activeRisk.disease && (
                                                 <div>
-                                                    <h4 className="text-[9px] font-mono-sci text-red-500 uppercase tracking-widest mb-1">{t('label_disease') || 'PENYAKIT/RISIKO KLINIKAL'}</h4>
-                                                    <div className="text-xs text-white break-words">{activeRisk.disease}</div>
+                                                    <h4 className="text-[10px] font-mono-sci text-red-400 uppercase tracking-widest mb-1">{t('label_disease') || 'PENYAKIT/RISIKO KLINIKAL'}</h4>
+                                                    <div className="text-sm text-white font-bold break-words">{activeRisk.disease}</div>
                                                 </div>
                                             )}
                                         </div>
                                     )}
 
-                                    <h4 className="text-emerald-500 font-bold text-xs font-sci-fi uppercase mt-3 mb-1">{t('card_recommendation') || 'TINDAKAN PEMBETULAN'}</h4>
-                                    <p className="text-slate-200 text-sm italic mb-4">{activeRisk.solution}</p>
+                                    <div>
+                                        <h4 className="text-emerald-400 font-extrabold text-sm font-sci-fi uppercase mb-2 tracking-wider">{t('card_recommendation') || 'TINDAKAN PEMBETULAN'}</h4>
+                                        <div className="text-slate-100 text-base md:text-lg leading-relaxed font-semibold border-l-4 border-emerald-500 pl-4 py-2 bg-emerald-950/20 rounded-r shadow-inner whitespace-pre-line">
+                                            {activeRisk.solution}
+                                        </div>
+                                    </div>
 
-                                    <div className="flex flex-col sm:flex-row gap-2 mt-4 border-t border-slate-800 pt-4">
-                                        <a href={generateYoutubeLink(activeRisk)} target="_blank" rel="noopener noreferrer" className={`flex-1 flex items-center justify-center gap-2 py-2 rounded text-xs font-bold text-white transition-colors border bg-slate-800 border-slate-600 hover:bg-slate-700`}>
+                                    <div className="flex flex-col sm:flex-row gap-2 mt-4 border-t border-slate-805 pt-4">
+                                        <a href={generateYoutubeLink(activeRisk)} target="_blank" rel="noopener noreferrer" className={`flex-1 flex items-center justify-center gap-2 py-3 rounded text-xs md:text-sm font-bold text-white transition-colors border bg-slate-800 border-slate-600 hover:bg-slate-700`}>
                                             🔬 {getVideoButtonLabel(activeRisk)}
                                         </a>
                                         {activeRisk.agent && (
-                                            <a href={`https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(activeRisk.agent + (activeRisk.microbiology ? ' ' + activeRisk.microbiology : '') + (activeRisk.disease ? ' ' + activeRisk.disease : ''))}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 py-2 rounded text-xs font-bold text-white transition-colors border bg-blue-900/50 border-blue-700 hover:bg-blue-800">
+                                            <a href={`https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(activeRisk.agent + (activeRisk.microbiology ? ' ' + activeRisk.microbiology : '') + (activeRisk.disease ? ' ' + activeRisk.disease : ''))}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 py-3 rounded text-xs md:text-sm font-bold text-white transition-colors border bg-blue-900/50 border-blue-700 hover:bg-blue-800">
                                                 📚 PubMed Citation
                                             </a>
                                         )}
@@ -729,7 +735,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 no-print">
         {/* LEFT COL: Image & List */}
-        <div className="lg:col-span-7 flex flex-col gap-4 z-20 relative">
+        <div className="lg:col-span-6 flex flex-col gap-4 z-20 relative">
             
             {/* Analysis Score Overview */}
             <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-900/80 backdrop-blur-md border border-slate-700 rounded-xl p-3 md:p-4 shadow-sm">
@@ -849,7 +855,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
         </div>
 
         {/* RIGHT COL: Details Panel */}
-        <div id="details-panel" ref={detailsPanelRef} className="lg:col-span-5 flex flex-col h-full gap-4 scroll-mt-24">
+        <div id="details-panel" ref={detailsPanelRef} className="lg:col-span-6 flex flex-col h-full gap-4 scroll-mt-24">
             <DualScoreCard hygieneLevel={result.hygieneLevel} safetyLevel={result.safetyLevel} isSavage={isSavageMode} />
             
             {activeRisk ? (
@@ -885,10 +891,13 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                         </div>
 
                         <div className="flex-1 overflow-y-auto custom-scrollbar space-y-6 md:space-y-8 pr-2">
-                            <div><h4 className="text-emerald-500 font-bold text-xs font-sci-fi uppercase mb-2 flex items-center gap-2">{t('label_analysis')}</h4><p className="text-slate-300 text-sm md:text-base leading-relaxed font-light">{activeRisk.description}</p></div>
-                            <div className={`p-4 md:p-5 rounded-lg border relative overflow-hidden transition-colors duration-500 ${isSavageMode ? 'bg-red-900/10 border-red-500/30' : 'bg-emerald-900/10 border-emerald-500/30'}`}>
-                                <h4 className={`font-bold text-xs font-sci-fi uppercase mb-3 flex items-center gap-2 ${isSavageMode ? 'text-red-400' : 'text-emerald-400'}`}>{isSavageMode ? t('card_savage_verdict') : t('card_recommendation')}</h4>
-                                <div className="text-sm md:text-base text-slate-200 leading-relaxed italic mb-4">{isSavageMode && !activeRisk.id.startsWith('manual-') ? `"${activeRisk.savageCommentary || result.savageCommentary || t('savage_fallback')}"` : activeRisk.solution}</div>
+                            <div>
+                                <h4 className="text-emerald-400 font-extrabold text-sm font-sci-fi uppercase mb-2 flex items-center gap-2 tracking-wider">{t('label_analysis')}</h4>
+                                <p className="text-slate-100 text-base md:text-lg leading-relaxed font-normal">{activeRisk.description}</p>
+                            </div>
+                            <div className={`p-6 md:p-7 rounded-xl border-2 relative overflow-hidden transition-colors duration-500 ${isSavageMode ? 'bg-red-950/40 border-red-500/50' : 'bg-emerald-950/40 border-emerald-500/50'}`}>
+                                <h4 className={`font-extrabold text-xs md:text-sm font-sci-fi uppercase mb-3 tracking-wider flex items-center gap-2 ${isSavageMode ? 'text-red-400' : 'text-emerald-400'}`}>{isSavageMode ? t('card_savage_verdict') : t('card_recommendation')}</h4>
+                                <div className="text-base md:text-lg text-slate-100 leading-relaxed font-semibold mb-4 whitespace-pre-line">{isSavageMode && !activeRisk.id.startsWith('manual-') ? `"${activeRisk.savageCommentary || result.savageCommentary || t('savage_fallback')}"` : activeRisk.solution}</div>
                                 
                                 <div className="flex flex-col sm:flex-row gap-2 mt-4 border-t border-slate-700/50 pt-4">
                                     <a href={generateYoutubeLink(activeRisk)} target="_blank" rel="noopener noreferrer" className={`flex-1 flex items-center justify-center gap-2 py-3 rounded text-xs md:text-sm font-bold text-white transition-colors border ${activeRisk.category === 'SAFETY' ? 'bg-indigo-900/50 border-indigo-500 hover:bg-indigo-800' : 'bg-slate-800 border-slate-600 hover:bg-slate-700'}`}>
@@ -903,7 +912,21 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                             </div>
                         </div>
                         <div className="mt-4 pt-4 border-t border-slate-800">
-                            {chatMessages.length > 0 && (<div className="mb-3 max-h-[150px] overflow-y-auto custom-scrollbar bg-black/40 rounded p-2 text-xs space-y-2">{chatMessages.map((msg, idx) => (<div key={idx} className={`${msg.role === 'user' ? 'text-right text-emerald-300' : 'text-left text-slate-300'}`}><span className="font-bold">{msg.role === 'user' ? t('chat_you') : t('chat_ai')}</span>{msg.text}</div>))}<div ref={chatEndRef}></div></div>)}
+                            {chatMessages.length > 0 && (
+                                <div className="mb-4 max-h-[320px] overflow-y-auto custom-scrollbar bg-black/60 rounded-xl p-4 text-sm space-y-3 border border-slate-800">
+                                    {chatMessages.map((msg, idx) => (
+                                        <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                                            <span className={`text-[10px] font-mono-sci uppercase tracking-wider mb-1 ${msg.role === 'user' ? 'text-emerald-400' : 'text-blue-400'}`}>
+                                                {msg.role === 'user' ? t('chat_you') : t('chat_ai')}
+                                            </span>
+                                            <div className={`p-3 rounded-lg leading-relaxed max-w-[85%] whitespace-pre-line ${msg.role === 'user' ? 'bg-emerald-950/60 text-emerald-200 border border-emerald-800/50' : 'bg-slate-950/85 text-slate-100 border border-slate-800'}`}>
+                                                {msg.text}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <div ref={chatEndRef}></div>
+                                </div>
+                            )}
                             <form onSubmit={handleAskAI} className="relative"><input type="text" value={userQuestion} onChange={(e) => setUserQuestion(e.target.value)} placeholder={t('chat_placeholder')} disabled={isChatLoading} className="w-full bg-slate-950 border border-slate-700 rounded-full py-3 px-5 pr-12 text-sm text-white focus:border-emerald-500 outline-none" /><button type="submit" disabled={isChatLoading || !userQuestion.trim()} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-emerald-600 rounded-full text-white">➤</button></form>
                         </div>
                     </div>
