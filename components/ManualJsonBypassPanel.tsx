@@ -21,7 +21,7 @@ export const ManualJsonBypassPanel: React.FC<ManualJsonBypassPanelProps> = ({
   const { t, language } = useLanguage();
   const [jsonInput, setJsonInput] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [activePlatform, setActivePlatform] = useState<'AISTUDIO' | 'LMSYS' | 'CLAUDE'>('AISTUDIO');
+  const [activePlatform, setActivePlatform] = useState<'AISTUDIO' | 'LMSYS' | 'CLAUDE' | 'CHATGPT'>('AISTUDIO');
   const [toastMsg, setToastMsg] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
@@ -223,6 +223,8 @@ DO NOT include markdown tags like \`\`\`json or backticks. Return the json objec
           </div>
           <button 
             onClick={onClose}
+            aria-label="Tutup"
+            title="Tutup"
             className="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 w-8 h-8 rounded-full flex items-center justify-center border border-slate-700 transition"
           >
             ✕
@@ -233,7 +235,7 @@ DO NOT include markdown tags like \`\`\`json or backticks. Return the json objec
         <div className="z-10 bg-slate-950/80 p-4 border border-slate-800 rounded-xl mb-4 space-y-3">
           <span className="text-[10px] text-slate-400 font-mono-sci uppercase tracking-[0.1em] block">LANGKAH 1: PILIH PLATFORM AI LUARAN PIASAN</span>
           
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             <button 
               onClick={() => setActivePlatform('AISTUDIO')}
               className={`py-2 px-3 rounded text-xs font-bold font-sci-fi border transition ${activePlatform === 'AISTUDIO' ? 'bg-emerald-950/50 border-emerald-500/80 text-emerald-300' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'}`}
@@ -250,7 +252,13 @@ DO NOT include markdown tags like \`\`\`json or backticks. Return the json objec
               onClick={() => setActivePlatform('CLAUDE')}
               className={`py-2 px-3 rounded text-xs font-bold font-sci-fi border transition ${activePlatform === 'CLAUDE' ? 'bg-emerald-950/50 border-emerald-500/80 text-emerald-300' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'}`}
             >
-              Claude / ChatGPT
+              Claude
+            </button>
+            <button 
+              onClick={() => setActivePlatform('CHATGPT')}
+              className={`py-2 px-3 rounded text-xs font-bold font-sci-fi border transition ${activePlatform === 'CHATGPT' ? 'bg-emerald-950/50 border-emerald-500/80 text-emerald-300' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'}`}
+            >
+              ChatGPT
             </button>
           </div>
 
@@ -271,7 +279,13 @@ DO NOT include markdown tags like \`\`\`json or backticks. Return the json objec
             )}
             {activePlatform === 'CLAUDE' && (
               <>
-                <p>1. Log masuk ke akaun Claude.ai atau ChatGPT biasa anda.</p>
+                <p>1. Log masuk ke akaun <a href="https://claude.ai/" target="_blank" rel="noreferrer" className="text-cyan-400 font-bold hover:underline">Claude.ai</a> biasa anda.</p>
+                <p>2. Jalankan arahan bersama gambar ancaman bio persekitaran anda.</p>
+              </>
+            )}
+            {activePlatform === 'CHATGPT' && (
+              <>
+                <p>1. Log masuk ke akaun <a href="https://chatgpt.com/" target="_blank" rel="noreferrer" className="text-cyan-400 font-bold hover:underline">ChatGPT</a> biasa anda.</p>
                 <p>2. Jalankan arahan bersama gambar ancaman bio persekitaran anda.</p>
               </>
             )}
