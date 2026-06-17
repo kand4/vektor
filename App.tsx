@@ -5,12 +5,12 @@ import Footer from './components/Footer';
 import UploadZone from './components/UploadZone';
 import { AnalysisResults } from './components/AnalysisResults';
 import LiveCameraScanner from './components/LiveCameraScanner';
-import { analyzeLandscape } from './services/geminiService';
-import { AnalysisSession, SensitivityLevel, AnalysisMode, AnalysisResponse } from './types';
+import { AnalysisSession, SensitivityLevel, AnalysisMode, AnalysisResponse, iDengueData, RegionalDengueData } from './types';
 import HUDOverlay from './components/HUDOverlay';
 import AboutSystem from './components/AboutSystem';
 import SettingsModal from './components/SettingsModal';
 import HeatmapModal from './components/HeatmapModal';
+import GlobalMapModal from './components/GlobalMapModal';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { PredictionChart } from './components/PredictionChart';
 import LarvaeScanner from './components/LarvaeScanner';
@@ -18,6 +18,7 @@ import AdultMosquitoScanner from './components/AdultMosquitoScanner';
 import { SimulationGallery } from './components/SimulationGallery';
 import { ManualSimulationPage } from './components/ManualSimulationPage';
 import { fetchNationalDengueTrend } from './services/dataGovService';
+import { fetchLatestIDengueStats, fetchRegionalDengueStats, analyzeLandscape } from './services/geminiService';
 import { resizeAndCompressImage } from './utils/imageUtils';
 import { Toast } from './components/Toast';
 import { ManualJsonBypassPanel } from './components/ManualJsonBypassPanel';
@@ -39,6 +40,7 @@ const App: React.FC = () => {
   const [showAbout, setShowAbout] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
+  const [showGlobalMap, setShowGlobalMap] = useState(false);
   const [showSimulationGallery, setShowSimulationGallery] = useState(false);
   const [showBypassModal, setShowBypassModal] = useState(false);
   const [emptyAlertType, setEmptyAlertType] = useState<'imbasan' | 'simulasi' | null>(null);
@@ -50,12 +52,18 @@ const App: React.FC = () => {
 
   const [isStatsLoading, setIsStatsLoading] = useState(false);
   
+  const [nationalStats, setNationalStats] = useState<iDengueData | null>(null);
+  const [regionalStats, setRegionalStats] = useState<RegionalDengueData | null>(null);
+  
   const { language, t } = useLanguage();
 
   const loadDengueData = async () => {
     setIsStatsLoading(true);
     try {
-        await fetchNationalDengueTrend();
+        const nat = await fetchLatestIDengueStats();
+        const reg = await fetchRegionalDengueStats("Pahang", "Temerloh");
+        setNationalStats(nat);
+        setRegionalStats(reg);
     } catch (e) {
         console.error("Failed to sync", e);
     } finally {
@@ -224,6 +232,7 @@ const App: React.FC = () => {
       <AboutSystem isOpen={showAbout} onClose={() => setShowAbout(false)} />
       <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
       <HeatmapModal isOpen={showHeatmap} onClose={() => setShowHeatmap(false)} />
+      <GlobalMapModal isOpen={showGlobalMap} onClose={() => setShowGlobalMap(false)} />
       {showSimulationGallery && (
         <SimulationGallery 
           sessions={sessions} 
@@ -392,7 +401,7 @@ const App: React.FC = () => {
                             }
                             setShowSimulationGallery(true);
                         }} className="flex-1 sm:flex-none bg-slate-800/80 border border-cyan-500/30 text-cyan-400 px-4 py-2 rounded-lg text-xs font-bold hover:bg-cyan-900/40 hover:border-cyan-400 transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(6,182,212,0.15)]">
-                            <span>✨</span> <span className="font-sci-fi tracking-widest">SIMULASI LEPAS</span>
+                            <span>✨</span> <span className="font-sci-fi tracking-widest">SEJARAH SIMULASI</span>
                         </button>
                         <button onClick={() => {
                             if (sessions.length === 0) {
@@ -404,21 +413,26 @@ const App: React.FC = () => {
                                 document.getElementById('evidence-board')?.scrollIntoView({ behavior: 'smooth' });
                             }, 100);
                         }} className="flex-1 sm:flex-none bg-slate-800/80 border border-indigo-500/30 text-indigo-400 px-4 py-2 rounded-lg text-xs font-bold hover:bg-indigo-900/40 hover:border-indigo-400 transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(99,102,241,0.15)]">
-                            <span>🗂️</span> <span className="font-sci-fi tracking-widest">IMBASAN LEPAS</span>
+                            <span>🗂️</span> <span className="font-sci-fi tracking-widest">SEJARAH IMBASAN</span>
                         </button>
                     </div>
 
                     {/* Outbreak Map button repositioned to the bottom */}
-                    <button onClick={() => setShowHeatmap(true)} className="w-full sm:w-auto bg-slate-800 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 px-6 py-3 rounded-xl font-bold hover:bg-emerald-900/30 hover:border-emerald-400 transition-all flex items-center justify-center gap-3 mt-1">
-                        <span className="font-sci-fi tracking-widest text-sm">{t('btn_outbreak_map')}</span>
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-1 justify-center items-center">
+                        <button onClick={() => setShowHeatmap(true)} className="w-full sm:w-auto bg-slate-800 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 px-6 py-3 rounded-xl font-bold hover:bg-emerald-900/30 hover:border-emerald-400 transition-all flex items-center justify-center gap-3">
+                            <span className="font-sci-fi tracking-widest text-sm">{t('btn_outbreak_map')}</span>
+                        </button>
+                        <button onClick={() => setShowGlobalMap(true)} className="w-full sm:w-auto bg-slate-800 border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.15)] text-blue-400 px-6 py-3 rounded-xl font-bold hover:bg-blue-900/30 hover:border-blue-400 transition-all flex items-center justify-center gap-3">
+                            <span className="font-sci-fi tracking-widest text-sm">🗺️ PETA WABAK GLOBAL</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div className="mt-8">
                     {/* Pass lifted stats to PredictionChart */}
                     <PredictionChart 
-                        preloadedNational={null} 
-                        preloadedRegional={null} 
+                        preloadedNational={nationalStats} 
+                        preloadedRegional={regionalStats} 
                         isLoading={isStatsLoading}
                         onSync={loadDengueData}
                     />

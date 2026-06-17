@@ -494,8 +494,8 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
                            if (errJson.error?.code === "1113" || res.status === 429) {
                                throw new Error(`Baki API Z.ai anda tidak mencukupi (Insufficient balance). Sila tambah nilai (recharge) di akaun Zhipu/Z.ai. Maklumat Penuh: ${errJson.error?.message || errText}`);
                            }
-                       } catch(e) {
-                           if (e.message.includes('Baki API')) throw e;
+                       } catch(e: any) {
+                           if (e.message?.includes('Baki API')) throw e;
                        }
                        throw new Error(`Z.ai Error [${res.status}]: ${errText}`);
                    }

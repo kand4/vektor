@@ -59,12 +59,11 @@ async function startServer() {
         const modelFallbackList = [model];
         if (model.includes("3.5-flash")) {
           modelFallbackList.push("gemini-2.5-flash");
-          modelFallbackList.push("gemini-1.5-flash");
         } else if (model.includes("2.5-flash")) {
-          modelFallbackList.push("gemini-1.5-flash");
+          modelFallbackList.push("gemini-3.5-flash");
         } else if (model.includes("2.5-pro") || model.includes("1.5-pro")) {
+          modelFallbackList.push("gemini-3.5-flash");
           modelFallbackList.push("gemini-2.5-flash");
-          modelFallbackList.push("gemini-1.5-flash");
         }
 
         const uniqueModels = Array.from(new Set(modelFallbackList));
