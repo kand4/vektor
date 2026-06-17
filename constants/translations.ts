@@ -49,7 +49,7 @@ export const translations = {
     card_microbio: "MIKROBIOLOGI",
     card_stats: "STATISTIK MAUT",
     card_verdict: "KEPUTUSAN",
-    card_recommendation: "CADANGAN RASMI",
+    card_recommendation: "SARANAN KESIHATAN AWAM",
     card_savage_verdict: "KOMEN PEDAS",
     
     btn_microscope: "LIHAT RAKAMAN MIKROSKOP",
@@ -150,7 +150,7 @@ export const translations = {
     check_manual: "Semak iDengue Secara Manual",
     disclaimer_data: "Penafian: Data diekstrak secara automatik dari iDengue MYSA mengikut Minggu Epidemiologi (ME) terkini yang dikesan.",
     about_close: "Tutup_Terminal",
-    architect_quote: "\"Masa depan kesihatan awam terletak pada gabungan kepakaran manusia dan ketepatan kecerdasan buatan. Kita tidak hanya melihat, kita menganalisis.\"",
+    architect_quote: "\"Masa depan kesihatan awam terletak pada gabungan kepakaran manusia dan ketepatan kecerdasan buatan. Kita tidak hanya melihat, kita menganalisis. Kitalah yang menentukan natijahnya kelak\"",
     sys_core: "TERAS SISTEM",
     powered_by: "DIKUASAI OLEH",
     vg_desc_1: "VectorGuard AI merupakan satu sistem perintis yang direka khusus untuk membantu pekerja kesihatan awam, terutamanya Penolong Pegawai Kesihatan Persekitaran (PPKP) dan Pembantu Kesihatan Awam (PKA).",

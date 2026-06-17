@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect } from 'react';
-import { GoogleGenAI } from '@google/genai';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -54,11 +53,29 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         for (let i = 0; i < keysToTest.length; i++) {
             const key = keysToTest[i];
             try {
-                const ai = new GoogleGenAI({ apiKey: key });
-                await ai.models.generateContent({
-                    model: geminiModel || 'gemini-2.5-flash',
-                    contents: 'Test connection. Reply OK.'
+                const res = await fetch('/api/gemini', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${key}`
+                    },
+                    body: JSON.stringify({
+                        method: 'generateContent',
+                        model: geminiModel || 'gemini-2.5-flash',
+                        contents: { parts: [{ text: 'Test connection. Reply OK.' }] }
+                    })
                 });
+
+                if (!res.ok) {
+                    const errText = await res.text();
+                    let errMsg = `Ralat HTTP ${res.status}`;
+                    try {
+                        const errJson = JSON.parse(errText);
+                        errMsg = errJson?.error?.message || errMsg;
+                    } catch (_) {}
+                    throw new Error(errMsg);
+                }
+
                 results.push(`Kunci ${i + 1}: ✅ Berjaya disambung`);
             } catch (err: any) {
                 results.push(`Kunci ${i + 1}: ❌ Ralat (${err.message || 'Gagal disambung'})`);

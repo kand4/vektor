@@ -375,7 +375,7 @@ ${additionalDirectives ? `6. ARAHAN TAMBAHAN PENGGUNA: ${additionalDirectives}` 
                       referrerPolicy="no-referrer"
                     />
                     <div className="absolute bottom-3 left-3 bg-red-600/95 border border-red-400 text-white font-bold text-[10px] py-1 px-2.5 rounded shadow font-sans tracking-wide pointer-events-none z-10">
-                      LOKASI ASAL (SEBELUM)
+                      KEADAAN ASAL (SEBELUM)
                     </div>
                   </div>
 

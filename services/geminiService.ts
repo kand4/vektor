@@ -851,10 +851,10 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
                 
                 // 3. Try Imagen 3.0 Generate (Legacy Fallback)
                 try {
-                    console.log("🎨 Attempting Google Imagen 3.0...");
+                    console.log("🎨 Attempting Google Imagen 3.0 (imagen-3.0-generate-002)...");
                     const imagen3Response = await retryWithBackoff(async () => {
                         return await ai.models.generateImages({
-                            model: "imagen-3.0-generate-001",
+                            model: "imagen-3.0-generate-002",
                             prompt: finalPrompt,
                             config: {
                                 numberOfImages: 1,
@@ -869,7 +869,7 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
                     }
                     throw new Error("No image bytes from Imagen 3.0");
                 } catch (imagen3Error) {
-                    console.error("Google Imagen 3.0 Failed:", imagen3Error);
+                    console.warn("Google Imagen 3.0 Fallback to External:", imagen3Error);
                     // Fallthrough to external
                 }
             }
