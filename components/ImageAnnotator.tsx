@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, useDragControls } from 'motion/react';
 import { RiskDetection, BoundingBox } from '../types';
 
@@ -9,6 +10,7 @@ interface ImageAnnotatorProps {
   selectedId?: string | null;
   isEditing?: boolean;
   onRegionDrawn?: (box: BoundingBox) => void;
+  fullWidthMode?: boolean;
 }
 
 const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({ 
@@ -17,12 +19,14 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
   onRiskSelect, 
   selectedId: propSelectedId,
   isEditing = false,
-  onRegionDrawn
+  onRegionDrawn,
+  fullWidthMode = false
 }) => {
   const [internalSelectedId, setInternalSelectedId] = useState<string | null>(null);
   const [dragPositions, setDragPositions] = useState<{[key: string]: {x: number, y: number}}>({});
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [isDrawing, setIsDrawing] = useState(false);
@@ -51,7 +55,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
     });
     
     return () => observer.disconnect();
-  }, []);
+  }, [isFullscreen]); // Re-observe upon fullscreen toggle
 
   // CSS Converter: 0-1000 Scale -> Percentages
   // Math.min/max logic ensures box stays within image bounds visually
@@ -68,6 +72,11 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
     e.stopPropagation();
     setInternalSelectedId(risk.id);
     onRiskSelect(risk);
+  };
+
+  const handleImageClick = () => {
+    if (isEditing) return;
+    setIsFullscreen(!isFullscreen);
   };
 
   const activeId = propSelectedId !== undefined ? propSelectedId : internalSelectedId;
@@ -105,21 +114,40 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
     setCurrentBox({ ymin, xmin, ymax, xmax });
   };
 
+  const justDrew = useRef(false);
+
   const handleMouseUp = () => {
     if (!isDrawing || !currentBox || !isEditing) return;
     setIsDrawing(false);
     // Minimum size check (20 units = 2% of screen)
     if ((currentBox.xmax - currentBox.xmin) > 20 && (currentBox.ymax - currentBox.ymin) > 20) {
         onRegionDrawn?.(currentBox);
+        justDrew.current = true;
+        setTimeout(() => justDrew.current = false, 200);
     }
     setStartPos(null);
     setCurrentBox(null);
   };
 
-  return (
-    <div className="w-full relative group">
+  const wrapperClasses = isFullscreen 
+    ? "fixed inset-0 z-[9999] bg-black/95 flex justify-center items-center overflow-auto cursor-zoom-out p-4 md:p-10"
+    : `w-full flex justify-center items-center relative group ${fullWidthMode ? 'xl:w-full' : ''}`;
+
+  const containerClasses = isFullscreen
+    ? "relative bg-black shadow-[0_0_50px_rgba(34,211,238,0.2)] border border-slate-700 cursor-auto mx-auto inline-block rounded-xl overflow-hidden"
+    : `relative inline-block rounded bg-black overflow-hidden group shadow-2xl border border-slate-800 ${isEditing ? 'cursor-crosshair touch-none' : 'cursor-zoom-in touch-pan-y'}`;
+
+  const imgClasses = isFullscreen 
+    ? "h-auto max-w-[95vw] max-h-[85vh] block select-none"
+    : "max-w-full h-auto max-h-[70vh] block select-none opacity-90 relative z-10 transition-opacity duration-300 group-hover:opacity-100";
+
+  const content = (
+    <div className={wrapperClasses} onClick={isFullscreen ? () => setIsFullscreen(false) : undefined}>
+      {isFullscreen && (
+          <button onClick={() => setIsFullscreen(false)} className="fixed top-4 right-4 md:top-6 md:right-6 bg-slate-800 hover:bg-slate-700 text-white w-10 h-10 md:w-12 md:h-12 rounded-full border border-slate-600 font-bold z-50 flex items-center justify-center shadow-lg transition-transform hover:scale-110">✕</button>
+      )}
       <div 
-        className={`relative w-full rounded bg-black overflow-hidden group shadow-2xl border border-slate-800 ${isEditing ? 'cursor-crosshair touch-none' : 'cursor-default touch-pan-y'}`} 
+        className={containerClasses} 
         ref={containerRef}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -128,13 +156,17 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
         onTouchStart={handleMouseDown}
         onTouchMove={handleMouseMove}
         onTouchEnd={handleMouseUp}
+        onClick={(e) => { 
+            if (isFullscreen) { e.stopPropagation(); }
+            else if (!isEditing && !justDrew.current) { handleImageClick(); }
+        }}
       >
         <div className="relative rounded">
             <img 
               ref={imageRef}
               src={imageSrc} 
               alt="Analyzed" 
-              className="w-full h-auto object-contain block select-none opacity-90 relative z-10 transition-opacity duration-300 group-hover:opacity-70" 
+              className={imgClasses} 
             />
             
             <div className="absolute inset-0 bg-[linear-gradient(rgba(34,211,238,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.1)_1px,transparent_1px)] bg-[size:40px_40px] opacity-0 group-hover:opacity-20 pointer-events-none z-10 transition-opacity duration-500"></div>
@@ -142,13 +174,13 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none z-20"></div>
         </div>
 
-        {isEditing && (
+        {isEditing && !isFullscreen && (
            <div className="absolute top-2 left-2 z-50 bg-red-600/90 text-white text-xs font-mono-sci px-2 py-1 rounded animate-pulse pointer-events-none border border-red-400 shadow-[0_0_10px_red]">
               TARGETING MODE // DRAG TO SELECT
            </div>
         )}
 
-        {currentBox && isEditing && (
+        {currentBox && isEditing && !isFullscreen && (
           <div style={getStyle(currentBox)} className="absolute z-50 border-2 border-dashed border-emerald-400 bg-emerald-500/20 shadow-[0_0_15px_rgba(52,211,153,0.5)] pointer-events-none">
              <div className="absolute top-0 right-0 -mt-5 text-[10px] text-emerald-400 font-mono-sci">ACQUIRING...</div>
           </div>
@@ -188,16 +220,16 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
                 const anchorY = ((boxYmin + boxYmax) / 2000) * containerHeight; 
                 
                 let leftPercent = (boxXmin + boxXmax) / 20;
-                let offsetX = -100; // Estimated half width of HUDCallout for centering
+                let offsetX = -60; // Shrunk width calls for smaller offset
                 if (leftPercent < 15) offsetX = 0;
-                else if (leftPercent > 85) offsetX = -200;
+                else if (leftPercent > 85) offsetX = -120;
                 
                 const baseTopPercent = isTooHigh ? (boxYmax / 10) : (boxYmin / 10);
-                const offsetY = isTooHigh ? 10 : -70;
+                const offsetY = isTooHigh ? 10 : -50;
                 
                 // Target X and Y mathematically to the center of the Callout layout
-                const targetX = (leftPercent / 100) * containerWidth + offsetX + 100 + dragPos.x;
-                const targetY = (baseTopPercent / 100) * containerHeight + offsetY + 35 + dragPos.y;
+                const targetX = (leftPercent / 100) * containerWidth + offsetX + 60 + dragPos.x;
+                const targetY = (baseTopPercent / 100) * containerHeight + offsetY + 25 + dragPos.y;
 
                 // Fluid Bezier curve connection
                 const controlY1 = anchorY + (targetY - anchorY) * 0.2;
@@ -214,7 +246,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
                       animate={{
                         d: pathD,
                         stroke: strokeColor,
-                        strokeWidth: isSelected ? 4 : 2,
+                        strokeWidth: isSelected ? (isFullscreen ? 3 : 4) : 2,
                         opacity: isSelected ? 0.3 : 0.1
                       }}
                       filter="url(#glow)"
@@ -275,7 +307,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
               <React.Fragment key={risk.id}>
                 <div 
                   className={`absolute pointer-events-auto transition-all duration-300 group/box
-                    ${isEditing ? 'opacity-30 pointer-events-none' : 'opacity-90 hover:opacity-100 cursor-pointer'} 
+                    ${isEditing && !isFullscreen ? 'opacity-30 pointer-events-none' : 'opacity-90 hover:opacity-100 cursor-pointer'} 
                   `}
                   style={{
                     ...getStyle(risk.box_2d),
@@ -300,8 +332,8 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 
                     {/* Index Indicator on Box */}
                     <div className={`
-                        absolute -top-3 -left-3 w-6 h-6 flex items-center justify-center 
-                        text-[12px] font-bold font-mono-sci shadow-lg z-50
+                        absolute -top-3 -left-3 w-5 h-5 flex items-center justify-center 
+                        text-[10px] font-bold font-mono-sci shadow-lg z-50
                         ${bgColor} text-black rounded-sm border border-black/20
                     `}>
                         {index + 1}
@@ -309,7 +341,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
                 </div>
 
                 {/* Draggable HUD Callout */}
-                {!isEditing && (
+                {(!isEditing || isFullscreen) && (
                   <HUDCallout 
                     risk={risk} 
                     isSelected={isSelected} 
@@ -330,6 +362,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
                         }
                       }));
                     }}
+                    isFullscreen={isFullscreen}
                   />
                 )}
               </React.Fragment>
@@ -339,6 +372,12 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
       </div>
     </div>
   );
+
+  if (isFullscreen) {
+    return createPortal(content, document.body);
+  }
+
+  return content;
 };
 
 // --- HUD CALLOUT COMPONENT WITH STABLE DRAG HANDLE ---
@@ -351,18 +390,19 @@ interface HUDCalloutProps {
   containerRef: React.RefObject<HTMLDivElement>;
   onSelect: () => void;
   onDragUpdate: (delta: { x: number, y: number }) => void;
+  isFullscreen: boolean;
 }
 
-const HUDCallout: React.FC<HUDCalloutProps> = ({ risk, isSelected, index, borderColor, textColor, containerRef, onSelect, onDragUpdate }) => {
+const HUDCallout: React.FC<HUDCalloutProps> = ({ risk, isSelected, index, borderColor, textColor, containerRef, onSelect, onDragUpdate, isFullscreen }) => {
   const isTooHigh = (risk.box_2d?.ymin || 0) < 160; 
   
   let leftPercent = ((risk.box_2d?.xmin || 0) + (risk.box_2d?.xmax || 0)) / 20;
   
-  let offsetX = -100;
+  let offsetX = -60;
   if (leftPercent < 15) offsetX = 0;
-  else if (leftPercent > 85) offsetX = -200;
+  else if (leftPercent > 85) offsetX = -120;
 
-  const offsetY = isTooHigh ? 10 : -70;
+  const offsetY = isTooHigh ? 10 : -40;
 
   return (
     <motion.div
@@ -384,35 +424,35 @@ const HUDCallout: React.FC<HUDCalloutProps> = ({ risk, isSelected, index, border
         <div
           onClick={onSelect}
           className={`
-            relative bg-slate-900/90 backdrop-blur-md border rounded-md p-2 shadow-2xl
-            w-[200px] border-l-4
+            relative bg-slate-900/90 backdrop-blur-md border rounded-md p-1.5 shadow-2xl
+            w-[120px] md:w-[140px] border-l-4
             ${isSelected ? 'scale-110 shadow-cyan-500/20 ring-1 ring-cyan-500/50' : 'scale-100'} 
             transition-all duration-300 ${borderColor}
             group/callout
           `}
         >
           {/* DRAG HANDLE INDICATOR */}
-          <div className="absolute -top-2 -right-2 bg-slate-800 border border-slate-700 rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover/callout:opacity-100 transition-opacity z-[110]">
-              <span className="text-[8px] text-white font-bold">✥</span>
+          <div className="absolute -top-1.5 -right-1.5 bg-slate-800 border border-slate-700 rounded-full w-4 h-4 flex items-center justify-center opacity-0 group-hover/callout:opacity-100 transition-opacity z-[110]">
+              <span className="text-[7px] text-white font-bold">✥</span>
           </div>
 
-          <div className="flex items-center justify-between gap-2 mb-1 border-b border-slate-800 pb-1">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className={`flex-shrink-0 flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-sm ${isSelected ? 'bg-cyan-400 text-black' : 'bg-slate-700 text-white'}`}>
+          <div className="flex items-center justify-between gap-1 mb-1 border-b border-slate-800 pb-0.5">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className={`flex-shrink-0 flex items-center justify-center w-3 h-3 text-[8px] font-bold rounded-sm ${isSelected ? 'bg-cyan-400 text-black' : 'bg-slate-700 text-white'}`}>
                 {index + 1}
               </span>
-              <span className={`text-[9px] font-bold uppercase tracking-wider leading-tight ${textColor}`}>
+              <span className={`text-[7px] font-bold uppercase tracking-wider leading-tight ${textColor} truncate`}>
                  {risk.label}
               </span>
             </div>
           </div>
           
-          <div className="text-[9px] text-slate-300 leading-snug line-clamp-2 italic font-mono-sci mb-1">
+          <div className="text-[7px] text-slate-400 leading-tight line-clamp-2 italic font-mono-sci mb-0.5">
              {risk.agent || risk.description.split('.')[0]}
           </div>
 
           {isSelected && (
-            <div className="flex items-center gap-1 mt-1 text-[7px] text-cyan-400 font-bold uppercase animate-pulse">
+            <div className="flex items-center gap-1 mt-0.5 text-[6px] text-cyan-400 font-bold uppercase animate-pulse">
                <div className="w-1 h-1 bg-cyan-400 rounded-full"></div>
                DATA_LINK_ENGAGED
             </div>

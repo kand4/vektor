@@ -512,8 +512,8 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                                 <span className="text-[10px] text-blue-300 font-bold uppercase tracking-tighter">SKOR KUMULATIF ({validSessions.length})</span>
                                 <span className="text-sm font-sci-fi font-bold text-white">{avgHygiene.toFixed(1)} / 5.0</span>
                             </div>
-                            <div className={`w-8 h-8 rounded border-2 flex items-center justify-center font-bold text-sm ${avgHygiene < 3 ? 'border-red-500 text-red-500' : 'border-emerald-500 text-emerald-400'}`}>
-                                {avgHygiene < 3 ? 'D' : 'A'}
+                            <div className={`w-8 h-8 rounded border-2 flex items-center justify-center font-bold text-sm ${avgHygiene <= 2.5 ? 'border-emerald-500 text-emerald-400' : avgHygiene <= 3.5 ? 'border-yellow-500 text-yellow-400' : 'border-red-500 text-red-500'}`}>
+                                {avgHygiene <= 1.5 ? 'A' : avgHygiene <= 2.5 ? 'B' : avgHygiene <= 3.5 ? 'C' : avgHygiene <= 4.5 ? 'D' : 'E'}
                             </div>
                         </div>
                     )}
@@ -528,16 +528,16 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                 </div>
              </div>
 
-             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                 {/* Left: Report */}
-                 <KKMReport result={result} />
-                 
-                 {/* Right: Evidence */}
+             <div className="flex flex-col gap-6">
+                 {/* Top: Evidence Full Width for 4K visibility */}
                  <div className="flex flex-col gap-4">
                      <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 relative">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
-                           <h3 className="text-sm font-bold text-white">BUKTI GAMBAR (ANNOTATED)</h3>
-                           <div className="flex items-center gap-2">
+                           <h3 className="text-sm font-bold text-white uppercase flex items-center gap-2">
+                              <span>BUKTI GAMBAR (ANNOTATED)</span>
+                              <span className="text-[9px] font-mono-sci bg-slate-800 px-2 py-1 rounded text-cyan-400 border border-cyan-900/50">Klik Imej untuk Zoom 4K</span>
+                           </h3>
+                           <div className="flex items-center gap-2 mt-2 sm:mt-0">
                                <button 
                                    onClick={() => setIsEditing(!isEditing)} 
                                    className={`text-[9px] uppercase font-bold px-2 py-1 rounded transition-colors flex items-center gap-1 border shadow-md backdrop-blur-md ${isEditing ? 'bg-red-900/60 text-red-300 border-red-800/80 animate-pulse' : 'bg-slate-900/60 text-slate-400 border-slate-700 hover:bg-slate-800'}`}
@@ -556,7 +556,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                                </button>
                            </div>
                         </div>
-                        <div className="border border-slate-700 rounded-xl bg-slate-950 relative z-20">
+                        <div className="border border-slate-700 rounded-xl bg-slate-950">
                             <ImageAnnotator 
                                 imageSrc={imageSrc} 
                                 risks={filteredRisks} 
@@ -564,7 +564,29 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                                 selectedId={activeRisk?.id} 
                                 isEditing={isEditing} 
                                 onRegionDrawn={handleRegionDrawn} 
+                                fullWidthMode={true}
                             />
+                            
+                            {/* COMPACT SENSITIVITY SLIDER */}
+                            <div className="flex flex-col sm:flex-row items-center justify-between border-t border-slate-800 p-2 sm:p-3 gap-3 bg-slate-900/30">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-blue-400 font-sci-fi tracking-widest uppercase">KEPEKAAN AI</span>
+                                    <div className="text-[10px] bg-blue-900/40 border border-blue-500/50 rounded px-1.5 py-0.5 text-blue-300 font-mono-sci font-bold">
+                                        {displayThreshold}%
+                                    </div>
+                                </div>
+                                <div className="flex-1 w-full flex items-center gap-2 sm:max-w-[200px]">
+                                    <span className="text-[8px] font-mono-sci text-slate-500 uppercase">Kritikal</span>
+                                    <input 
+                                        type="range" 
+                                        min="0" max="100" step="1"
+                                        value={displayThreshold}
+                                        onChange={(e) => setDisplayThreshold(parseInt(e.target.value))}
+                                        className="flex-1 accent-blue-500 h-1 cursor-pointer bg-slate-800 rounded-lg appearance-none"
+                                    />
+                                    <span className="text-[8px] font-mono-sci text-slate-500 uppercase">Maksimum</span>
+                                </div>
+                            </div>
                             
                             {activeRisk && (
                                 <div className="p-6 bg-slate-950 border-t border-slate-700 space-y-5">
@@ -603,7 +625,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-col sm:flex-row gap-2 mt-4 border-t border-slate-805 pt-4">
+                                    <div className="flex flex-col sm:flex-row gap-2 mt-4 border-t border-slate-800 pt-4">
                                         <a href={generateYoutubeLink(activeRisk)} target="_blank" rel="noopener noreferrer" className={`flex-1 flex items-center justify-center gap-2 py-3 rounded text-xs md:text-sm font-bold text-white transition-colors border bg-slate-800 border-slate-600 hover:bg-slate-700`}>
                                             🔬 {getVideoButtonLabel(activeRisk)}
                                         </a>
@@ -616,37 +638,12 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                                 </div>
                             )}
                         </div>
-
-                        {/* SENSITIVITY CONTROL SECTION (KKM) */}
-                        <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 animate-fade-in no-print">
-                            <div className="flex flex-col gap-3">
-                                <div className="flex justify-between items-center">
-                                    <div className="flex flex-col">
-                                        <span className="text-xs font-bold text-blue-400 font-sci-fi tracking-widest">DARJAH KEPEKAAN ANALISIS (AI)</span>
-                                        <span className="text-[10px] text-slate-400 font-mono italic">Kawal peratusan penemuan yang dipaparkan mengikut tahap keyakinan AI.</span>
-                                    </div>
-                                    <div className="px-3 py-1 bg-blue-900/40 border border-blue-500/50 rounded text-blue-300 font-mono-sci font-bold">
-                                        {displayThreshold}%
-                                    </div>
-                                </div>
-                                <div className="relative pt-1">
-                                    <input 
-                                        type="range" 
-                                        min="0" 
-                                        max="100" 
-                                        step="1"
-                                        value={displayThreshold}
-                                        onChange={(e) => setDisplayThreshold(parseInt(e.target.value))}
-                                        className="w-full accent-blue-500 h-2 cursor-pointer bg-slate-800 rounded-lg appearance-none border border-slate-700"
-                                    />
-                                    <div className="flex justify-between mt-2">
-                                        <span className="text-[8px] font-mono-sci text-slate-500 uppercase tracking-tighter">Fokus Kritikal (0%)</span>
-                                        <span className="text-[8px] font-mono-sci text-slate-500 uppercase tracking-tighter">Analisis Maksimum (100%)</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                      </div>
+                 </div>
+
+                 {/* Bottom: Report taking full width but layout stays clean */}
+                 <div className="w-full xl:w-[80%] mx-auto">
+                    <KKMReport result={result} />
                  </div>
              </div>
              
