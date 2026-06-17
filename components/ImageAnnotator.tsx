@@ -27,11 +27,24 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    setDragPositions({});
+  }, [imageSrc]);
   
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPos, setStartPos] = useState<{x: number, y: number} | null>(null);
   const [currentBox, setCurrentBox] = useState<BoundingBox | null>(null);
+
+  const updateDimensions = () => {
+    if (containerRef.current) {
+      setDimensions({ 
+        width: containerRef.current.clientWidth, 
+        height: containerRef.current.clientHeight 
+      });
+    }
+  };
 
   useEffect(() => {
     if (propSelectedId !== undefined) {
@@ -40,22 +53,24 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
   }, [propSelectedId]);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-    const observer = new ResizeObserver((entries) => {
-      for (let entry of entries) {
-         setDimensions({ width: entry.contentRect.width, height: entry.contentRect.height });
-      }
+    const observer = new ResizeObserver(() => {
+       updateDimensions();
     });
-    observer.observe(containerRef.current);
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+      updateDimensions();
+    }
     
-    // Initial fetch
-    setDimensions({ 
-      width: containerRef.current.offsetWidth || 800, 
-      height: containerRef.current.offsetHeight || 600 
-    });
-    
-    return () => observer.disconnect();
-  }, [isFullscreen]); // Re-observe upon fullscreen toggle
+    // Check periodically for the first few seconds if fonts/images shift layout
+    const interval = setInterval(updateDimensions, 500);
+    setTimeout(() => clearInterval(interval), 3000);
+
+    return () => {
+        observer.disconnect();
+        clearInterval(interval);
+    };
+  }, [isFullscreen, imageSrc]); // Re-observe upon toggle or image change
+
 
   // CSS Converter: 0-1000 Scale -> Percentages
   // Math.min/max logic ensures box stays within image bounds visually
@@ -204,7 +219,6 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
                 if (!risk.box_2d || typeof risk.box_2d.xmin !== 'number') return null;
                 
                 const isSelected = activeId === risk.id;
-                const dragPos = dragPositions[risk.id] || { x: 0, y: 0 };
                 
                 const boxXmin = risk.box_2d.xmin;
                 const boxXmax = risk.box_2d.xmax;
@@ -226,6 +240,8 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
                 
                 const baseTopPercent = isTooHigh ? (boxYmax / 10) : (boxYmin / 10);
                 const offsetY = isTooHigh ? 10 : -50;
+                
+                const dragPos = dragPositions[risk.id] || { x: 0, y: 0 };
                 
                 // Target X and Y mathematically to the center of the Callout layout
                 const targetX = (leftPercent / 100) * containerWidth + offsetX + 60 + dragPos.x;
@@ -409,7 +425,7 @@ const HUDCallout: React.FC<HUDCalloutProps> = ({ risk, isSelected, index, border
       drag
       dragListener={true}
       dragMomentum={false}
-      dragElastic={0} 
+      dragElastic={0}
       dragConstraints={containerRef}
       onDragStart={onSelect}
       onDrag={(e, info) => onDragUpdate(info.delta)}
@@ -422,7 +438,6 @@ const HUDCallout: React.FC<HUDCalloutProps> = ({ risk, isSelected, index, border
       }}
     >
         <div
-          onClick={onSelect}
           className={`
             relative bg-slate-900/90 backdrop-blur-md border rounded-md p-1.5 shadow-2xl
             w-[120px] md:w-[140px] border-l-4

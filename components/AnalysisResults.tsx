@@ -170,6 +170,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
   const handleRegionDrawn = (box: BoundingBox) => {
     setManualBox(box);
+    setManualContext("Targeted: Sila analisa kawasan ini.");
     setShowManualModal(true);
     setIsEditing(false);
   };
@@ -481,6 +482,9 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                  </div>
              )}
              {toastMsg && <Toast message={toastMsg.msg} type={toastMsg.type} onClose={() => setToastMsg(null)} />}
+             <SimulationConfigModal isOpen={showConfigModal} onClose={() => setShowConfigModal(false)} onStart={startSimulation} />
+             <SimulationResultModal isOpen={showCleanModal} onClose={() => setShowCleanModal(false)} originalImage={imageSrc} generatedImages={cleanImages} onRegenerate={handleRegenerateSimulation} onManualFallback={handleManualFallback} />
+             <ManualSimulationModal isOpen={showManualSimModal} onClose={() => setShowManualSimModal(false)} promptText={manualSimPrompt} onImagePasted={handleManualSimulationPasted} />
              
              {/* THE HIDDEN PRINT MODULE */}
              <PrintLayout sessions={allSessions.map(session => {
@@ -567,29 +571,54 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                                 fullWidthMode={true}
                             />
                             
-                            {/* COMPACT SENSITIVITY SLIDER */}
-                            <div className="flex flex-col sm:flex-row items-center justify-between border-t border-slate-800 p-2 sm:p-3 gap-3 bg-slate-900/30">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-bold text-blue-400 font-sci-fi tracking-widest uppercase">KEPEKAAN AI</span>
-                                    <div className="text-[10px] bg-blue-900/40 border border-blue-500/50 rounded px-1.5 py-0.5 text-blue-300 font-mono-sci font-bold">
-                                        {displayThreshold}%
+                            {/* ADVANCED AI CONTROLS (KKM) */}
+                            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between border-t border-slate-800 p-3 md:p-4 gap-4 bg-slate-950/80 rounded-b-xl">
+                                {/* Slider Section */}
+                                <div className="flex-1 max-w-sm flex flex-col gap-2 bg-slate-900 border border-slate-700/50 p-2 md:p-3 rounded-lg shadow-inner">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-cyan-400">
+                                              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+                                            </svg>
+                                            <span className="text-[10px] font-bold text-cyan-400 font-sci-fi tracking-widest uppercase">KEPEKAAN PENAPISAN AI</span>
+                                        </div>
+                                        <div className="text-[10px] bg-cyan-900/40 border border-cyan-500/50 rounded-md px-2 py-0.5 text-cyan-300 font-mono-sci font-bold shadow-[0_0_8px_rgba(34,211,238,0.3)]">
+                                            {displayThreshold}%
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <input 
+                                            type="range" 
+                                            min="0" max="100" step="1"
+                                            value={displayThreshold}
+                                            onChange={(e) => setDisplayThreshold(parseInt(e.target.value))}
+                                            className="w-full accent-cyan-400 h-1.5 cursor-pointer bg-slate-800 rounded-lg appearance-none focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                                            style={{ boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.5)' }}
+                                        />
+                                    </div>
+                                    <div className="flex justify-between w-full">
+                                        <span className="text-[8px] font-mono-sci text-red-400/80 uppercase">KRITIKAL SHJ</span>
+                                        <span className="text-[8px] font-mono-sci text-cyan-400/80 uppercase">SEMUA PENEMUAN</span>
                                     </div>
                                 </div>
-                                <div className="flex-1 w-full flex items-center gap-2 sm:max-w-[200px]">
-                                    <span className="text-[8px] font-mono-sci text-slate-500 uppercase">Kritikal</span>
-                                    <input 
-                                        type="range" 
-                                        min="0" max="100" step="1"
-                                        value={displayThreshold}
-                                        onChange={(e) => setDisplayThreshold(parseInt(e.target.value))}
-                                        className="flex-1 accent-blue-500 h-1 cursor-pointer bg-slate-800 rounded-lg appearance-none"
-                                    />
-                                    <span className="text-[8px] font-mono-sci text-slate-500 uppercase">Maksimum</span>
+
+                                {/* Actions Section */}
+                                <div className="flex items-center gap-2">
+                                     <button onClick={handleOpenSimulation} disabled={isCleaning} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-600 hover:border-cyan-500 hover:shadow-[0_0_15px_rgba(34,211,238,0.2)] rounded-lg text-xs font-bold uppercase transition-all disabled:opacity-50 text-white group">
+                                         {isCleaning ? <span className="animate-pulse">SIMULATING...</span> : (
+                                            <>
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-cyan-400 group-hover:rotate-12 transition-transform">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.813-3.814a1.5 1.5 0 0 0-2.12-2.12l-3.813 3.813a15.995 15.995 0 0 0-4.648 4.764m3.42 3.42a15.995 15.995 0 0 1-4.764 4.648l-3.813 3.813a1.5 1.5 0 0 1-2.12 2.12l3.813-3.813a15.995 15.995 0 0 1 4.648-4.764" />
+                                                </svg>
+                                                <span>{t('btn_simulation')}</span>
+                                            </>
+                                         )}
+                                     </button>
                                 </div>
                             </div>
                             
                             {activeRisk && (
-                                <div className="p-6 bg-slate-950 border-t border-slate-700 space-y-5">
+                                <div ref={detailsPanelRef} className="p-6 bg-slate-950 border-t border-slate-700 space-y-5 scroll-mt-24">
                                     <div>
                                         <h4 className="text-emerald-400 font-extrabold text-sm font-sci-fi uppercase mb-2 tracking-wider">{t('label_analysis') || 'ANALISIS KESELAMATAN & KESIHATAN MAKANAN'}</h4>
                                         <p className="text-slate-100 text-base md:text-lg leading-relaxed font-normal">{activeRisk.description}</p>

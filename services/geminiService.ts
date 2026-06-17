@@ -130,6 +130,9 @@ const getAIClient = (): any => {
 };
 
 const extractJSON = (text: string): string => {
+  if (text.toLowerCase().includes('<!doctype ') || text.toLowerCase().includes('<html')) {
+      throw new Error("Server AI sedang mengalami kesesakan tinggi (Ralat 503 Gateway). Sila cuba lagi sebentar lagi.");
+  }
   const match = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
   if (match) {
     return match[0].replace(/```json/g, '').replace(/```/g, '').trim();
@@ -287,17 +290,23 @@ const retryWithBackoff = async <T>(fn: () => Promise<T>, retries = 2, delay = 20
         return await fn();
     } catch (error: any) {
         saveLog(`Retry Failure (Retries left: ${retries}): ${error?.message || error}`, { error });
-        const msg = error.message || String(error) || "";
+        const msg = (error?.message || String(error) || "").toLowerCase();
         
-        // Hard Quota Error - no point in retrying
-        if (msg.includes("exceeded your current quota") || msg.includes("RESOURCE_EXHAUSTED")) {
-            throw new Error("Had Kuota API Gemini telah tamat (Quota Exceeded). Sila masukkan API Key anda sendiri di ruangan Tetapan.");
+        // Hard Quota Error - no point in retrying aggressively
+        if (msg.includes("exceeded your current quota") || msg.includes("resource_exhausted") || msg.includes("429")) {
+            if (retries <= 0) throw new Error("Had Kuota API telah dicapai (Too Many Requests / 429). Sila tunggu sebentar (60s) atau guna API Key sendiri di Tetapan.");
+        }
+        
+        // Server Overload Error
+        if (msg.includes("503") || msg.includes("unavailable") || msg.includes("gateway")) {
+             if (retries <= 0) throw new Error("Server AI sedang sibuk (Ralat 503). Permintaan sedang memuncak. Sila cuba analisis ini lagi dalam beberapa saat.");
+             delay = Math.max(delay, 5000); // Wait longer for 503
         }
 
         const isRateLimitError = msg.includes("429") || msg.includes("503") || msg.includes("overloaded");
-        const isJsonParsingError = error instanceof SyntaxError || msg.includes("JSON") || msg.includes("parse");
+        const isJsonParsingError = error instanceof SyntaxError || msg.includes("json") || msg.includes("parse");
         
-        if ((isRateLimitError || isJsonParsingError) && retries > 0) {
+        if (retries > 0) {
             await new Promise(resolve => setTimeout(resolve, delay));
             return retryWithBackoff(fn, retries - 1, delay * 2);
         }
