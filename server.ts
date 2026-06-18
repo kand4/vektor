@@ -55,16 +55,15 @@ async function startServer() {
         }
         console.log(`🤖 Backend calling Gemini model: ${model}`);
         
-        // Define a list of fallback models
-        const modelFallbackList = [model];
-        if (model.includes("3.5-flash")) {
-          modelFallbackList.push("gemini-2.5-flash");
-        } else if (model.includes("2.5-flash")) {
-          modelFallbackList.push("gemini-3.5-flash");
-        } else if (model.includes("2.5-pro") || model.includes("1.5-pro")) {
-          modelFallbackList.push("gemini-3.5-flash");
-          modelFallbackList.push("gemini-2.5-flash");
-        }
+        // Define a list of fallback models to maximize availability during quota or rate limit exhaustion
+        const modelFallbackList = [
+          model,
+          "gemini-2.5-flash",
+          "gemini-3.5-flash",
+          "gemini-1.5-flash",
+          "gemini-1.5-pro",
+          "gemini-2.5-pro"
+        ];
 
         const uniqueModels = Array.from(new Set(modelFallbackList));
         let response = null;

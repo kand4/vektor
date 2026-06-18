@@ -179,8 +179,8 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     if (!manualBox || !manualContext) return;
     setIsProcessingManual(true);
     try {
-        const cleanBase64 = imageSrc.split(',')[1] || imageSrc;
-        const mimeType = imageSrc.split(';')[0].split(':')[1] || 'image/jpeg';
+        const cleanBase64 = imageSrc.includes(',') ? imageSrc.split(',')[1] : imageSrc;
+        const mimeType = imageSrc.includes(';') ? (imageSrc.split(';')[0].split(':')[1] || 'image/jpeg') : 'image/jpeg';
         const currentSensitivity = result?.sensitivityUsed || 'HIGH';
         const newRisk = await analyzeManualRegion(cleanBase64, mimeType, manualBox, manualContext, language, isSavageMode, currentSensitivity as 'LOW' | 'HIGH' | 'EXTREME');
         
@@ -194,8 +194,8 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
         setShowManualModal(false);
         setManualContext("");
         setManualBox(null);
-    } catch (e) {
-        setToastMsg({ msg: "Gagal memproses manual region.", type: 'error' });
+    } catch (e: any) {
+        setToastMsg({ msg: `Gagal memproses manual region: ${e?.message || e}`, type: 'error' });
     } finally {
         setIsProcessingManual(false);
     }
@@ -208,8 +208,8 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       setIsCleaning(true);
       setShowCleanModal(false);
       try {
-          const base64Data = imageSrc.split(',')[1];
-          const mimeType = imageSrc.split(';')[0].split(':')[1] || 'image/jpeg';
+          const base64Data = imageSrc.includes(',') ? imageSrc.split(',')[1] : imageSrc;
+          const mimeType = imageSrc.includes(';') ? (imageSrc.split(';')[0].split(':')[1] || 'image/jpeg') : 'image/jpeg';
           const config: SimulationConfig = {
               mode: 'SANITIZE_ONLY',
               humans: 'REMOVE',
@@ -233,7 +233,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       setShowCleanModal(false);
       setIsCleaning(true);
       try {
-          const base64Data = imageSrc.split(',')[1];
+          const base64Data = imageSrc.includes(',') ? imageSrc.split(',')[1] : imageSrc;
           const config: SimulationConfig = {
               mode: 'SANITIZE_ONLY',
               humans: 'REMOVE',
@@ -260,8 +260,8 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       setShowConfigModal(false);
       setIsCleaning(true);
       try {
-          const base64Data = imageSrc.split(',')[1];
-          const mimeType = imageSrc.split(';')[0].split(':')[1] || 'image/jpeg';
+          const base64Data = imageSrc.includes(',') ? imageSrc.split(',')[1] : imageSrc;
+          const mimeType = imageSrc.includes(';') ? (imageSrc.split(';')[0].split(':')[1] || 'image/jpeg') : 'image/jpeg';
           
           if (config.engine === 'MANUAL') {
               const textPrompt = await generateSimulationPrompt(base64Data, config);
@@ -663,6 +663,47 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                                                 📚 PubMed Citation
                                             </a>
                                         )}
+                                    </div>
+
+                                    {/* TANYA AI (ASK AI) CHAT SECTION FOR KKM MODE */}
+                                    <div className="mt-6 pt-6 border-t border-slate-800">
+                                        <h4 className="text-cyan-400 font-extrabold text-xs font-sci-fi uppercase mb-3 tracking-wider flex items-center gap-2">
+                                            💬 {t('chat_title') || 'TANYA AI TENTANG ISU INI'}
+                                        </h4>
+                                        
+                                        {chatMessages.length > 0 && (
+                                            <div className="mb-4 max-h-[250px] overflow-y-auto custom-scrollbar bg-black/60 rounded-xl p-4 text-sm space-y-3 border border-slate-800">
+                                                {chatMessages.map((msg, idx) => (
+                                                    <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                                                        <span className={`text-[10px] font-mono-sci uppercase tracking-wider mb-1 ${msg.role === 'user' ? 'text-emerald-400' : 'text-blue-400'}`}>
+                                                            {msg.role === 'user' ? t('chat_you') || 'ANDA' : t('chat_ai') || 'AI SANITASI'}
+                                                        </span>
+                                                        <div className={`p-3 rounded-lg leading-relaxed max-w-[85%] whitespace-pre-line ${msg.role === 'user' ? 'bg-emerald-950/60 text-emerald-200 border border-emerald-800/50' : 'bg-slate-950/85 text-slate-100 border border-slate-800'}`}>
+                                                            {msg.text}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                <div ref={chatEndRef}></div>
+                                            </div>
+                                        )}
+                                        
+                                        <form onSubmit={handleAskAI} className="relative">
+                                            <input 
+                                                type="text" 
+                                                value={userQuestion} 
+                                                onChange={(e) => setUserQuestion(e.target.value)} 
+                                                placeholder={t('chat_placeholder') || 'Tanya AI jika anda musykil atau inginkan penjelasan lanjut...'} 
+                                                disabled={isChatLoading} 
+                                                className="w-full bg-slate-950 border border-slate-700 rounded-full py-3 px-5 pr-12 text-sm text-white focus:border-cyan-500 outline-none" 
+                                            />
+                                            <button 
+                                                type="submit" 
+                                                disabled={isChatLoading || !userQuestion.trim()} 
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 rounded-full text-white transition-colors"
+                                            >
+                                                {isChatLoading ? '...' : '➤'}
+                                            </button>
+                                        </form>
                                     </div>
                                 </div>
                             )}

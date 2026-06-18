@@ -379,6 +379,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
                       }));
                     }}
                     isFullscreen={isFullscreen}
+                    dragPos={dragPositions[risk.id] || { x: 0, y: 0 }}
                   />
                 )}
               </React.Fragment>
@@ -407,9 +408,10 @@ interface HUDCalloutProps {
   onSelect: () => void;
   onDragUpdate: (delta: { x: number, y: number }) => void;
   isFullscreen: boolean;
+  dragPos: { x: number, y: number };
 }
 
-const HUDCallout: React.FC<HUDCalloutProps> = ({ risk, isSelected, index, borderColor, textColor, containerRef, onSelect, onDragUpdate, isFullscreen }) => {
+const HUDCallout: React.FC<HUDCalloutProps> = ({ risk, isSelected, index, borderColor, textColor, containerRef, onSelect, onDragUpdate, isFullscreen, dragPos }) => {
   const isTooHigh = (risk.box_2d?.ymin || 0) < 160; 
   
   let leftPercent = ((risk.box_2d?.xmin || 0) + (risk.box_2d?.xmax || 0)) / 20;
@@ -420,21 +422,60 @@ const HUDCallout: React.FC<HUDCalloutProps> = ({ risk, isSelected, index, border
 
   const offsetY = isTooHigh ? 10 : -40;
 
+  // Track dragging state using local React refs to avoid lag
+  const isDraggingRef = useRef(false);
+  const lastPointerPos = useRef({ x: 0, y: 0 });
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    onSelect();
+    
+    e.currentTarget.setPointerCapture(e.pointerId);
+    isDraggingRef.current = true;
+    lastPointerPos.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current) return;
+    e.stopPropagation();
+    
+    const deltaX = e.clientX - lastPointerPos.current.x;
+    const deltaY = e.clientY - lastPointerPos.current.y;
+    
+    if (deltaX !== 0 || deltaY !== 0) {
+      onDragUpdate({ x: deltaX, y: deltaY });
+      lastPointerPos.current = { x: e.clientX, y: e.clientY };
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDraggingRef.current) {
+      e.stopPropagation();
+      e.currentTarget.releasePointerCapture(e.pointerId);
+      isDraggingRef.current = false;
+    }
+  };
+
   return (
     <motion.div
-      drag
-      dragListener={true}
-      dragMomentum={false}
-      dragElastic={0}
-      dragConstraints={containerRef}
-      onDragStart={onSelect}
-      onDrag={(e, info) => onDragUpdate(info.delta)}
-      className="absolute pointer-events-auto cursor-grab active:cursor-grabbing"
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect();
+      }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      className="absolute pointer-events-auto cursor-grab active:cursor-grabbing select-none"
       style={{
         left: `calc(${leftPercent}% + ${offsetX}px)`,
         top: isTooHigh ? `calc(${(risk.box_2d?.ymax || 0) / 10}% + ${offsetY}px)` : `calc(${(risk.box_2d?.ymin || 0) / 10}% + ${offsetY}px)`,
         touchAction: "none",
         zIndex: isSelected ? 300 : 100,
+        x: dragPos.x,
+        y: dragPos.y,
       }}
     >
         <div
