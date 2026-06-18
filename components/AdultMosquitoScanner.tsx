@@ -30,6 +30,10 @@ const AdultMosquitoScanner: React.FC = () => {
     const [imageDimensions, setImageDimensions] = useState<{naturalWidth: number, naturalHeight: number} | null>(null);
     const [show3DModel, setShow3DModel] = useState(false);
     
+    // Adult Mosquito Poster References - User can update these URLs with their GitHub hotlinks
+    const AEGYPTI_POSTER_URL = "https://github.com/kand4/vektor/blob/main/pic/1%20(3).jpg?raw=true"; 
+    const ALBOPICTUS_POSTER_URL = "https://github.com/kand4/vektor/blob/main/pic/1%20(4).jpg?raw=true"; // Ganti dengan URL GitHub anda
+
     const imageRef = useRef<HTMLImageElement | null>(null);
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -297,6 +301,132 @@ const AdultMosquitoScanner: React.FC = () => {
                                 </div>
                             </div>
                         )}
+
+                        {/* AEDES ALBOPICTUS QUICK REFERENCE BOX */}
+                        <motion.div 
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="bg-slate-950/60 border border-slate-800 hover:border-slate-700/80 rounded-xl p-4 shadow-2xl border-l-4 border-l-white/40 transition-all group"
+                        >
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+                                    🦟
+                                </div>
+                                <div>
+                                    <h4 className="text-white font-bold font-sci-fi tracking-widest text-sm uppercase">Profil: Aedes albopictus</h4>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="w-1.5 h-1.5 bg-slate-500 rounded-full"></span>
+                                        <p className="text-[9px] text-slate-500 font-mono-sci uppercase tracking-widest">Nyamuk Harimau Asia</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="space-y-3">
+                                <div className="bg-slate-900/40 p-3 rounded-lg border border-slate-800/50">
+                                    <span className="text-[9px] text-slate-500 font-mono-sci block uppercase mb-1 tracking-tighter">Ciri Diskriminan Utama</span>
+                                    <p className="text-xs text-slate-200 leading-relaxed font-sans">
+                                        Perhatikan <span className="text-white font-black underline decoration-white/40">Satu Garisan Putih Tunggal</span> yang memanjang di tengah-tengah toraks. Ini adalah ciri utama pembeza berbanding <span className="italic text-slate-400">Aedes aegypti</span> (yang mempunyai corak 'Lyre').
+                                    </p>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="bg-white/5 p-2 rounded border border-white/5">
+                                        <span className="text-[8px] text-slate-500 block uppercase font-mono-sci">Habitat</span>
+                                        <p className="text-[10px] text-slate-300 font-sans">Kawasan Luar / Vegetasi</p>
+                                    </div>
+                                    <div className="bg-white/5 p-2 rounded border border-white/5">
+                                        <span className="text-[8px] text-slate-500 block uppercase font-mono-sci">Sifat</span>
+                                        <p className="text-[10px] text-slate-300 font-sans">Sangat Agresif (Siang)</p>
+                                    </div>
+                                </div>
+
+                                <div className="p-2 border border-white/5 rounded text-[9px] text-slate-400 font-sans italic leading-tight">
+                                    *Vektor utama bagi virus Denggi dan Chikungunya di kawasan pinggir bandar dan luar bandar.
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                </div>
+
+                {/* ADULT MOSQUITO POSTERS SECTION */}
+                <div className="mt-12 pt-8 border-t border-slate-800 relative z-10">
+                    <div className="flex items-center gap-3 mb-8">
+                        <div className="w-10 h-10 rounded-lg bg-purple-950/50 border border-purple-500/30 flex items-center justify-center text-xl shadow-[0_0_10px_rgba(168,85,247,0.2)]">
+                            🔬
+                        </div>
+                        <div>
+                            <h3 className="text-white font-bold font-sci-fi tracking-widest text-lg uppercase">Arkib Morfologi Vektor (Perbandingan)</h3>
+                            <p className="text-[10px] text-slate-500 font-mono-sci uppercase tracking-widest">Manual Entomologi Lapangan (Poster Side-by-side)</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Aedes aegypti Poster */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-bold text-white font-sci-fi uppercase tracking-wider flex items-center gap-2">
+                                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                                    AEDES AEGYPTI (UTAMA)
+                                </h4>
+                                <a 
+                                    href={AEGYPTI_POSTER_URL} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-[9px] bg-slate-800 hover:bg-slate-700 text-purple-400 border border-slate-700 px-3 py-1 rounded font-mono-sci uppercase transition-colors"
+                                >
+                                    FULL SIZE
+                                </a>
+                            </div>
+                            <div className="bg-slate-950/40 border border-slate-800 rounded-2xl overflow-hidden p-2 group">
+                                <div className="relative aspect-[16/10] bg-slate-900 rounded-xl overflow-hidden">
+                                    <img 
+                                        src={AEGYPTI_POSTER_URL} 
+                                        alt="Poster Aedes aegypti"
+                                        referrerPolicy="no-referrer"
+                                        className="w-full h-full object-contain opacity-90 group-hover:opacity-100 transition-opacity duration-300"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 to-transparent pointer-events-none"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Aedes albopictus Poster */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-bold text-white font-sci-fi uppercase tracking-wider flex items-center gap-2">
+                                    <span className="w-2 h-2 bg-slate-500 rounded-full"></span>
+                                    AEDES ALBOPICTUS (HUTAN)
+                                </h4>
+                                <a 
+                                    href={ALBOPICTUS_POSTER_URL} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-[9px] bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 px-3 py-1 rounded font-mono-sci uppercase transition-colors"
+                                >
+                                    FULL SIZE
+                                </a>
+                            </div>
+                            <div className="bg-slate-950/40 border border-slate-800 rounded-2xl overflow-hidden p-2 group">
+                                <div className="relative aspect-[16/10] bg-slate-900 rounded-xl overflow-hidden">
+                                    <img 
+                                        src={ALBOPICTUS_POSTER_URL} 
+                                        alt="Poster Aedes albopictus"
+                                        referrerPolicy="no-referrer"
+                                        className="w-full h-full object-contain opacity-90 group-hover:opacity-100 transition-opacity duration-300"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 to-transparent pointer-events-none"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="mt-8 p-4 bg-purple-950/10 border border-purple-900/20 rounded-xl flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400 shrink-0 mt-0.5">
+                            📌
+                        </div>
+                        <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
+                            <strong className="text-purple-400 uppercase tracking-tighter block mb-1">PRO-TIP ENTOMOLOGI:</strong> Perhatikan perbezaan <span className="text-white italic">Scutum</span> (toraks) di antara kedua-dua spesies. <span className="text-white">Aegypti</span> mempunyai corak lyre yang kompleks manakala <span className="text-white">Albopictus</span> mempunyai satu garisan putih tunggal yang sangat jelas. Gunakan perbandingan visual ini jika keputusan AI menunjukkan keyakinan (confidence) yang rendah.
+                        </p>
                     </div>
                 </div>
             </div>

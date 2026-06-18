@@ -174,7 +174,7 @@ ${additionalDirectives ? `6. ARAHAN TAMBAHAN PENGGUNA: ${additionalDirectives}` 
           <div>
             <span className="text-[10px] text-cyan-400 font-mono-sci uppercase tracking-[0.2em] block mb-1">PRO-GRADE SANITATION LAB</span>
             <h1 className="text-2xl font-bold text-white font-sci-fi tracking-wide flex items-center gap-2">
-              ✨ DETAK SIMULASI MANUAL <span className="text-xs bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded font-mono">DEDICATED PAGE</span>
+              ✨ MENU SIMULASI MANUAL <span className="text-xs bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded font-mono">DEDICATED PAGE</span>
             </h1>
           </div>
         </div>

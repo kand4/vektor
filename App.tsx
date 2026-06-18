@@ -92,17 +92,58 @@ const App: React.FC = () => {
   const [analysisMode, setAnalysisMode] = useState<AnalysisMode>('VECTOR_CONTROL');
 
   const [isStatsLoading, setIsStatsLoading] = useState(false);
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number, state?: string, district?: string} | null>(null);
   
   const [nationalStats, setNationalStats] = useState<iDengueData | null>(null);
   const [regionalStats, setRegionalStats] = useState<RegionalDengueData | null>(null);
   
   const { language, t } = useLanguage();
 
-  const loadDengueData = async () => {
+  const resolveLocality = async (lat: number, lng: number) => {
+    try {
+        const ai = (await import('./services/geminiService')).getAIClient();
+        const prompt = `Based on these coordinates: Latitude ${lat}, Longitude ${lng}, identify the State and District in Malaysia. 
+        Include only Malaysia states like Pahang, Selangor, Johor, etc. 
+        Output JSON only: { "state": "State Name", "district": "District Name" }`;
+        
+        const response = await ai.models.generateContent({
+            model: (await import('./services/geminiService')).getPreferredModelForText('gemini-2.5-flash'),
+            contents: { parts: [{ text: prompt }] }
+        });
+        
+        const text = response.text || "{}";
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) {
+            return JSON.parse(match[0]);
+        }
+    } catch (e) {
+        console.error("Locality resolution failed", e);
+    }
+    return { state: "Pahang", district: "Temerloh" }; // Fallback
+  };
+
+  const loadDengueData = async (forceLocation?: {lat: number, lng: number}) => {
     setIsStatsLoading(true);
     try {
         const nat = await fetchLatestIDengueStats();
-        const reg = await fetchRegionalDengueStats("Pahang", "Temerloh");
+        
+        let state = "Pahang";
+        let district = "Temerloh";
+        
+        const loc = forceLocation || userLocation;
+        if (loc) {
+            if (loc.state && loc.district) {
+                state = loc.state;
+                district = loc.district;
+            } else {
+                const resolved = await resolveLocality(loc.lat, loc.lng);
+                state = resolved.state;
+                district = resolved.district;
+                setUserLocation(prev => prev ? {...prev, ...resolved} : {lat: loc.lat, lng: loc.lng, ...resolved});
+            }
+        }
+
+        const reg = await fetchRegionalDengueStats(state, district);
         setNationalStats(nat);
         setRegionalStats(reg);
     } catch (e) {
@@ -111,6 +152,24 @@ const App: React.FC = () => {
         setIsStatsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const newLoc = { lat: position.coords.latitude, lng: position.coords.longitude };
+          setUserLocation(newLoc);
+          loadDengueData(newLoc);
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+          loadDengueData(); // Load default if geo fails
+        }
+      );
+    } else {
+      loadDengueData();
+    }
+  }, []);
 
   const handleFilesSelected = async (files: File[]) => {
     try {
@@ -279,7 +338,11 @@ const App: React.FC = () => {
       <BioBackground />
       <AboutSystem isOpen={showAbout} onClose={() => setShowAbout(false)} />
       <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
-      <HeatmapModal isOpen={showHeatmap} onClose={() => setShowHeatmap(false)} />
+      <HeatmapModal 
+        isOpen={showHeatmap} 
+        onClose={() => setShowHeatmap(false)} 
+        userLocation={userLocation}
+      />
       <GlobalMapModal isOpen={showGlobalMap} onClose={() => setShowGlobalMap(false)} />
       {showSimulationGallery && (
         <SimulationGallery 
@@ -348,7 +411,7 @@ const App: React.FC = () => {
                                 <div className="mb-12 text-center animate-fade-in">
                                     <div className="inline-flex items-center gap-2 bg-emerald-950/50 border border-emerald-500/30 px-4 py-1.5 rounded-full text-[10px] md:text-xs font-mono-sci text-emerald-400 mb-4 uppercase tracking-[0.2em] shadow-md shadow-emerald-900/10">
                                         <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span>
-                                        ANUGERAH INOVASI BIO-TEKNOLOGI 2026
+                                       SOLUSI DIGITAL PEMERKASAAN KESIHATAN AWAM                                     
                                     </div>
                                     <h2 className="text-3xl sm:text-5xl md:text-6xl font-sci-fi font-black tracking-wider text-white mb-4 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)] leading-none uppercase">
                                         VECTOR<span className="text-emerald-500">GUARD</span><span className="text-slate-500 font-mono text-xl lowercase opacity-60">.ai</span>
@@ -582,6 +645,12 @@ const App: React.FC = () => {
                                 <div className="max-w-6xl mx-auto">
                                     <div className="mb-8 text-center pt-2">
                                         <h2 className="text-2xl sm:text-4xl md:text-5xl font-sci-fi font-bold text-white mb-2 drop-shadow-[0_0_15px_rgba(245,158,11,0.4)] leading-tight uppercase">DASHBOARD AMARAN AWAL</h2>
+                                        {userLocation && userLocation.state && (
+                                            <div className="inline-flex items-center gap-2 bg-amber-950/40 border border-amber-900/50 px-4 py-1.5 rounded-full text-[10px] font-mono-sci text-amber-500 mb-4 uppercase tracking-widest animate-fade-in shadow-lg shadow-amber-900/10">
+                                                <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
+                                                LOKASI DIKESAN: {userLocation.district}, {userLocation.state}
+                                            </div>
+                                        )}
                                         <p className="text-slate-400 max-w-2xl mx-auto text-xs sm:text-sm md:text-base leading-relaxed px-4">
                                             Analisis interaktif berasaskan ramalan data iDengue KKM kebangsaaan. Pilih zon kawalan wabak dan peta taburan wilayah untuk unjuran ramalan zon berbahaya.
                                         </p>

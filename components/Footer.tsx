@@ -26,14 +26,20 @@ const Footer: React.FC<FooterProps> = ({ onOpenAbout }) => {
       <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
         
         <div 
-            className="flex items-center gap-2 cursor-pointer select-none"
+            className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 cursor-pointer select-none"
             onClick={handleSecretClick}
             title="Sistem Diagnosis Tersembunyi (Klik 5 kali log ralat)"
         >
-           <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-           <span className="text-[10px] md:text-xs font-mono-sci text-emerald-600/70 tracking-[0.2em] relative">
-             SECURE_TERMINAL_V2.5
-             {clicks > 0 && <span className="absolute -top-4 -right-4 text-[8px] text-slate-600">[{clicks}]</span>}
+           <div className="flex items-center gap-2">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+              <span className="text-[10px] md:text-xs font-mono-sci text-emerald-600/70 tracking-[0.2em] relative">
+                SECURE_TERMINAL_V2.5
+                {clicks > 0 && <span className="absolute -top-4 -right-4 text-[8px] text-slate-600">[{clicks}]</span>}
+              </span>
+           </div>
+           <span className="hidden sm:inline text-slate-800 font-mono-sci">|</span>
+           <span className="text-[10px] md:text-xs font-mono-sci text-emerald-500/50 uppercase tracking-widest">
+             BUILD: v3.2.0-STABLE
            </span>
         </div>
 

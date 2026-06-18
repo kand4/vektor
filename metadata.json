@@ -2,7 +2,8 @@
   "name": "VectorGuard AI",
   "description": "Aplikasi analisis kawalan vektor serangga (lalat & nyamuk) menggunakan AI untuk mengenalo pasti tempat pembiakan dan strategi kawalan.",
   "requestFramePermissions": [
-    "camera"
+    "camera",
+    "geolocation"
   ],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

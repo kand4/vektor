@@ -35,6 +35,9 @@ const LarvaeScanner: React.FC = () => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const imageRef = useRef<HTMLImageElement | null>(null);
 
+    // Anatomy Poster Reference - User can update this URL with their GitHub hotlink
+    const LARVAE_POSTER_URL = "https://github.com/kand4/vektor/blob/main/pic/1 (1).jpg?raw=true"; // Ganti dengan URL GitHub anda
+
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -472,6 +475,58 @@ const LarvaeScanner: React.FC = () => {
                                 </div>
                             </div>
                         )}
+                    </div>
+                </div>
+
+                {/* ANATOMY POSTER SECTION */}
+                <div className="mt-12 pt-8 border-t border-slate-800 relative z-10">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-cyan-950/50 border border-cyan-500/30 flex items-center justify-center text-xl shadow-[0_0_10px_rgba(34,211,238,0.2)]">
+                                🔬
+                            </div>
+                            <div>
+                                <h3 className="text-white font-bold font-sci-fi tracking-widest text-lg uppercase">Carta Referensi Anatomi Larva</h3>
+                                <p className="text-[10px] text-slate-500 font-mono-sci uppercase tracking-widest">Manual Entomologi Lapangan v2.0 (Poster Induk)</p>
+                            </div>
+                        </div>
+                        <a 
+                            href={LARVAE_POSTER_URL} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-[10px] bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 px-3 py-1.5 rounded font-mono-sci uppercase tracking-widest transition-colors flex items-center gap-2"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3 h-3">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            </svg>
+                            BUKA SAIZ ASAL
+                        </a>
+                    </div>
+
+                    <div className="bg-slate-950/40 border border-slate-800 rounded-2xl overflow-hidden p-2 group">
+                        <div className="relative aspect-[16/10] sm:aspect-[16/9] bg-slate-900 rounded-xl overflow-hidden cursor-zoom-in">
+                            <img 
+                                src={LARVAE_POSTER_URL} 
+                                alt="Poster Anatomi Larva"
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-contain opacity-90 group-hover:opacity-100 transition-opacity duration-300"
+                            />
+                            {/* Overlay info */}
+                            <div className="absolute bottom-4 left-4 bg-slate-900/60 backdrop-blur-md border border-slate-700/50 p-3 rounded-lg max-w-sm hidden md:block">
+                                <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                                    <strong className="text-cyan-400 uppercase tracking-tighter">Nota Lapangan:</strong> Sila rujuk ciri-ciri Sifon, Gigi Pecten dan rambut toraks dalam poster ini untuk mengesahkan pengimbasan AI.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="mt-6 p-4 bg-cyan-950/20 border border-cyan-900/30 rounded-lg flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400 shrink-0">
+                            💡
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-sans italic leading-relaxed">
+                            <strong className="text-cyan-400">INFO:</strong> Jika poster tidak dipaparkan, pastikan URL hotlink GitHub anda adalah sah dan 'Public'.
+                        </p>
                     </div>
                 </div>
             </div>
