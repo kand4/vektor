@@ -35,6 +35,7 @@ const MANUAL_SIMULATION_DEFAULT_PROMPT = `Sila gunakan tool penjana imej (Imagen
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION' | 'MANUAL_SIMULATION'>('HOME');
+  const [currentHomeSubView, setCurrentHomeSubView] = useState<'MENU' | 'FORENSIC' | 'ANALYTICS'>('MENU');
   const [sessions, setSessions] = useState<AnalysisSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [dbLoaded, setDbLoaded] = useState(false);
@@ -266,6 +267,7 @@ const App: React.FC = () => {
     setIsLiveMode(false); 
     setActiveSessionId(null); 
     setIsGalleryExpanded(true); 
+    setCurrentHomeSubView('MENU');
     window.scrollTo({ top: 0, behavior: 'smooth' }); 
   };
   
@@ -340,153 +342,275 @@ const App: React.FC = () => {
         ) : (
             <>
                 {!activeSessionId && (
-                    <div className="mb-10 md:mb-14 text-center pt-4 md:pt-8 animate-fade-in-up">
-            <h2 className="text-2xl sm:text-4xl md:text-5xl font-sci-fi font-bold text-white mb-3 md:mb-6 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)] leading-tight">{t('hero_title')} <span className="text-emerald-500">{t('hero_title_highlight')}</span></h2>
-            <p className="text-slate-300 max-w-3xl mx-auto mb-6 md:mb-10 font-light tracking-wide text-xs sm:text-sm md:text-xl px-2">{t('hero_subtitle')}</p>
-            
-            <div className="max-w-4xl mx-auto mb-6 md:mb-10">
-                <div className="mb-3 text-center text-emerald-500/50 text-[10px] md:text-xs font-mono-sci tracking-[0.2em] md:tracking-[0.3em]">{t('secure_link')}</div>
-                <UploadZone onImagesSelected={handleFilesSelected} disabled={false} isAnalyzing={false} />
-            </div>
+                    <>
+                        {currentHomeSubView === 'MENU' ? (
+                            <div className="max-w-6xl mx-auto py-4 md:py-8">
+                                <div className="mb-12 text-center animate-fade-in">
+                                    <div className="inline-flex items-center gap-2 bg-emerald-950/50 border border-emerald-500/30 px-4 py-1.5 rounded-full text-[10px] md:text-xs font-mono-sci text-emerald-400 mb-4 uppercase tracking-[0.2em] shadow-md shadow-emerald-900/10">
+                                        <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span>
+                                        ANUGERAH INOVASI BIO-TEKNOLOGI 2026
+                                    </div>
+                                    <h2 className="text-3xl sm:text-5xl md:text-6xl font-sci-fi font-black tracking-wider text-white mb-4 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)] leading-none uppercase">
+                                        VECTOR<span className="text-emerald-500">GUARD</span><span className="text-slate-500 font-mono text-xl lowercase opacity-60">.ai</span>
+                                    </h2>
+                                    <p className="text-slate-400 max-w-2xl mx-auto text-xs sm:text-sm md:text-base font-light font-sans tracking-wide px-4 leading-relaxed">
+                                        Platform bersepadu berlandaskan Kecerdasan Buatan (Gemini Pro) untuk pengecaman spesies nyamuk, kawalan jentik-jentik, simulasi sanitasi premis, ramalan wabak KKM, dan pencegahan jangkitan vektor.
+                                    </p>
+                                </div>
 
-            <div className="max-w-xl mx-auto mb-8 bg-slate-900/50 p-4 md:p-6 rounded-2xl border border-slate-700/50 shadow-2xl backdrop-blur-md relative z-10 pointer-events-auto">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Mode Picker */}
-                  <div className="space-y-3">
-                     <label className="text-[10px] text-slate-400 font-mono-sci uppercase tracking-[0.2em] block">{t('inspection_mode')}</label>
-                     <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => setAnalysisMode('VECTOR_CONTROL')} className={`text-[10px] md:text-xs font-bold py-3 rounded-lg transition-all flex flex-col items-center justify-center gap-1 border ${analysisMode === 'VECTOR_CONTROL' ? 'bg-emerald-600 border-emerald-400 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-700'}`}>
-                           <span className="text-lg">🦟</span>
-                           <span>{t('mode_vector')}</span>
-                        </button>
-                        <button onClick={() => setAnalysisMode('KKM_FOOD_STANDARD')} className={`text-[10px] md:text-xs font-bold py-3 rounded-lg transition-all flex flex-col items-center justify-center gap-1 border ${analysisMode === 'KKM_FOOD_STANDARD' ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-700'}`}>
-                           <span className="text-lg">📋</span>
-                           <span>{t('mode_kkm')}</span>
-                        </button>
-                     </div>
-                  </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto mb-16 animate-fade-in-up">
+                                    {/* Card 1: Forensic AI Scanner */}
+                                    <button 
+                                        onClick={() => {
+                                            setCurrentHomeSubView('FORENSIC');
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                        }}
+                                        className="group relative cursor-pointer text-left bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-emerald-500/50 p-6 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] flex flex-col justify-between"
+                                    >
+                                        <div>
+                                            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all">📸</div>
+                                            <div className="inline-block bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] font-bold px-2 py-0.5 rounded-full mb-2 tracking-wide uppercase font-mono-sci">TERAS GEMINI AI</div>
+                                            <h3 className="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors font-sci-fi tracking-wide mb-2">IMBASAN HABITAT & PREMIS</h3>
+                                            <p className="text-xs text-slate-400 leading-relaxed">Imbas, sah, dan ukur risiko takungan air pembiakan nyamuk dlm premis dengan cadangan sanitasi Automatik berdasarkan piawaian KKM.</p>
+                                        </div>
+                                        <div className="mt-6 flex items-center justify-between text-[11px] font-bold text-emerald-400 group-hover:translate-x-1 transition-transform">
+                                            <span>Mula Analisis Lapangan</span>
+                                            <span>→</span>
+                                        </div>
+                                    </button>
 
-                  {/* Sensitivity Picker */}
-                  <div className="space-y-3">
-                     <label className="text-[10px] text-slate-400 font-mono-sci uppercase tracking-[0.2em] block">{t('forensic_sensitivity')}</label>
-                     <div className="grid grid-cols-3 gap-2">
-                        {(['STANDARD', 'HIGH', 'EXTREME'] as SensitivityLevel[]).map((level) => (
-                           <button 
-                              key={level}
-                              onClick={() => setSensitivity(level)}
-                              className={`text-[9px] font-bold py-3 rounded-lg transition-all border flex items-center justify-center ${sensitivity === level ? 'bg-red-600 border-red-400 text-white shadow-[0_0_10px_rgba(220,38,38,0.4)] animate-pulse' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-700'}`}
-                           >
-                              {level}
-                           </button>
-                        ))}
-                     </div>
-                  </div>
-               </div>
-               <p className="text-[9px] text-slate-500 mt-4 italic font-mono-sci leading-relaxed text-center">
-                  {t('extreme_mode_desc')}
-               </p>
-            </div>
-            
-            <div className="flex flex-col items-center justify-center gap-4 mb-6 md:mb-12">
-                <button onClick={() => setIsLiveMode(true)} className="group relative flex items-center gap-2 md:gap-3 bg-red-600/90 text-white px-5 py-3 md:px-10 md:py-5 rounded font-sci-fi font-bold text-sm md:text-lg shadow-[0_0_20px_rgba(220,38,38,0.5)] hover:bg-red-500 hover:shadow-[0_0_40px_rgba(220,38,38,0.8)] transition-all overflow-hidden border border-red-400 active:scale-95">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 md:w-7 md:h-7"><path d="M12 9a3.75 3.75 0 100 7.5A3.75 3.75 0 0012 9z" /><path fillRule="evenodd" d="M9.344 3.071a49.52 49.52 0 015.312 0c.967.052 1.83.585 2.332 1.39l.821 1.317c.24.383.645.643 1.11.71.386.054.77.113 1.152.177 1.432.239 2.429 1.493 2.429 2.909V18a3 3 0 01-3 3h-15a3 3 0 01-3-3V9.574c0-1.416.997-2.67 2.429-2.909.382-.064.766-.123 1.151-.178a1.56 1.56 0 001.11-.71l.822-1.315a2.942 2.942 0 012.332-1.39zM6.75 12.75a5.25 5.25 0 1110.5 0 5.25 5.25 0 01-10.5 0zm12-1.5a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" /></svg>
-                    {t('btn_ar_scan')}
-                </button>
-                <div className="flex justify-center gap-3 w-full max-w-sm">
-                     <button
-                       onClick={() => setCurrentView('LARVAE_DETECTION')}
-                       className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 border border-cyan-500/50 rounded font-sci-fi text-xs tracking-wider transition-colors bg-cyan-900/20 hover:bg-cyan-900/40 text-cyan-400`}
-                     >
-                        <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse shrink-0"></div>
-                        {t('nav_larvae_scanner')}
-                     </button>
-                     <button
-                       onClick={() => setCurrentView('ADULT_MOSQUITO_DETECTION')}
-                       className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 border border-purple-500/50 rounded font-sci-fi text-xs tracking-wider transition-colors bg-purple-900/20 hover:bg-purple-900/40 text-purple-400`}
-                     >
-                        <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse shrink-0"></div>
-                        {t('nav_adult_scanner')}
-                     </button>
-                </div>
-            </div>
-            
-            <div className="max-w-4xl mx-auto">
-                <div className="mt-8 flex flex-col items-center gap-3 animate-fade-in-up">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-2xl">
-                        {/* MOD SIMULASI MANUAL DIRECT ACTION */}
-                        <button 
-                            onClick={handleManualSimulation} 
-                            className="bg-gradient-to-r from-cyan-600 to-indigo-600 border border-cyan-400/50 shadow-[0_0_20px_rgba(6,182,212,0.3)] text-white px-5 py-4 rounded-xl font-bold hover:from-cyan-500 hover:to-indigo-500 hover:shadow-[0_0_35px_rgba(6,182,212,0.6)] transition-all flex items-center justify-center gap-3 active:scale-95 group/manual-sim"
-                        >
-                            <span className="text-xl group-hover/manual-sim:animate-bounce">🚀</span>
-                            <div className="text-left">
-                                <span className="block font-sci-fi tracking-widest text-xs lg:text-sm leading-tight">MOD SIMULASI MANUAL</span>
-                                <span className="block text-[8px] text-cyan-200 font-mono-sci uppercase opacity-80">Salin Prompt & Buka Gemini Web</span>
+                                    {/* Card 2: Larvae Scanner */}
+                                    <button 
+                                        onClick={() => {
+                                            setCurrentView('LARVAE_DETECTION');
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                        }}
+                                        className="group relative cursor-pointer text-left bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-cyan-500/50 p-6 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(6,182,212,0.15)] flex flex-col justify-between"
+                                    >
+                                        <div>
+                                            <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 group-hover:bg-cyan-500/20 transition-all">🐛</div>
+                                            <div className="inline-block bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[9px] font-bold px-2 py-0.5 rounded-full mb-2 tracking-wide uppercase font-mono-sci">ROBOFLOW YOLOV8</div>
+                                            <h3 className="text-lg font-bold text-white group-hover:text-cyan-400 transition-colors font-sci-fi tracking-wide mb-2">DETEKTIF JENTIK-JENTIK</h3>
+                                            <p className="text-xs text-slate-400 leading-relaxed">Guna model visi komputer yang ditala khusus untuk mengesan, melabel, dan mengira bilangan larva Aedes dalam bekas tadahan.</p>
+                                        </div>
+                                        <div className="mt-6 flex items-center justify-between text-[11px] font-bold text-cyan-400 group-hover:translate-x-1 transition-transform">
+                                            <span>Lancarkan Visi Komputer</span>
+                                            <span>→</span>
+                                        </div>
+                                    </button>
+
+                                    {/* Card 3: Adult Mosquito Scanner */}
+                                    <button 
+                                        onClick={() => {
+                                            setCurrentView('ADULT_MOSQUITO_DETECTION');
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                        }}
+                                        className="group relative cursor-pointer text-left bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-purple-500/50 p-6 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(168,85,247,0.15)] flex flex-col justify-between"
+                                    >
+                                        <div>
+                                            <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 group-hover:bg-purple-500/20 transition-all">🦟</div>
+                                            <div className="inline-block bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[9px] font-bold px-2 py-0.5 rounded-full mb-2 tracking-wide uppercase font-mono-sci">SIASATAN ENTIOMOLOGI</div>
+                                            <h3 className="text-lg font-bold text-white group-hover:text-purple-400 transition-colors font-sci-fi tracking-wide mb-2">ANALISIS NYAMUK DEWASA</h3>
+                                            <p className="text-xs text-slate-400 leading-relaxed">Pengenalpastian morfologi sayap, abdomen, dan spesifikasi jantina vektor dewasa sama ada Aedes Albopictus atau Anopheles.</p>
+                                        </div>
+                                        <div className="mt-6 flex items-center justify-between text-[11px] font-bold text-purple-400 group-hover:translate-x-1 transition-transform">
+                                            <span>Pengelasan Spesies</span>
+                                            <span>→</span>
+                                        </div>
+                                    </button>
+
+                                    {/* Card 4: National Outbreak Analytics */}
+                                    <button 
+                                        onClick={() => {
+                                            setCurrentHomeSubView('ANALYTICS');
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                        }}
+                                        className="group relative cursor-pointer text-left bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-amber-500/50 p-6 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(245,158,11,0.15)] flex flex-col justify-between"
+                                    >
+                                        <div>
+                                            <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 group-hover:bg-amber-500/20 transition-all">📊</div>
+                                            <div className="inline-block bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[9px] font-bold px-2 py-0.5 rounded-full mb-2 tracking-wide uppercase font-mono-sci">TELEMETRI KEBANGSAAN</div>
+                                            <h3 className="text-lg font-bold text-white group-hover:text-amber-400 transition-colors font-sci-fi tracking-wide mb-2">EPIDEMIOLOGY & RAMALAN</h3>
+                                            <p className="text-xs text-slate-400 leading-relaxed">Tinjau grafik kumulatif kes kebangsaan, hotspot aktif, minggu epidemiologi, serta akses penuh peta risiko iDengue KKM 2026.</p>
+                                        </div>
+                                        <div className="mt-6 flex items-center justify-between text-[11px] font-bold text-amber-400 group-hover:translate-x-1 transition-transform">
+                                            <span>Segerakkan Pangkalan Data</span>
+                                            <span>→</span>
+                                        </div>
+                                    </button>
+
+                                    {/* Card 5: Env Simulation Sandbox */}
+                                    <button 
+                                        onClick={handleManualSimulation}
+                                        className="group relative cursor-pointer text-left bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-rose-500/50 p-6 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(244,63,94,0.15)] flex flex-col justify-between"
+                                    >
+                                        <div>
+                                            <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 group-hover:bg-rose-500/20 transition-all">✨</div>
+                                            <div className="inline-block bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[9px] font-bold px-2 py-0.5 rounded-full mb-2 tracking-wide uppercase font-mono-sci">IMAGEN 3 SANDBOX</div>
+                                            <h3 className="text-lg font-bold text-white group-hover:text-rose-400 transition-colors font-sci-fi tracking-wide mb-2">SIMULATOR REMEDIASI</h3>
+                                            <p className="text-xs text-slate-400 leading-relaxed">Keupayaan menjana gambar simulasi landskap selepas diperbaiki dan dinyah kuman untuk pameran, bilik gerakan, atau laporan inovasi.</p>
+                                        </div>
+                                        <div className="mt-6 flex items-center justify-between text-[11px] font-bold text-rose-400 group-hover:translate-x-1 transition-transform">
+                                            <span>Simulasi Arena</span>
+                                            <span>→</span>
+                                        </div>
+                                    </button>
+                                </div>
+                                <div className="hidden md:block"><HUDOverlay /></div>
                             </div>
-                        </button>
+                        ) : currentHomeSubView === 'FORENSIC' ? (
+                            <div className="animate-fade-in-up">
+                                {/* Sub Header & Back Button */}
+                                <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-slate-900/40 p-4 rounded-xl border border-slate-800">
+                                    <button 
+                                        onClick={() => setCurrentHomeSubView('MENU')}
+                                        className="flex items-center gap-2 text-xs font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 border border-emerald-800/80 hover:border-emerald-500 px-4 py-2.5 rounded-lg transition-colors font-mono-sci uppercase tracking-widest"
+                                    >
+                                        ← KEMBALI KE MEJA UTAMA
+                                    </button>
+                                    <div className="text-left sm:text-right">
+                                        <span className="block text-[10px] text-slate-500 uppercase tracking-widest font-mono-sci">MODUL SEKARANG</span>
+                                        <span className="block text-sm font-bold text-white font-sci-fi uppercase tracking-wider">FORENSIK IMAGES & PENGESAN MULTIMODAL</span>
+                                    </div>
+                                </div>
 
-                        {/* MOD FORENSIK LUARAN TAMPAL JSON BYPASS */}
-                        <button 
-                            onClick={() => setShowBypassModal(true)} 
-                            className="bg-gradient-to-r from-emerald-600 to-teal-600 border border-emerald-400/50 shadow-[0_0_20px_rgba(16,185,129,0.3)] text-white px-5 py-4 rounded-xl font-bold hover:from-emerald-500 hover:to-teal-500 hover:shadow-[0_0_35px_rgba(16,185,129,0.6)] transition-all flex items-center justify-center gap-3 active:scale-95 group/bypass-json"
-                        >
-                            <span className="text-xl group-hover/bypass-json:scale-110 transition-transform">🧬</span>
-                            <div className="text-left">
-                                <span className="block font-sci-fi tracking-widest text-xs lg:text-sm leading-tight">MOD PENGESANAN LUARAN</span>
-                                <span className="block text-[8px] text-emerald-200 font-mono-sci uppercase opacity-80">Tampal JSON Arena.ai / Bypass Kuota</span>
+                                <div className="mb-8 text-center pt-2">
+                                    <h2 className="text-2xl sm:text-4xl md:text-5xl font-sci-fi font-bold text-white mb-2 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)] leading-tight">{t('hero_title')} <span className="text-emerald-500">{t('hero_title_highlight')}</span></h2>
+                                    <p className="text-slate-300 max-w-3xl mx-auto mb-6 text-xs sm:text-sm md:text-base font-light tracking-wide px-2">{t('hero_subtitle')}</p>
+                                    
+                                    <div className="max-w-4xl mx-auto mb-6 md:mb-10">
+                                        <div className="mb-3 text-center text-emerald-500/50 text-[10px] md:text-xs font-mono-sci tracking-[0.2em] md:tracking-[0.3em]">{t('secure_link')}</div>
+                                        <UploadZone onImagesSelected={handleFilesSelected} disabled={false} isAnalyzing={false} />
+                                    </div>
+
+                                    <div className="max-w-xl mx-auto mb-8 bg-slate-900/50 p-4 md:p-6 rounded-2xl border border-slate-700/50 shadow-2xl backdrop-blur-md relative z-10 pointer-events-auto">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-1">
+                                            {/* Mode Picker */}
+                                            <div className="space-y-3 text-left">
+                                                <label className="text-[10px] text-slate-400 font-mono-sci uppercase tracking-[0.2em] block">{t('inspection_mode')}</label>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <button onClick={() => setAnalysisMode('VECTOR_CONTROL')} className={`text-[10px] md:text-xs font-bold py-3 rounded-lg transition-all flex flex-col items-center justify-center gap-1 border ${analysisMode === 'VECTOR_CONTROL' ? 'bg-emerald-600 border-emerald-400 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-700'}`}>
+                                                        <span className="text-lg">🦟</span>
+                                                        <span>{t('mode_vector')}</span>
+                                                    </button>
+                                                    <button onClick={() => setAnalysisMode('KKM_FOOD_STANDARD')} className={`text-[10px] md:text-xs font-bold py-3 rounded-lg transition-all flex flex-col items-center justify-center gap-1 border ${analysisMode === 'KKM_FOOD_STANDARD' ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-700'}`}>
+                                                        <span className="text-lg">📋</span>
+                                                        <span>{t('mode_kkm')}</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Sensitivity Picker */}
+                                            <div className="space-y-3 text-left">
+                                                <label className="text-[10px] text-slate-400 font-mono-sci uppercase tracking-[0.2em] block">{t('forensic_sensitivity')}</label>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    {(['STANDARD', 'HIGH', 'EXTREME'] as SensitivityLevel[]).map((level) => (
+                                                        <button 
+                                                            key={level}
+                                                            onClick={() => setSensitivity(level)}
+                                                            className={`text-[9px] font-bold py-3 rounded-lg transition-all border flex items-center justify-center ${sensitivity === level ? 'bg-red-600 border-red-400 text-white shadow-[0_0_10px_rgba(220,38,38,0.4)] animate-pulse' : 'bg-slate-800 border-slate-700 text-slate-500 hover:bg-slate-700'}`}
+                                                        >
+                                                            {level}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p className="text-[9px] text-slate-500 mt-4 italic font-mono-sci leading-relaxed text-center">
+                                            {t('extreme_mode_desc')}
+                                        </p>
+                                    </div>
+                                    
+                                    <div className="flex flex-col items-center justify-center gap-4 mb-4">
+                                        <button onClick={() => setIsLiveMode(true)} className="group relative flex items-center gap-2 md:gap-3 bg-red-600/90 text-white px-5 py-3 md:px-10 md:py-5 rounded font-sci-fi font-bold text-sm md:text-lg shadow-[0_0_20px_rgba(220,38,38,0.5)] hover:bg-red-500 hover:shadow-[0_0_40px_rgba(220,38,38,0.8)] transition-all overflow-hidden border border-red-400 active:scale-95">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 md:w-7 md:h-7"><path d="M12 9a3.75 3.75 0 100 7.5A3.75 3.75 0 0012 9z" /><path fillRule="evenodd" d="M9.344 3.071a49.52 49.52 0 015.312 0c.967.052 1.83.585 2.332 1.39l.821 1.317c.24.383.645.643 1.11.71.386.054.77.113 1.152.177 1.432.239 2.429 1.493 2.429 2.909V18a3 3 0 01-3 3h-15a3 3 0 01-3-3V9.574c0-1.416.997-2.67 2.429-2.909.382-.064.766-.123 1.151-.178a1.56 1.56 0 001.11-.71l.822-1.315a2.942 2.942 0 012.332-1.39zM6.75 12.75a5.25 5.25 0 1110.5 0 5.25 5.25 0 01-10.5 0zm12-1.5a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" /></svg>
+                                            {t('btn_ar_scan')}
+                                        </button>
+                                        
+                                        <div className="flex flex-wrap justify-center gap-3 w-full max-w-xl mt-2">
+                                            {/* External Bypass Modal */}
+                                            <button 
+                                                onClick={() => setShowBypassModal(true)} 
+                                                className="bg-slate-800 border border-emerald-500/30 text-emerald-400 px-4 py-2.5 rounded-lg text-xs font-mono-sci font-bold hover:bg-emerald-950/40 hover:border-emerald-400 transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(16,185,129,0.1)]"
+                                            >
+                                                <span>🧬</span> TAMPAL DATA LUARAN (BYPASS)
+                                            </button>
+
+                                            {/* Previous Simulations and Scans buttons */}
+                                            <button onClick={() => {
+                                                if (sessions.filter(s => s.simulationImage).length === 0) {
+                                                    setEmptyAlertType('simulasi');
+                                                    return;
+                                                }
+                                                setShowSimulationGallery(true);
+                                            }} className="bg-slate-800/80 border border-cyan-500/30 text-cyan-400 px-4 py-2.5 rounded-lg text-xs font-mono-sci font-bold hover:bg-cyan-900/40 hover:border-cyan-400 transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(6,182,212,0.15)]">
+                                                <span>✨</span> SEJARAH SIMULASI
+                                            </button>
+
+                                            <button onClick={() => {
+                                                if (sessions.length === 0) {
+                                                    setEmptyAlertType('imbasan');
+                                                    return;
+                                                }
+                                                setIsGalleryExpanded(true);
+                                                setTimeout(() => {
+                                                    document.getElementById('evidence-board')?.scrollIntoView({ behavior: 'smooth' });
+                                                }, 100);
+                                            }} className="bg-slate-800/80 border border-indigo-500/30 text-indigo-400 px-4 py-2.5 rounded-lg text-xs font-mono-sci font-bold hover:bg-indigo-900/40 hover:border-indigo-400 transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(99,102,241,0.15)]">
+                                                <span>🗂️</span> SEJARAH IMBASAN
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </button>
-                    </div>
+                        ) : (
+                            <div className="animate-fade-in-up">
+                                {/* Sub Header & Back Button */}
+                                <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-slate-900/40 p-4 rounded-xl border border-slate-800">
+                                    <button 
+                                        onClick={() => setCurrentHomeSubView('MENU')}
+                                        className="flex items-center gap-2 text-xs font-bold text-amber-500 hover:text-amber-400 bg-amber-950/40 border border-amber-900 px-4 py-2.5 rounded-lg transition-colors font-mono-sci uppercase tracking-widest"
+                                    >
+                                        ← KEMBALI KE MEJA UTAMA
+                                    </button>
+                                    <div className="text-left sm:text-right">
+                                        <span className="block text-[10px] text-slate-500 uppercase tracking-widest font-mono-sci">MODUL SEKARANG</span>
+                                        <span className="block text-sm font-bold text-white font-sci-fi uppercase tracking-wider">TELEMETRI DATA & ANALIS EPIDEMIOLOGI</span>
+                                    </div>
+                                </div>
 
-                    {/* Previous Simulations and Scans buttons moved here */}
-                    <div className="flex justify-center gap-2 w-full sm:w-auto mt-2">
-                        <button onClick={() => {
-                            if (sessions.filter(s => s.simulationImage).length === 0) {
-                                setEmptyAlertType('simulasi');
-                                return;
-                            }
-                            setShowSimulationGallery(true);
-                        }} className="flex-1 sm:flex-none bg-slate-800/80 border border-cyan-500/30 text-cyan-400 px-4 py-2 rounded-lg text-xs font-bold hover:bg-cyan-900/40 hover:border-cyan-400 transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(6,182,212,0.15)]">
-                            <span>✨</span> <span className="font-sci-fi tracking-widest">SEJARAH SIMULASI</span>
-                        </button>
-                        <button onClick={() => {
-                            if (sessions.length === 0) {
-                                setEmptyAlertType('imbasan');
-                                return;
-                            }
-                            setIsGalleryExpanded(true);
-                            setTimeout(() => {
-                                document.getElementById('evidence-board')?.scrollIntoView({ behavior: 'smooth' });
-                            }, 100);
-                        }} className="flex-1 sm:flex-none bg-slate-800/80 border border-indigo-500/30 text-indigo-400 px-4 py-2 rounded-lg text-xs font-bold hover:bg-indigo-900/40 hover:border-indigo-400 transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(99,102,241,0.15)]">
-                            <span>🗂️</span> <span className="font-sci-fi tracking-widest">SEJARAH IMBASAN</span>
-                        </button>
-                    </div>
+                                <div className="max-w-6xl mx-auto">
+                                    <div className="mb-8 text-center pt-2">
+                                        <h2 className="text-2xl sm:text-4xl md:text-5xl font-sci-fi font-bold text-white mb-2 drop-shadow-[0_0_15px_rgba(245,158,11,0.4)] leading-tight uppercase">DASHBOARD AMARAN AWAL</h2>
+                                        <p className="text-slate-400 max-w-2xl mx-auto text-xs sm:text-sm md:text-base leading-relaxed px-4">
+                                            Analisis interaktif berasaskan ramalan data iDengue KKM kebangsaaan. Pilih zon kawalan wabak dan peta taburan wilayah untuk unjuran ramalan zon berbahaya.
+                                        </p>
+                                    </div>
 
-                    {/* Outbreak Map button repositioned to the bottom */}
-                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-1 justify-center items-center">
-                        <button onClick={() => setShowHeatmap(true)} className="w-full sm:w-auto bg-slate-800 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)] text-emerald-400 px-6 py-3 rounded-xl font-bold hover:bg-emerald-900/30 hover:border-emerald-400 transition-all flex items-center justify-center gap-3">
-                            <span className="font-sci-fi tracking-widest text-sm">{t('btn_outbreak_map')}</span>
-                        </button>
-                        <button onClick={() => setShowGlobalMap(true)} className="w-full sm:w-auto bg-slate-800 border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.15)] text-blue-400 px-6 py-3 rounded-xl font-bold hover:bg-blue-900/30 hover:border-blue-400 transition-all flex items-center justify-center gap-3">
-                            <span className="font-sci-fi tracking-widest text-sm">🗺️ PETA WABAK GLOBAL</span>
-                        </button>
-                    </div>
-                </div>
+                                    {/* Outbreak Map button repositioned to the bottom */}
+                                    <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto mb-8 justify-center items-center">
+                                        <button onClick={() => setShowHeatmap(true)} className="w-full sm:w-64 bg-slate-900/90 border border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.2)] text-emerald-400 px-6 py-4 rounded-xl font-bold font-sci-fi tracking-widest text-xs hover:bg-emerald-900/30 hover:border-emerald-400 transition-all flex items-center justify-center gap-3 active:scale-95">
+                                            <span>🗺️ PETA STRATEGIK WABAK (KKM)</span>
+                                        </button>
+                                        <button onClick={() => setShowGlobalMap(true)} className="w-full sm:w-64 bg-slate-900/90 border border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.2)] text-blue-400 px-6 py-4 rounded-xl font-bold font-sci-fi tracking-widest text-xs hover:bg-blue-900/30 hover:border-blue-400 transition-all flex items-center justify-center gap-3 active:scale-95">
+                                            <span>🌍 PETA TABURAN GLOBAL (WHO)</span>
+                                        </button>
+                                    </div>
 
-                <div className="mt-8">
-                    {/* Pass lifted stats to PredictionChart */}
-                    <PredictionChart 
-                        preloadedNational={nationalStats} 
-                        preloadedRegional={regionalStats} 
-                        isLoading={isStatsLoading}
-                        onSync={loadDengueData}
-                    />
-                </div>
-                <div className="hidden md:block"><HUDOverlay /></div>
-            </div>
-            </div>
-        )}
+                                    <div className="mt-4">
+                                        {/* Pass lifted stats to PredictionChart */}
+                                        <PredictionChart 
+                                            preloadedNational={nationalStats} 
+                                            preloadedRegional={regionalStats} 
+                                            isLoading={isStatsLoading}
+                                            onSync={loadDengueData}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
             </>
         )}
 
