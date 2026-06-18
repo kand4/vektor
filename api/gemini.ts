@@ -64,15 +64,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       console.log(`🤖 [Vercel API] Backend calling Gemini model: ${model}`);
       
-      // Fallback model support
+      // Safe and approved fallback models list in order of preference (excluding deprecated models like 1.5 and 2.0)
+      const safeFallbacks = [
+        "gemini-3.5-flash",
+        "gemini-2.5-flash",
+        "gemini-flash-latest",
+        "gemini-3.1-flash-lite"
+      ];
+
       const modelFallbackList = [model];
-      if (model.includes("3.5-flash")) {
-        modelFallbackList.push("gemini-2.5-flash");
-      } else if (model.includes("2.5-flash")) {
-        modelFallbackList.push("gemini-3.5-flash");
-      } else if (model.includes("2.5-pro") || model.includes("1.5-pro")) {
-        modelFallbackList.push("gemini-3.5-flash");
-        modelFallbackList.push("gemini-2.5-flash");
+      for (const fallback of safeFallbacks) {
+        if (!modelFallbackList.includes(fallback)) {
+          modelFallbackList.push(fallback);
+        }
       }
 
       const uniqueModels = Array.from(new Set(modelFallbackList));
@@ -84,21 +88,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (targetModel !== model) {
             console.log(`🔄 [Vercel API] Attempting fallback model: ${targetModel} due to issues on ${model}`);
           }
+
+          // Protect from thinkingConfig on non-supported models
+          let activeConfig = config;
+          if (activeConfig) {
+            const isGemini3 = targetModel.includes("gemini-3");
+            if (!isGemini3) {
+              activeConfig = { ...activeConfig };
+              if (activeConfig.thinkingConfig) {
+                delete activeConfig.thinkingConfig;
+              }
+              if (activeConfig.thinkingLevel) {
+                delete activeConfig.thinkingLevel;
+              }
+            }
+          }
+
           response = await ai.models.generateContent({
             model: targetModel,
             contents,
-            config
+            config: activeConfig
           });
           break; // Success
         } catch (err: any) {
           lastError = err;
           const errStatus = err?.status || err?.code || 500;
           const errMsg = err?.message || String(err);
-          console.warn(`⚠️ [Vercel API] Model ${targetModel} call failed with status ${errStatus}: ${errMsg}`);
-          
-          if (errStatus === 400 && !errMsg.toLowerCase().includes("quota")) {
-            throw err;
-          }
+          console.log(`ℹ️ [Vercel API] Model ${targetModel} attempt failed (Status ${errStatus}): ${errMsg}`);
         }
       }
 

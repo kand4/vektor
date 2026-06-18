@@ -168,7 +168,7 @@ export const fetchLatestIDengueStats = async (): Promise<iDengueData> => {
       Output JSON Structure: { "cumulativeCases": number, "cumulativeDeaths": number, "activeHotspots": number, "topState": string, "epidemiologicalWeek": string, "lastUpdated": string }`;
 
       const response = await ai.models.generateContent({
-        model: getPreferredModelForText('gemini-2.5-flash'), 
+        model: getPreferredModelForText('gemini-3.5-flash'), 
         contents: { parts: [{ text: prompt }] },
         config: {
           tools: [{ googleSearch: {} }]
@@ -206,7 +206,7 @@ export const fetchRegionalDengueStats = async (state: string, district: string):
         Output JSON: { "stateName": "${state}", "districtName": "${district}", "stateCases": number, "districtCases": number, "districtHotspots": number, "districtRiskLevel": "LOW"|"MEDIUM"|"HIGH"|"EXTREME", "localAdvice": string, "epidemiologicalWeek": string }`;
 
         const response = await ai.models.generateContent({
-          model: getPreferredModelForText('gemini-2.5-flash'),
+          model: getPreferredModelForText('gemini-3.5-flash'),
           contents: { parts: [{ text: prompt }] },
           config: {
             tools: [{ googleSearch: {} }]
@@ -313,7 +313,7 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
   const optimizedImage = await compressImage(base64Image);
   
   // Use preferred model or Flash model for higher spatial intelligence and free API compatibility
-  const modelId = getPreferredModelForScan("gemini-2.5-flash");
+  const modelId = getPreferredModelForScan("gemini-3.5-flash");
 
   let thinkingBudget = 4000; 
   let engineerPersona = "";
@@ -684,7 +684,7 @@ export const analyzeManualRegion = async (base64Image: string, mimeType: string,
             const ai = getAIClient();
             const resp = await ai.models.generateContent({
                 // Using Pro model for higher spatial intelligence and coordinate handling
-                model: getPreferredModelForText("gemini-2.5-flash"), 
+                model: getPreferredModelForText("gemini-3.5-flash"), 
                 contents: { parts: [{ inlineData: { mimeType: 'image/jpeg', data: optimizedImage } }, { text: prompt }] },
                 config: { responseMimeType: "application/json" }
             });

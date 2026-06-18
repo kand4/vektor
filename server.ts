@@ -55,15 +55,20 @@ async function startServer() {
         }
         console.log(`🤖 Backend calling Gemini model: ${model}`);
         
-        // Define a list of fallback models to maximize availability during quota or rate limit exhaustion
-        const modelFallbackList = [
-          model,
-          "gemini-2.5-flash",
+        // Safe and approved fallback models list in order of preference (excluding deprecated models like 1.5 and 2.0)
+        const safeFallbacks = [
           "gemini-3.5-flash",
-          "gemini-1.5-flash",
-          "gemini-1.5-pro",
-          "gemini-2.5-pro"
+          "gemini-2.5-flash",
+          "gemini-flash-latest",
+          "gemini-3.1-flash-lite"
         ];
+
+        const modelFallbackList = [model];
+        for (const fallback of safeFallbacks) {
+          if (!modelFallbackList.includes(fallback)) {
+            modelFallbackList.push(fallback);
+          }
+        }
 
         const uniqueModels = Array.from(new Set(modelFallbackList));
         let response = null;
@@ -74,22 +79,33 @@ async function startServer() {
             if (targetModel !== model) {
               console.log(`🔄 Attempting fallback model: ${targetModel} due to a block or demand spike on ${model}`);
             }
+
+            // Protect from thinkingConfig on non-supported models
+            let activeConfig = config;
+            if (activeConfig) {
+              const isGemini3 = targetModel.includes("gemini-3");
+              if (!isGemini3) {
+                activeConfig = { ...activeConfig };
+                if (activeConfig.thinkingConfig) {
+                  delete activeConfig.thinkingConfig;
+                }
+                if (activeConfig.thinkingLevel) {
+                  delete activeConfig.thinkingLevel;
+                }
+              }
+            }
+
             response = await ai.models.generateContent({
               model: targetModel,
               contents,
-              config
+              config: activeConfig
             });
             break; // Success! Break out of the loop
           } catch (err: any) {
             lastError = err;
             const errStatus = err?.status || err?.code || 500;
             const errMsg = err?.message || String(err);
-            console.warn(`⚠️ Model ${targetModel} call failed with status ${errStatus}: ${errMsg}`);
-            
-            // If it's a client 400 error (excluding quota), don't try other models as it's a syntax / prompt issue
-            if (errStatus === 400 && !errMsg.toLowerCase().includes("quota")) {
-              throw err;
-            }
+            console.log(`ℹ️ Model ${targetModel} attempt failed (Status ${errStatus}): ${errMsg}`);
           }
         }
 
