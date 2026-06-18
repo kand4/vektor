@@ -60,6 +60,7 @@ interface AnalysisResultsProps {
   // NEW PROPS FOR PERSISTENCE & PRINTING
   allSessions?: AnalysisSession[];
   onUpdateResult?: (updatedResult: AnalysisResponse) => void;
+  onDeleteSession?: () => void;
 }
 
 export const AnalysisResults: React.FC<AnalysisResultsProps> = ({ 
@@ -68,7 +69,8 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     savedSimulationImage, 
     onSaveSimulation,
     allSessions = [],
-    onUpdateResult
+    onUpdateResult,
+    onDeleteSession
 }) => {
   const [activeRisk, setActiveRisk] = useState<RiskDetection | null>(null);
   
@@ -791,6 +793,16 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
             <button onClick={handlePrint} className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded text-xs md:text-sm font-bold uppercase tracking-wider transition-all border border-green-500/50 hover:bg-green-900/30 text-green-400">
                 🖨️ {t('btn_print_pdf')}
             </button>
+
+            {onDeleteSession && (
+               <button 
+                 onClick={onDeleteSession} 
+                 className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded text-xs md:text-sm font-bold uppercase tracking-wider transition-all border border-red-500/50 hover:bg-red-950 hover:text-red-400 text-red-500 bg-slate-900 shadow-md"
+                 title="Padam Rekod Sesi Ini"
+               >
+                 🗑️ {t('btn_clear') || 'PADAM'}
+               </button>
+            )}
          </div>
          <div className="flex items-center gap-2 md:gap-4">
             <div className="flex items-center gap-2 bg-slate-900 rounded-full p-1 border border-slate-700">

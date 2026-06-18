@@ -20,6 +20,7 @@ import { ManualSimulationPage } from './components/ManualSimulationPage';
 import { fetchNationalDengueTrend } from './services/dataGovService';
 import { fetchLatestIDengueStats, fetchRegionalDengueStats, analyzeLandscape } from './services/geminiService';
 import { resizeAndCompressImage } from './utils/imageUtils';
+import { dbGet, dbSet, dbClear } from './utils/db';
 import { Toast } from './components/Toast';
 import { ManualJsonBypassPanel } from './components/ManualJsonBypassPanel';
 
@@ -36,6 +37,45 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION' | 'MANUAL_SIMULATION'>('HOME');
   const [sessions, setSessions] = useState<AnalysisSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [dbLoaded, setDbLoaded] = useState(false);
+  const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
+
+  // Load from IndexedDB on startup
+  useEffect(() => {
+    const loadFromDb = async () => {
+      try {
+        const cachedSessions = await dbGet<AnalysisSession[]>('sessions');
+        const cachedActiveId = await dbGet<string | null>('activeSessionId');
+        if (cachedSessions && cachedSessions.length > 0) {
+          setSessions(cachedSessions);
+          if (cachedActiveId && cachedSessions.some(s => s.id === cachedActiveId)) {
+            setActiveSessionId(cachedActiveId);
+          } else {
+            setActiveSessionId(cachedSessions[0].id);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading history from IndexedDB:", err);
+      } finally {
+        setDbLoaded(true);
+      }
+    };
+    loadFromDb();
+  }, []);
+
+  // Save sessions to IndexedDB whenever changed
+  useEffect(() => {
+    if (dbLoaded) {
+      dbSet('sessions', sessions);
+    }
+  }, [sessions, dbLoaded]);
+
+  // Save activeSessionId to IndexedDB whenever changed
+  useEffect(() => {
+    if (dbLoaded) {
+      dbSet('activeSessionId', activeSessionId);
+    }
+  }, [activeSessionId, dbLoaded]);
   const [isLiveMode, setIsLiveMode] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -165,8 +205,8 @@ const App: React.FC = () => {
       setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, result: newResult } : s));
   };
 
-  const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
-      e.stopPropagation();
+  const handleDeleteSession = (sessionId: string, e?: React.MouseEvent) => {
+      if (e) e.stopPropagation();
       setSessions(prev => prev.filter(s => s.id !== sessionId));
       if (activeSessionId === sessionId) {
           setActiveSessionId(null);
@@ -181,7 +221,13 @@ const App: React.FC = () => {
     setIsGalleryExpanded(true);
   };
 
-  const resetApp = () => { setSessions([]); setActiveSessionId(null); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const resetApp = async () => {
+    setSessions([]);
+    setActiveSessionId(null);
+    await dbClear();
+    setToastMsg({ msg: "Semua rekod dan simulasi telah dipadamkan sepenuhnya!", type: 'success' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   
   const handleSaveManualSimulation = (originalImageBase64: string, simulatedImageBase64: string) => {
     const newSession: AnalysisSession = {
@@ -452,10 +498,36 @@ const App: React.FC = () => {
                         <div className={`transition-transform duration-300 text-emerald-500 ${isGalleryExpanded ? 'rotate-180' : 'rotate-0'}`}><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3 md:w-4 md:h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg></div>
                         <h3 className="font-sci-fi font-bold text-white flex items-center gap-2 text-xs md:text-base">{t('evidence_board')} <span className="text-slate-500 text-[10px] md:text-sm">[{completedCount} DONE]</span></h3>
                     </div>
-                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                       <button onClick={() => document.getElementById('add-more-input')?.click()} className="text-[10px] bg-slate-800 hover:bg-slate-700 text-white px-3 py-1 rounded border border-slate-600 font-mono-sci flex items-center gap-1"><span>+</span> <span className="hidden sm:inline">{t('btn_add')}</span></button>
+                    <div className="flex gap-2 items-center" onClick={(e) => e.stopPropagation()}>
+                       <button onClick={() => document.getElementById('add-more-input')?.click()} className="text-[10px] bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded border border-slate-600 font-mono-sci flex items-center gap-1"><span>+</span> <span className="hidden sm:inline">{t('btn_add')}</span></button>
                        <input id="add-more-input" type="file" multiple accept="image/*" className="hidden" onChange={(e) => e.target.files && handleFilesSelected(Array.from(e.target.files))} />
-                       <button onClick={resetApp} className="text-[10px] bg-red-900/50 hover:bg-red-800 text-red-200 px-3 py-1 rounded border border-red-800 font-mono-sci">{t('btn_clear')}</button>
+                       {!showPurgeConfirm ? (
+                          <button 
+                             onClick={() => setShowPurgeConfirm(true)} 
+                             className="text-[10px] bg-red-950/85 hover:bg-red-900 text-red-400 px-3 py-1.5 rounded border border-red-900 hover:border-red-600 font-mono-sci transition-colors flex items-center gap-1"
+                             title="Padam (Purge) Semua Rekod Sejarah"
+                          >
+                             ☣️ PURGE ALL
+                          </button>
+                       ) : (
+                          <div className="flex gap-1 animate-pulse items-center">
+                             <button 
+                                onClick={() => {
+                                   setShowPurgeConfirm(false);
+                                   resetApp();
+                                }} 
+                                className="text-[10px] bg-red-600 hover:bg-red-500 text-white font-bold px-2 py-1 rounded border border-red-400 whitespace-nowrap"
+                             >
+                                YA, GANTIKAN SEMUA!
+                             </button>
+                             <button 
+                                onClick={() => setShowPurgeConfirm(false)} 
+                                className="text-[10px] bg-slate-850 hover:bg-slate-750 text-slate-300 px-2 py-1 rounded border border-slate-600"
+                             >
+                                X
+                             </button>
+                          </div>
+                       )}
                     </div>
                  </div>
                  <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isGalleryExpanded ? 'max-h-[300px] opacity-100' : 'max-h-0 opacity-0'}`}>
@@ -522,6 +594,11 @@ const App: React.FC = () => {
                              onSaveSimulation={(img) => handleSimulationSave(activeSessionId!, img)}
                              allSessions={sessions}
                              onUpdateResult={(newResult) => handleUpdateSessionResult(activeSessionId!, newResult)}
+                             onDeleteSession={() => {
+                               if (activeSessionId) {
+                                 handleDeleteSession(activeSessionId);
+                               }
+                             }}
                           />
                        </div>
                     )}

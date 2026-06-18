@@ -15,6 +15,31 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onOpenAbout, onOpenSettings, onGoHome, onGoLarvae, onGoAdult, currentView = 'HOME' }) => {
   const { language, setLanguage, t } = useLanguage();
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  React.useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.error("Error attempting to toggle fullscreen:", err);
+    }
+  };
 
   const languages: { code: Language; label: string; flag: string }[] = [
     { code: 'ms', label: 'BM', flag: '🇲🇾' },
@@ -100,7 +125,24 @@ const Header: React.FC<HeaderProps> = ({ onOpenAbout, onOpenSettings, onGoHome, 
               )}
            </div>
 
-           {/* Settings Button */}
+           {/* Fullscreen Toggle Button */}
+          <button 
+             onClick={toggleFullscreen} 
+             title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Mode"}
+             className="flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0 rounded border border-slate-700 bg-slate-900 hover:border-emerald-500 active:bg-emerald-500 transition-colors text-slate-300 hover:text-emerald-400"
+          >
+             {isFullscreen ? (
+               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
+                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3 3m12 6V4.5m0 4.5h4.5m-4.5 0l6-6M9 15v4.5M9 15H4.5m4.5 0l-6 6m6-6v4.5m0-4.5h4.5m-4.5 0l6-6" />
+               </svg>
+             ) : (
+               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
+                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75v4.5m0-4.5h-4.5m4.5 0L15 9m5.25 11.25v-4.5m0 4.5h-4.5m4.5 0L15 15" />
+               </svg>
+             )}
+          </button>
+
+          {/* Settings Button */}
            <button 
               onClick={onOpenSettings} 
               title="Settings & API Key"
