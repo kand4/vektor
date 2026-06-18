@@ -112,36 +112,6 @@ async function startServer() {
     }
   });
 
-  // API proxy route for Z.ai
-  app.post("/api/zai", async (req, res) => {
-    try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader) {
-        return res.status(401).json({ error: "Missing authorization header" });
-      }
-
-      const fetchRes = await fetch("https://api.z.ai/api/paas/v4/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": authHeader
-        },
-        body: JSON.stringify(req.body)
-      });
-      
-      if (!fetchRes.ok) {
-        const errorText = await fetchRes.text();
-        return res.status(fetchRes.status).send(errorText);
-      }
-
-      const result = await fetchRes.json();
-      res.json(result);
-    } catch (error: any) {
-      console.error("Z.ai proxy error:", error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

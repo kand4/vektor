@@ -19,12 +19,7 @@ export const getPreferredModelForScan = (defaultModel: string) => {
 };
 
 export const getPreferredModelForText = (defaultModel: string) => {
-    const pref = localStorage.getItem('gemini_model_preference');
-    if (pref && pref.startsWith('z.ai/')) {
-        // Z.ai models are reserved strictly for scanning. Text and chat followups must use Gemini.
-        return defaultModel; 
-    }
-    return pref || defaultModel;
+    return localStorage.getItem('gemini_model_preference') || defaultModel;
 };
 
 let activeKeyIndex = 0;
@@ -266,10 +261,6 @@ const compressImage = (base64Str: string, maxWidth = 1600, quality = 0.9): Promi
 export const prettifyErrorMessage = (error: any): string => {
   const msg = error?.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
   
-  if (msg.includes("Insufficient balance") || msg.includes("1113") || msg.includes("no resource package")) {
-    return "Baki API Z.ai anda tidak mencukupi (Insufficient balance). Sila tambah nilai (recharge) di akaun Zhipu/Z.ai atau tukarkan pilihan Enjin Imbasan kepada model Google Gemini standard di ruangan Tetapan.";
-  }
-
   if (msg.includes("PERMISSION_DENIED") || msg.includes("does not have permission") || msg.includes("403")) {
     return "Ralat Kebenaran (API Permission Denied): Kunci API Gemini yang anda gunakan tidak mempunyai kebenaran untuk membuat panggilan ini. Sila pastikan: (1) Kunci API Gemini tidak disekat (restricted) di Google Cloud Console, (2) 'Generative Language API' dibenarkan pada kunci tersebut, (3) Jika guna akaun syarikat/ Workspace, admin mungkin melarang akses Gemini. Sila gunakan akaun Google peribadi untuk menjana API Key percuma baharu di Google AI Studio.";
   }
@@ -462,90 +453,6 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
 
   try {
       const parsedResult = await retryWithBackoff(async () => {
-          if (modelId.startsWith('z.ai/')) {
-               try {
-                   const zaiModelRaw = modelId.split('/')[1] || 'glm-4.6v';
-                   const zaiKey = localStorage.getItem('zai_api_key');
-                   if (!zaiKey) throw new Error("Z.ai API Key tiada! Sila masukkan dalam tetapan.");
-                   // Use local proxy to avoid CORS
-                   const res = await fetch('/api/zai', {
-                       method: 'POST',
-                       headers: {
-                           'Content-Type': 'application/json',
-                           'Authorization': `Bearer ${zaiKey.trim()}`
-                       },
-                       body: JSON.stringify({
-                           model: zaiModelRaw, // Pass the chosen Z.ai model directly
-                           messages: [
-                               {
-                                   role: 'user',
-                                   content: [
-                                       { type: 'text', text: `${finalPrompt}\n\n${schemaDescription}` },
-                                       {
-                                           type: 'image_url',
-                                           image_url: {
-                                               url: `data:${mimeType};base64,${optimizedImage}`
-                                           }
-                                       }
-                                   ]
-                               }
-                           ],
-                           max_tokens: 4096,
-                           // Trying to instruct json mode if supported, otherwise just prompt engineering covers it
-                           response_format: { type: "json_object" }
-                       })
-                   });
-
-                   if (!res.ok) {
-                       const errText = await res.text();
-                       try {
-                           const errJson = JSON.parse(errText);
-                           if (errJson.error?.code === "1113" || res.status === 429) {
-                               throw new Error(`Baki API Z.ai anda tidak mencukupi (Insufficient balance). Sila tambah nilai (recharge) di akaun Zhipu/Z.ai. Maklumat Penuh: ${errJson.error?.message || errText}`);
-                           }
-                       } catch(e: any) {
-                           if (e.message?.includes('Baki API')) throw e;
-                       }
-                       throw new Error(`Z.ai Error [${res.status}]: ${errText}`);
-                   }
-
-                   const data = await res.json();
-                   let textResponse = data.choices?.[0]?.message?.content || "{}";
-                   textResponse = extractJSON(textResponse);
-                   return JSON.parse(textResponse) as AnalysisResponse;
-               } catch (zaiError: any) {
-                   console.warn("⚠️ Z.ai calling failed, checking fallback:", zaiError);
-                   const keys = getAvailableApiKeys();
-                   if (keys.length > 0) {
-                       console.log("➡️ Falling back to Gemini to complete analysis because of Z.ai error...");
-                       const ai = getAIClient();
-                       const fallbackModel = 'gemini-2.5-flash';
-                       const resp = await ai.models.generateContent({
-                         model: fallbackModel,
-                         contents: {
-                             parts: [
-                                 { inlineData: { mimeType: 'image/jpeg', data: optimizedImage } }, 
-                                 { text: `${finalPrompt}\n\n${schemaDescription}` }
-                             ]
-                         },
-                         config: { 
-                           responseMimeType: "application/json",
-                           thinkingConfig: { thinkingBudget: thinkingBudget } 
-                         }
-                       });
-                       let t = resp.text || "{}";
-                       t = extractJSON(t);
-                       const parsed = JSON.parse(t) as AnalysisResponse;
-                       if (parsed) {
-                           parsed.generalAdvice = `⚠️ [Sambungan Automatik ke Gemini] Z.ai bercelaru atau tiada baki, jadi imbasan diselesaikan menggunakan Google Gemini! ` + (parsed.generalAdvice || "");
-                       }
-                       return parsed;
-                   } else {
-                       throw zaiError;
-                   }
-               }
-          }
-
           const ai = getAIClient();
           const resp = await ai.models.generateContent({
             model: modelId,
