@@ -274,7 +274,7 @@ DO NOT include markdown tags like \`\`\`json or backticks. Return the json objec
         });
 
         const totalScore = Math.max(10, 100 - totalDemerit);
-        let grade = 'A';
+        let grade: 'A' | 'B' | 'C' | 'D' | 'F' | 'TUTUP' = 'A';
         let recommendation = 'PREMIS BERSIH & MEMUASKAN';
         
         if (totalScore >= 90) {

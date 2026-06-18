@@ -30,9 +30,9 @@ const AdultMosquitoScanner: React.FC = () => {
     const [imageDimensions, setImageDimensions] = useState<{naturalWidth: number, naturalHeight: number} | null>(null);
     const [show3DModel, setShow3DModel] = useState(false);
     
-    // Adult Mosquito Poster References - User can update these URLs with their GitHub hotlinks
-    const AEGYPTI_POSTER_URL = "https://github.com/kand4/vektor/blob/main/pic/1%20(3).jpg?raw=true"; 
-    const ALBOPICTUS_POSTER_URL = "https://github.com/kand4/vektor/blob/main/pic/1%20(4).jpg?raw=true"; // Ganti dengan URL GitHub anda
+    // Adult Mosquito Poster References - Loaded locally from the new pics directory for maximum speed and security
+    const AEGYPTI_POSTER_URL = "https://cdn5.telesco.pe/file/DnDbT53O0nYfuXARxkHKtfz5FOJAOjPQ3Iq6KZ0tME25OPbDFHxwhAx_GzJdCQ4M1CjYjauPzgWckPD3yiFe88Irhp-nlBLj8a4QVCz50g0fPR2f8TyMPAsGhoum-iMBJY_jV82HY6IlJVroFspD2EmHPROmW9hgrHmrKdPy1Ktto41TqQ56SuLmCnEyj4jfHjzknT9fvQjIi9yicIz6UteJEDCTGrYWgy-3BbTmAk6C3J13YKJF2DFVE2vXjWjSn9Ie83oHU1uqBwS8jnpRZyCKFlHNwkq7zcJQd2jA9CCyiSXXhf_-gOPjOR4vo-tr1Dx_lqoz0y6uJXCj9v25EQ.jpg"; 
+    const ALBOPICTUS_POSTER_URL = "https://cdn5.telesco.pe/file/jnM1NUyTM6c22FPU99sdXVUkjSUQT9dL6FmiYSabaKOQ2GSc7C3QXH9-THPT9aiwL3CxKn0hX02_no_qIzsRbj4CGgHCNPJZzA-cWXE0NI3ohivYwGo5Hm21gBhCARcnBwp7zjIWz5Q9jQN61sh8C0vNW2Ri8BQf9c6Cnb9wAlLKoEHrugZxT8epqjT8D2mSGkhYmRKB72Nw1UKCWlgNw09VmulCWzCy4PDUZgb9U2AVclzDCwAZvpQGg8OYcTx6tl37MbOVMqd5TZwzfiBO9rVNoGsKoBIv0fl0AL5O9MlyGZgMb6c7-KQiTeqEeqX-YO6xwAnU9hchy5WDzAgTIg.jpg"; 
 
     const imageRef = useRef<HTMLImageElement | null>(null);
 

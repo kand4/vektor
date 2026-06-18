@@ -66,6 +66,7 @@ export interface iDengueData {
   lastUpdated: string;
   epidemiologicalWeek?: string;
   sources: { title: string; url: string }[];
+  isSimulated?: boolean;
 }
 
 export interface RegionalDengueData {
@@ -77,6 +78,7 @@ export interface RegionalDengueData {
   districtRiskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'EXTREME';
   localAdvice: string;
   epidemiologicalWeek?: string;
+  isSimulated?: boolean;
 }
 
 export interface EpidemicTrend {
@@ -99,6 +101,7 @@ export interface AnalysisResponse {
   legalSection?: string;
   kkmReport?: KKMReport;
   mode?: AnalysisMode;
+  isSimulated?: boolean;
   iDengueIntel?: iDengueData;
   regionalIntel?: RegionalDengueData;
   detected_keywords?: string[]; // New field for logic watchdog

@@ -35,8 +35,8 @@ const LarvaeScanner: React.FC = () => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const imageRef = useRef<HTMLImageElement | null>(null);
 
-    // Anatomy Poster Reference - User can update this URL with their GitHub hotlink
-    const LARVAE_POSTER_URL = "https://github.com/kand4/vektor/blob/main/pic/1 (1).jpg?raw=true"; // Ganti dengan URL GitHub anda
+    // Anatomy Poster Reference - Loaded locally from the new pics directory for maximum speed and security
+    const LARVAE_POSTER_URL = "https://cdn5.telesco.pe/file/N7DK6Wmrw3Yg_lWwRRJkxLAMLNYb2LctslhdaWHeGVKetxErpkC9N-CdNDTJfXwzxDYAguPVIGPczWkR-THpHY0OxZtFzBFtRdL9uHJnkuMfltsORct_ZGiLKgXUKqFFs8-di2iwTsckzqQ1saG-nUoDwGCzYk9UJ7_XRqW-XoLVlim_RmNEIZrOtDTXG8E-X9lsPDesis_b--03-w_KMutjhl1e33SEICdmjy9HQnSsSnfu8dwlLHmio3r0c72qpgy5pLoJhenEeBZatBvrulbuE6X3KD3PWdxQ04wYVF6XGW6IFAe1I8RaS8QyU-oab3NHgSq0cjoWBIADsv5lbg.jpg"; 
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];

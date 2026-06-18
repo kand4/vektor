@@ -5,7 +5,7 @@ import { translations, Language } from '../constants/translations';
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: keyof typeof translations['ms']) => string;
+  t: (key: keyof typeof translations['ms'] | string) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -25,8 +25,10 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     localStorage.setItem('app_language', lang);
   };
 
-  const t = (key: keyof typeof translations['ms']) => {
-    return translations[language][key] || translations['ms'][key] || key;
+  const t = (key: keyof typeof translations['ms'] | string) => {
+    const dict = translations[language] as any;
+    const backupDict = translations['ms'] as any;
+    return dict[key] || backupDict[key] || key;
   };
 
   return (

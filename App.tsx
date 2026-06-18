@@ -122,7 +122,7 @@ const App: React.FC = () => {
     return { state: "Pahang", district: "Temerloh" }; // Fallback
   };
 
-  const loadDengueData = async (forceLocation?: {lat: number, lng: number}) => {
+  const loadDengueData = async (forceLocation?: {lat: number, lng: number, state?: string, district?: string}) => {
     setIsStatsLoading(true);
     try {
         const nat = await fetchLatestIDengueStats();

@@ -506,6 +506,34 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                 };
              })} />
 
+             {result.isSimulated && (
+                <div className="no-print mt-2 mb-6 mx-auto w-full animate-fade-in text-left">
+                    <div className="relative overflow-hidden rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-950/40 via-slate-900/45 to-emerald-950/40 p-4 md:p-5 shadow-[0_0_20px_rgba(16,185,129,0.15)] backdrop-blur-md">
+                        <div className="absolute top-0 right-0 h-full w-24 bg-gradient-to-l from-emerald-500/10 to-transparent"></div>
+                        <div className="flex items-start gap-4">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-950/50 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                                <span className="text-lg animate-bounce">⚡</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h4 className="font-sci-fi text-sm font-bold tracking-wider text-emerald-300">
+                                        {language === 'ms' ? 'MOD SIMULASI OFFLINE DIAKTIFKAN' : 'OFFLINE SIMULATION MODE ACTIVE'}
+                                    </h4>
+                                    <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 font-mono text-[9px] font-bold text-emerald-400 uppercase tracking-widest border border-emerald-500/30 animate-pulse">
+                                        Sandbox Fallback
+                                    </span>
+                                </div>
+                                <p className="mt-1 font-mono-sci text-xs text-slate-300 leading-relaxed max-w-4xl">
+                                    {language === 'ms' 
+                                      ? 'Sistem bertukar kepada Mod Simulasi Sensori Tempatan secara automatik bagi memastikan kelangsungan analisis tanpa gangguan walaupun pelayan mengalami had kuota API. Semua keputusan demerit premis anda disahkan mengikut model latihan KKM Food Safety Standard.'
+                                      : 'The system has seamlessly switched to Local Sensory Simulation Mode to maintain uninterrupted diagnostic flows despite cloud API quota exhaustion. Demerit points and findings have been calculated according to standard KKM inspector checklists.'}
+                                </p>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+             )}
+
              <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
                 <h2 className="text-2xl font-bold text-blue-400 font-sci-fi">LAPORAN PEMERIKSAAN KKM</h2>
                 <div className="flex gap-2">
@@ -780,6 +808,34 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       
       {/* THE HIDDEN PRINT MODULE */}
       <PrintLayout sessions={allSessions} />
+
+      {result.isSimulated && (
+         <div className="no-print mt-2 mb-6 mx-auto w-full animate-fade-in text-left">
+             <div className="relative overflow-hidden rounded-xl border border-emerald-500/40 bg-gradient-to-r from-emerald-950/40 via-slate-900/45 to-emerald-950/40 p-4 md:p-5 shadow-[0_0_20px_rgba(16,185,129,0.15)] backdrop-blur-md">
+                 <div className="absolute top-0 right-0 h-full w-24 bg-gradient-to-l from-emerald-500/10 to-transparent"></div>
+                 <div className="flex items-start gap-4">
+                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-950/50 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                         <span className="text-lg animate-bounce">⚡</span>
+                     </div>
+                     <div className="flex-1 min-w-0">
+                         <div className="flex flex-wrap items-center gap-2">
+                             <h4 className="font-sci-fi text-sm font-bold tracking-wider text-emerald-300">
+                                 {language === 'ms' ? 'MOD SIMULASI OFFLINE DIAKTIFKAN' : 'OFFLINE SIMULATION MODE ACTIVE'}
+                             </h4>
+                             <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 font-mono text-[9px] font-bold text-emerald-400 uppercase tracking-widest border border-emerald-500/30 animate-pulse">
+                                 Sandbox Fallback
+                             </span>
+                         </div>
+                         <p className="mt-1 font-mono-sci text-xs text-slate-300 leading-relaxed max-w-4xl">
+                             {language === 'ms' 
+                               ? 'Sistem bertukar kepada Mod Simulasi Sensori Tempatan secara automatik bagi memastikan kelangsungan analisis tanpa gangguan walaupun pelayan mengalami had kuota API. Semua zon koordinat nyamuk dikesan bersasarkan kecerdasan entomokopi Public Health Malaysia.'
+                               : 'The system has seamlessly switched to Local Sensory Simulation Mode to maintain uninterrupted diagnostic flows despite cloud API quota exhaustion. All vector hotspots have been generated via public health and entomic heuristics.'}
+                         </p>
+                      </div>
+                 </div>
+             </div>
+         </div>
+      )}
 
       <div className="flex flex-wrap gap-3 justify-between items-center mb-4 md:mb-6 no-print">
          <div className="flex gap-2">

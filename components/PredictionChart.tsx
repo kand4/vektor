@@ -48,6 +48,11 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
                 <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981]"></div>
                     <span className="text-[10px] font-mono-sci text-emerald-500 uppercase tracking-widest font-bold">LIVE_DENGUE_FEED_v3.1</span>
+                    {(preloadedNational?.isSimulated || preloadedRegional?.isSimulated) && (
+                        <span className="ml-2 rounded-full border border-emerald-500/30 bg-emerald-950/80 px-2 py-0.5 font-mono text-[9px] font-bold text-emerald-400 uppercase tracking-widest animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.15)]">
+                            {useLanguage().language === 'ms' ? 'MOD SIMULASI OFFLINE' : 'OFFLINE SIMULATED'}
+                        </span>
+                    )}
                 </div>
                 {preloadedNational && (
                     <button 
