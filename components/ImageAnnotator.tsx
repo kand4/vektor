@@ -5,6 +5,7 @@ import { RiskDetection, BoundingBox } from '../types';
 
 interface ImageAnnotatorProps {
   imageSrc: string;
+  cleanedImageSrc?: string;
   risks: RiskDetection[];
   onRiskSelect: (risk: RiskDetection) => void;
   selectedId?: string | null;
@@ -15,6 +16,7 @@ interface ImageAnnotatorProps {
 
 const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({ 
   imageSrc, 
+  cleanedImageSrc,
   risks, 
   onRiskSelect, 
   selectedId: propSelectedId,
@@ -27,6 +29,17 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [sliderPos, setSliderPos] = useState(50);
+  const isSlidingRef = useRef(false);
+
+  const handleSliderMove = (e: React.PointerEvent) => {
+    if (!isSlidingRef.current || !cleanedImageSrc || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    let pos = ((e.clientX - rect.left) / rect.width) * 100;
+    if (pos < 0) pos = 0;
+    if (pos > 100) pos = 100;
+    setSliderPos(pos);
+  };
 
   useEffect(() => {
     setDragPositions({});
@@ -177,16 +190,247 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
         }}
       >
         <div className="relative rounded">
-            <img 
-              ref={imageRef}
-              src={imageSrc} 
-              alt="Analyzed" 
-              className={imgClasses} 
-            />
-            
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(34,211,238,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.1)_1px,transparent_1px)] bg-[size:40px_40px] opacity-0 group-hover:opacity-20 pointer-events-none z-10 transition-opacity duration-500"></div>
-            
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none z-20"></div>
+            {cleanedImageSrc ? (
+              <div className="relative rounded group/slider touch-none">
+                <img src={cleanedImageSrc} alt="Cleaned" className={imgClasses} />
+                <div style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }} className="absolute inset-0 z-10 w-full h-full">
+                  <img 
+                    ref={imageRef}
+                    src={imageSrc} 
+                    alt="Analyzed" 
+                    className={`${imgClasses} absolute inset-0 w-full h-full object-cover`}
+                  />
+                  <div className="absolute inset-0 bg-[linear-gradient(rgba(34,211,238,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.1)_1px,transparent_1px)] bg-[size:40px_40px] opacity-0 group-hover:opacity-20 pointer-events-none z-10 transition-opacity duration-500"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none z-20"></div>
+                  
+                  {/* Risks drawn ONLY over the dirty side so they clip away when dragged */}
+                  <div className="absolute inset-0 z-40 pointer-events-none">
+                    {/* SVG Lines Overlay */}
+                    {!isEditing && (
+                      <svg className="absolute inset-0 w-full h-full pointer-events-none z-30 overflow-visible">
+                        <defs>
+                          <filter id="glow">
+                            <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+                            <feMerge>
+                              <feMergeNode in="coloredBlur"/>
+                              <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                          </filter>
+                        </defs>
+                        {risks.map((risk) => {
+                          if (!risk.box_2d || typeof risk.box_2d.xmin !== 'number') return null;
+                          
+                          const isSelected = activeId === risk.id;
+                          
+                          const boxXmin = risk.box_2d.xmin;
+                          const boxXmax = risk.box_2d.xmax;
+                          const boxYmin = risk.box_2d.ymin;
+                          const boxYmax = risk.box_2d.ymax;
+
+                          const { width: containerWidth, height: containerHeight } = dimensions;
+
+                          const isTooHigh = boxYmin < 160;
+                          
+                          // Anchor point is precise center of the bounding box
+                          const anchorX = ((boxXmin + boxXmax) / 2000) * containerWidth; 
+                          const anchorY = ((boxYmin + boxYmax) / 2000) * containerHeight; 
+                          
+                          let leftPercent = (boxXmin + boxXmax) / 20;
+                          let offsetX = -60; // Shrunk width calls for smaller offset
+                          if (leftPercent < 15) offsetX = 0;
+                          else if (leftPercent > 85) offsetX = -120;
+                          
+                          const baseTopPercent = isTooHigh ? (boxYmax / 10) : (boxYmin / 10);
+                          const offsetY = isTooHigh ? 10 : -50;
+                          
+                          const dragPos = dragPositions[risk.id] || { x: 0, y: 0 };
+                          
+                          // Target X and Y mathematically to the center of the Callout layout
+                          const targetX = (leftPercent / 100) * containerWidth + offsetX + 60 + dragPos.x;
+                          const targetY = (baseTopPercent / 100) * containerHeight + offsetY + 25 + dragPos.y;
+
+                          // Fluid Bezier curve connection
+                          const controlY1 = anchorY + (targetY - anchorY) * 0.2;
+                          const controlY2 = targetY - (targetY - anchorY) * 0.2;
+                          const pathD = `M ${anchorX} ${anchorY} C ${anchorX} ${controlY1}, ${targetX} ${controlY2}, ${targetX} ${targetY}`;
+
+                          let strokeColor = (risk.category === 'HYGIENE') ? "#f59e0b" : (risk.category === 'SAFETY' ? "#facc15" : "#ef4444");
+                          if (isSelected) strokeColor = "#22d3ee"; 
+
+                          return (
+                            <g key={`line-group-slider-${risk.id}`}>
+                              <motion.path
+                                d={pathD}
+                                animate={{
+                                  d: pathD,
+                                  stroke: strokeColor,
+                                  strokeWidth: isSelected ? (isFullscreen ? 3 : 4) : 2,
+                                  opacity: isSelected ? 0.3 : 0.1
+                                }}
+                                filter="url(#glow)"
+                                fill="none"
+                                initial={false}
+                              />
+                              <motion.path
+                                d={pathD}
+                                animate={{
+                                  d: pathD,
+                                  stroke: strokeColor,
+                                  strokeWidth: isSelected ? 1.5 : 1,
+                                  opacity: isSelected ? 0.9 : 0.5
+                                }}
+                                strokeDasharray={isSelected ? "none" : "4,4"}
+                                fill="none"
+                                strokeLinecap="round"
+                                initial={false}
+                              />
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    )}
+
+                    {/* Annotation Boxes & Draggable HUDCallouts */}
+                    {risks.map((risk, index) => {
+                      if (!risk.box_2d || typeof risk.box_2d.xmin !== 'number') return null;
+
+                      const isSelected = activeId === risk.id;
+                      
+                      let borderColor = 'border-red-500';
+                      let bgColor = 'bg-red-500';
+                      let textColor = 'text-red-500';
+                      let pulseColor = 'shadow-[0_0_10px_rgba(239,68,68,0.5)]';
+
+                      if (risk.category === 'HYGIENE') {
+                          borderColor = 'border-amber-500';
+                          bgColor = 'bg-amber-500';
+                          textColor = 'text-amber-500';
+                          pulseColor = 'shadow-[0_0_10px_rgba(245,158,11,0.5)]';
+                      } 
+                      else if (risk.category === 'SAFETY') {
+                          borderColor = 'border-yellow-400';
+                          bgColor = 'bg-yellow-400';
+                          textColor = 'text-yellow-400';
+                          pulseColor = 'shadow-[0_0_10px_rgba(250,204,21,0.6)]';
+                      }
+
+                      if (isSelected) {
+                          borderColor = 'border-cyan-400';
+                          bgColor = 'bg-cyan-400';
+                          textColor = 'text-cyan-400';
+                          pulseColor = 'shadow-[0_0_20px_rgba(34,211,238,0.8)]';
+                      }
+
+                      return (
+                        <React.Fragment key={`slider-area-${risk.id}`}>
+                          <div 
+                            className={`absolute pointer-events-auto transition-all duration-300 group/box
+                              ${isEditing && !isFullscreen ? 'opacity-30 pointer-events-none' : 'opacity-90 hover:opacity-100 cursor-pointer'} 
+                            `}
+                            style={{
+                              ...getStyle(risk.box_2d),
+                              zIndex: isSelected ? 350 : 40
+                            }}
+                            onClick={(e) => handleBoxClick(e, risk)} 
+                          >
+                              {/* Crosshair Reticles for Tech Look */}
+                              <div className={`absolute -top-1 -left-1 w-2 h-2 border-t-2 border-l-2 ${borderColor}`}></div>
+                              <div className={`absolute -top-1 -right-1 w-2 h-2 border-t-2 border-r-2 ${borderColor}`}></div>
+                              <div className={`absolute -bottom-1 -left-1 w-2 h-2 border-b-2 border-l-2 ${borderColor}`}></div>
+                              <div className={`absolute -bottom-1 -right-1 w-2 h-2 border-b-2 border-r-2 ${borderColor}`}></div>
+
+                              {/* Main Box */}
+                              <div className={`
+                                  absolute inset-0 border-2 ${borderColor} transition-all duration-300
+                                  opacity-100 bg-white/10 ${pulseColor}
+                              `}></div>
+
+                              {/* Center Point */}
+                              <div className={`absolute top-1/2 left-1/2 w-1 h-1 bg-white rounded-full opacity-50 ${isSelected ? 'block' : 'hidden'}`}></div>
+
+                              {/* Index Indicator on Box */}
+                              <div className={`
+                                  absolute -top-3 -left-3 w-5 h-5 flex items-center justify-center 
+                                  text-[10px] font-bold font-mono-sci shadow-lg z-50
+                                  ${bgColor} text-black rounded-sm border border-black/20
+                              `}>
+                                  {index + 1}
+                              </div>
+                          </div>
+
+                          {/* Draggable HUD Callout */}
+                          {(!isEditing || isFullscreen) && (
+                            <HUDCallout 
+                              risk={risk} 
+                              isSelected={isSelected} 
+                              index={index}
+                              borderColor={borderColor}
+                              textColor={textColor}
+                              containerRef={containerRef}
+                              onSelect={() => {
+                                setInternalSelectedId(risk.id);
+                                onRiskSelect(risk);
+                              }}
+                              onDragUpdate={(delta) => {
+                                setDragPositions(prev => ({
+                                  ...prev,
+                                  [risk.id]: {
+                                    x: (prev[risk.id]?.x || 0) + delta.x,
+                                    y: (prev[risk.id]?.y || 0) + delta.y
+                                  }
+                                }));
+                              }}
+                              isFullscreen={isFullscreen}
+                              dragPos={dragPositions[risk.id] || { x: 0, y: 0 }}
+                            />
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+                </div>
+                
+                {/* Visual Slider Thumb and Line */}
+                <div 
+                  className="absolute inset-y-0 z-50 flex items-center justify-center pointer-events-none" 
+                  style={{ left: `${sliderPos}%` }}
+                >
+                  <div className="w-1 h-full bg-cyan-400/80 shadow-[0_0_10px_rgba(34,211,238,0.8)]"></div>
+                  <div 
+                     onPointerDown={(e) => { 
+                       e.preventDefault(); 
+                       e.currentTarget.setPointerCapture(e.pointerId);
+                       isSlidingRef.current = true;
+                     }}
+                     onPointerMove={handleSliderMove}
+                     onPointerUp={(e) => {
+                       e.currentTarget.releasePointerCapture(e.pointerId);
+                       isSlidingRef.current = false;
+                     }}
+                     onPointerCancel={(e) => {
+                       e.currentTarget.releasePointerCapture(e.pointerId);
+                       isSlidingRef.current = false;
+                     }}
+                     className="absolute w-8 h-8 rounded-full bg-slate-900 border-2 border-cyan-400 text-cyan-400 flex items-center justify-center shadow-[0_0_15px_rgba(34,211,238,0.6)] pointer-events-auto cursor-ew-resize"
+                  >
+                    <span className="text-[10px]">&lt;&gt;</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <React.Fragment>
+                <img 
+                  ref={imageRef}
+                  src={imageSrc} 
+                  alt="Analyzed" 
+                  className={imgClasses} 
+                />
+                
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(34,211,238,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.1)_1px,transparent_1px)] bg-[size:40px_40px] opacity-0 group-hover:opacity-20 pointer-events-none z-10 transition-opacity duration-500"></div>
+                
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none z-20"></div>
+              </React.Fragment>
+            )}
         </div>
 
         {isEditing && !isFullscreen && (
@@ -202,9 +446,10 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
         )}
 
         {/* Existing Risks */}
-        <div className="absolute inset-0 z-40 pointer-events-none">
-          {/* SVG Lines Overlay */}
-          {!isEditing && (
+        {!cleanedImageSrc && (
+          <div className="absolute inset-0 z-40 pointer-events-none">
+            {/* SVG Lines Overlay */}
+            {!isEditing && (
             <svg className="absolute inset-0 w-full h-full pointer-events-none z-30 overflow-visible">
               <defs>
                 <filter id="glow">
@@ -327,7 +572,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
                   `}
                   style={{
                     ...getStyle(risk.box_2d),
-                    zIndex: isSelected ? 90 : 40
+                    zIndex: isSelected ? 350 : 40
                   }}
                   onClick={(e) => handleBoxClick(e, risk)} 
                 >
@@ -386,6 +631,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
             );
           })}
         </div>
+        )}
       </div>
     </div>
   );
@@ -473,7 +719,7 @@ const HUDCallout: React.FC<HUDCalloutProps> = ({ risk, isSelected, index, border
         left: `calc(${leftPercent}% + ${offsetX}px)`,
         top: isTooHigh ? `calc(${(risk.box_2d?.ymax || 0) / 10}% + ${offsetY}px)` : `calc(${(risk.box_2d?.ymin || 0) / 10}% + ${offsetY}px)`,
         touchAction: "none",
-        zIndex: isSelected ? 300 : 100,
+        zIndex: isSelected ? 400 : 100,
         x: dragPos.x,
         y: dragPos.y,
       }}
@@ -481,7 +727,7 @@ const HUDCallout: React.FC<HUDCalloutProps> = ({ risk, isSelected, index, border
         <div
           className={`
             relative bg-slate-900/90 backdrop-blur-md border rounded-md p-1.5 shadow-2xl
-            w-[120px] md:w-[140px] border-l-4
+            w-[124px] md:w-[144px] border-l-4
             ${isSelected ? 'scale-110 shadow-cyan-500/20 ring-1 ring-cyan-500/50' : 'scale-100'} 
             transition-all duration-300 ${borderColor}
             group/callout
@@ -493,22 +739,22 @@ const HUDCallout: React.FC<HUDCalloutProps> = ({ risk, isSelected, index, border
           </div>
 
           <div className="flex items-center justify-between gap-1 mb-1 border-b border-slate-800 pb-0.5">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className={`flex-shrink-0 flex items-center justify-center w-3 h-3 text-[8px] font-bold rounded-sm ${isSelected ? 'bg-cyan-400 text-black' : 'bg-slate-700 text-white'}`}>
+            <div className="flex items-start gap-1 pr-1 min-w-0">
+              <span className={`flex-shrink-0 flex items-center justify-center w-3 h-3 text-[7px] font-bold rounded-sm mt-0.5 ${isSelected ? 'bg-cyan-400 text-black' : 'bg-slate-700 text-white'}`}>
                 {index + 1}
               </span>
-              <span className={`text-[7px] font-bold uppercase tracking-wider leading-tight ${textColor} truncate`}>
+              <span className={`text-[6px] sm:text-[6.5px] font-bold uppercase tracking-wider leading-tight ${textColor} break-words whitespace-normal`}>
                  {risk.label}
               </span>
             </div>
           </div>
           
-          <div className="text-[7px] text-slate-400 leading-tight line-clamp-2 italic font-mono-sci mb-0.5">
+          <div className="text-[5.5px] sm:text-[6px] text-slate-400 leading-tight line-clamp-3 italic font-mono-sci mb-0.5">
              {risk.agent || risk.description.split('.')[0]}
           </div>
 
           {isSelected && (
-            <div className="flex items-center gap-1 mt-0.5 text-[6px] text-cyan-400 font-bold uppercase animate-pulse">
+            <div className="flex items-center gap-1 mt-0.5 text-[5px] sm:text-[5.5px] text-cyan-400 font-bold uppercase animate-pulse">
                <div className="w-1 h-1 bg-cyan-400 rounded-full"></div>
                DATA_LINK_ENGAGED
             </div>

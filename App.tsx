@@ -34,6 +34,13 @@ const MANUAL_SIMULATION_DEFAULT_PROMPT = `Sila gunakan tool penjana imej (Imagen
 5. Hasilkan imej yang ultra-fotorealistik, fotografi resolusi tinggi (8k), dengan pencahayaan semula jadi yang bersih, terang, dan bergemerlapan.`;
 
 const App: React.FC = () => {
+  useEffect(() => {
+    // Proactive sanitization of forbidden model preferences
+    const model = localStorage.getItem('gemini_model_preference');
+    if (model && (model.includes('z.ai') || model.includes('zhipu'))) {
+      localStorage.removeItem('gemini_model_preference');
+    }
+  }, []);
   const [currentView, setCurrentView] = useState<'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION' | 'MANUAL_SIMULATION'>('HOME');
   const [currentHomeSubView, setCurrentHomeSubView] = useState<'MENU' | 'FORENSIC' | 'ANALYTICS'>('MENU');
   const [sessions, setSessions] = useState<AnalysisSession[]>([]);
@@ -153,22 +160,9 @@ const App: React.FC = () => {
     }
   };
 
+  // Data is now fetched manually to preserve API limits
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const newLoc = { lat: position.coords.latitude, lng: position.coords.longitude };
-          setUserLocation(newLoc);
-          loadDengueData(newLoc);
-        },
-        (error) => {
-          console.error("Geolocation error:", error);
-          loadDengueData(); // Load default if geo fails
-        }
-      );
-    } else {
-      loadDengueData();
-    }
+    // Intentionally left empty
   }, []);
 
   const handleFilesSelected = async (files: File[]) => {
@@ -236,6 +230,48 @@ const App: React.FC = () => {
 
   const handleSimulationSave = (sessionId: string, image: string) => {
       setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, simulationImage: image } : s));
+  };
+
+  const handleAnalyzeGeneratedImage = async (url: string, bypassJson?: string) => {
+    try {
+        if (bypassJson) {
+            // Apply JSON bypass immediately without API consumption
+            let parsedResult: AnalysisResponse;
+            try {
+                // Pre-process markdown if exist
+                let cleanJson = bypassJson.trim();
+                const match = cleanJson.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+                if (match) cleanJson = match[1];
+                parsedResult = JSON.parse(cleanJson);
+                
+                // Add the new session fully resolved
+                const newId = `session-simulated-bypass-${Date.now()}`;
+                setSessions(prev => [{
+                    id: newId,
+                    fileName: "simulasi.png",
+                    imageSrc: url,
+                    mimeType: "image/png",
+                    status: 'SUCCESS',
+                    mode: analysisMode,
+                    result: parsedResult
+                }, ...prev]);
+                setActiveSessionId(newId);
+                setShowBypassModal(false);
+                setIsGalleryExpanded(false);
+            } catch (e: any) {
+                setToastMsg({ msg: "Ralat format JSON: " + e.message, type: 'error' });
+            }
+            return;
+        }
+
+        // Standard flow (consumes API quota)
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const file = new File([blob], `simulasi-${Date.now()}.png`, { type: blob.type });
+        handleFilesSelected([file]);
+    } catch (err) {
+        console.error("Failed to convert image to file", err);
+    }
   };
 
   const RADAR_GRID_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 1000 1000" style="background:%23020617"><defs><radialGradient id="r" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="%2310b981" stop-opacity="0.15"/><stop offset="100%" stop-color="%23020617" stop-opacity="0.9"/></radialGradient></defs><rect width="1000" height="1000" fill="url(%23r)"/><g stroke="%2310b981" stroke-opacity="0.2" stroke-width="1"><path d="M 0,100 L 1000,100 M 0,200 L 1000,200 M 0,300 L 1000,300 M 0,400 L 1000,400 M 0,500 L 1000,500 M 0,600 L 1000,600 M 0,700 L 1000,700 M 0,800 L 1000,800 M 0,900 L 1000,900"/><path d="M 100,0 L 100,1000 M 200,0 L 200,1000 M 300,0 L 300,1000 M 400,0 L 400,1000 M 500,0 L 500,1000 M 600,0 L 600,1000 M 700,0 L 700,1000 M 800,0 L 800,1000 M 900,0 L 900,1000"/></g><circle cx="500" cy="500" r="100" fill="none" stroke="%2310b981" stroke-opacity="0.5" stroke-dasharray="8 8" stroke-width="2"></circle><circle cx="500" cy="500" r="300" fill="none" stroke="%2310b981" stroke-opacity="0.3" stroke-width="1.5"/><circle cx="500" cy="500" r="450" fill="none" stroke="%2310b981" stroke-opacity="0.15" stroke-width="1"/><line x1="500" y1="0" x2="500" y2="1000" stroke="%2310b981" stroke-opacity="0.3" stroke-width="2"/><line x1="0" y1="500" x2="1000" y2="500" stroke="%2310b981" stroke-opacity="0.3" stroke-width="2"/><text x="50" y="80" fill="%2310b981" font-family="monospace" font-size="20" opacity="0.6">ANOMALY DETECTOR // MONITOR ACTIVE</text></svg>`;
@@ -711,7 +747,7 @@ const App: React.FC = () => {
                                 }} 
                                 className="text-[10px] bg-red-600 hover:bg-red-500 text-white font-bold px-2 py-1 rounded border border-red-400 whitespace-nowrap"
                              >
-                                YA, GANTIKAN SEMUA!
+                                YA, PADAMKAN SEMUA!
                              </button>
                              <button 
                                 onClick={() => setShowPurgeConfirm(false)} 
@@ -753,12 +789,18 @@ const App: React.FC = () => {
                        <div className="bg-slate-900/50 border border-slate-700 p-8 md:p-12 rounded-lg text-center min-h-[300px] flex flex-col items-center justify-center">
                           <div className="w-10 h-10 md:w-12 md:h-12 border-2 border-dashed border-slate-600 rounded-full animate-spin-slow mb-4"></div>
                           <p className="text-slate-400 font-mono-sci tracking-widest text-xs md:text-sm">{t('waiting_queue')}</p>
+                           <button onClick={() => setShowBypassModal(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 mt-4 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:scale-105 active:scale-95 duration-150 select-none">
+                              <span>🧬</span> {language === 'ms' ? 'PINTAS & TAMPAL JSON LUARAN' : 'BYPASS & PASTE EXTERNAL JSON'}
+                           </button>
                        </div>
                     )}
                     {getActiveSession()!.status === 'ANALYZING' && (
                        <div className="bg-emerald-950/20 border border-emerald-500/50 p-8 md:p-12 rounded-lg text-center min-h-[300px] flex flex-col items-center justify-center">
                           <div className="w-12 h-12 border-4 border-dashed border-emerald-500 rounded-full animate-spin mb-4"></div>
                           <p className="text-emerald-400 font-mono-sci tracking-widest text-sm animate-pulse">{t('processing_target')}</p>
+                           <button onClick={() => setShowBypassModal(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 mt-4 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:scale-105 active:scale-95 duration-150 select-none">
+                              <span>🧬</span> {language === 'ms' ? 'PINTAS & TAMPAL JSON LUARAN' : 'BYPASS & PASTE EXTERNAL JSON'}
+                           </button>
                        </div>
                     )}
                     {getActiveSession()!.status === 'ERROR' && (
@@ -786,7 +828,9 @@ const App: React.FC = () => {
                              savedSimulationImage={getActiveSession()!.simulationImage} 
                              onSaveSimulation={(img) => handleSimulationSave(activeSessionId!, img)}
                              allSessions={sessions}
+                             onAnalyzeGeneratedImage={handleAnalyzeGeneratedImage}
                              onUpdateResult={(newResult) => handleUpdateSessionResult(activeSessionId!, newResult)}
+                             onOpenBypass={() => setShowBypassModal(true)}
                              onDeleteSession={() => {
                                if (activeSessionId) {
                                  handleDeleteSession(activeSessionId);

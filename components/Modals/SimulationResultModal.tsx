@@ -6,12 +6,14 @@ interface SimulationResultModalProps {
   onClose: () => void;
   originalImage: string;
   generatedImages: string[];
+  generatedPrompt?: string;
   onRegenerate: (customPrompt: string) => void;
   onManualFallback?: (customPrompt: string) => void;
+  onAnalyzeSimulation?: (imageUrl: string, bypassJson?: string) => void;
 }
 
 export const SimulationResultModal: React.FC<SimulationResultModalProps> = ({ 
-  isOpen, onClose, originalImage, generatedImages, onRegenerate, onManualFallback 
+  isOpen, onClose, originalImage, generatedImages, generatedPrompt, onRegenerate, onManualFallback, onAnalyzeSimulation
 }) => {
   const { t } = useLanguage();
   const [sliderPos, setSliderPos] = useState(50);
@@ -118,6 +120,21 @@ export const SimulationResultModal: React.FC<SimulationResultModalProps> = ({
                     </div>
                  </div>
 
+                 {/* PROMPT DISPLAY */}
+                 {generatedPrompt && (
+                     <div className="w-full max-w-2xl bg-slate-950/80 border border-slate-800 rounded-xl p-4 md:p-6 shadow-xl shrink-0 mt-4">
+                         <div className="flex items-center gap-3 mb-3">
+                             <div className="w-6 h-6 rounded bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xs">
+                                 📋
+                             </div>
+                             <h4 className="text-xs font-bold text-white uppercase tracking-widest">Anotasi Remediasi / Prompt Binaan AI</h4>
+                         </div>
+                         <p className="text-sm font-mono-sci text-slate-300 leading-relaxed max-h-32 overflow-y-auto custom-scrollbar italic p-3 bg-black/40 rounded border border-slate-800">
+                             {generatedPrompt}
+                         </p>
+                     </div>
+                 )}
+
                  {/* HISTORY & REGENERATE SECTION */}
                  <div className="w-full max-w-2xl shrink-0 space-y-4">
                      {generatedImages.length > 1 && (
@@ -198,7 +215,7 @@ export const SimulationResultModal: React.FC<SimulationResultModalProps> = ({
                         onClick={onClose}
                         className="px-8 py-2 rounded bg-cyan-600 text-white font-bold text-sm hover:bg-cyan-500 shadow-lg shadow-cyan-500/20 transition"
                       >
-                         Selesai & Tutup
+                         Tutup Panel (Kembali)
                       </button>
                  </div>
              </div>

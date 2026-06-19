@@ -61,6 +61,8 @@ interface AnalysisResultsProps {
   allSessions?: AnalysisSession[];
   onUpdateResult?: (updatedResult: AnalysisResponse) => void;
   onDeleteSession?: () => void;
+  onAnalyzeGeneratedImage?: (imageUrl: string, bypassJson?: string) => void;
+  onOpenBypass?: () => void;
 }
 
 export const AnalysisResults: React.FC<AnalysisResultsProps> = ({ 
@@ -70,7 +72,9 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     onSaveSimulation,
     allSessions = [],
     onUpdateResult,
-    onDeleteSession
+    onDeleteSession,
+    onAnalyzeGeneratedImage,
+    onOpenBypass
 }) => {
   const [activeRisk, setActiveRisk] = useState<RiskDetection | null>(null);
   
@@ -94,6 +98,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showManualSimModal, setShowManualSimModal] = useState(false);
   const [manualSimPrompt, setManualSimPrompt] = useState("");
+  const [generatedSimPrompt, setGeneratedSimPrompt] = useState("");
   const [toastMsg, setToastMsg] = useState<{msg: string, type: 'error' | 'success'} | null>(null);
 
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
@@ -219,9 +224,10 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
               engine: 'GEMINI_IMAGEN',
               customPrompt
           };
-          const generatedImage = await generateCleanSimulation(base64Data, mimeType, config);
-          setCleanImages(prev => [...prev, generatedImage]);
-          onSaveSimulation(generatedImage);
+          const { imageUrl, finalPrompt } = await generateCleanSimulation(base64Data, mimeType, config);
+          setCleanImages(prev => [...prev, imageUrl]);
+          setGeneratedSimPrompt(finalPrompt);
+          onSaveSimulation(imageUrl);
           setShowCleanModal(true);
       } catch (error: any) {
           setToastMsg({ msg: `Regenerasi Gagal: ${error.message}. Cuba butang manual di bawah.`, type: 'error' });
@@ -244,11 +250,9 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
               customPrompt
           };
           const textPrompt = await generateSimulationPrompt(base64Data, config);
-          const jsonPrompt = JSON.stringify({
-              instruction: "Sila gunakan tool imej generator (Imagen 3) di Gemini AI untuk mengubah imej ini berdasarkan parameters berikut:",
-              image_prompt: textPrompt,
-              configuration: config
-          }, null, 2);
+          const jsonPrompt = `ARAHAN UTAMA: JANA IMEJ BERSENI
+Sila gunakan keupayaan penjanaan imej (DALL-E 3 / Imagen / dll) untuk membaiki imej persekitaran yang dimuat naik dengan mengubahnya berdasarkan parameter berikut:
+${textPrompt}`;
           setManualSimPrompt(jsonPrompt);
           setShowManualSimModal(true);
       } catch (error: any) {
@@ -267,17 +271,16 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
           
           if (config.engine === 'MANUAL') {
               const textPrompt = await generateSimulationPrompt(base64Data, config);
-              const jsonPrompt = JSON.stringify({
-                  instruction: "Sila gunakan tool imej generator (Imagen 3) di Gemini AI untuk mengubah imej ini berdasarkan parameters berikut:",
-                  image_prompt: textPrompt,
-                  configuration: config
-              }, null, 2);
+              const jsonPrompt = `ARAHAN UTAMA: JANA IMEJ BERSENI
+Sila gunakan keupayaan penjanaan imej (DALL-E 3 / Imagen / dll) untuk membaiki imej persekitaran yang dimuat naik dengan mengubahnya berdasarkan parameter berikut:
+${textPrompt}`;
               setManualSimPrompt(jsonPrompt);
               setShowManualSimModal(true);
           } else {
-              const generatedImage = await generateCleanSimulation(base64Data, mimeType, config);
-              setCleanImages(prev => [...prev, generatedImage]);
-              onSaveSimulation(generatedImage);
+              const { imageUrl, finalPrompt } = await generateCleanSimulation(base64Data, mimeType, config);
+              setCleanImages(prev => [...prev, imageUrl]);
+              setGeneratedSimPrompt(finalPrompt);
+              onSaveSimulation(imageUrl);
               setShowCleanModal(true);
           }
       } catch (error: any) {
@@ -297,7 +300,6 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       setShowManualSimModal(false);
       setCleanImages(prev => [...prev, base64Image]);
       onSaveSimulation(base64Image);
-      setShowCleanModal(true);
   };
 
   const handleAskAI = async (e: React.FormEvent) => {
@@ -485,7 +487,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
              )}
              {toastMsg && <Toast message={toastMsg.msg} type={toastMsg.type} onClose={() => setToastMsg(null)} />}
              <SimulationConfigModal isOpen={showConfigModal} onClose={() => setShowConfigModal(false)} onStart={startSimulation} />
-             <SimulationResultModal isOpen={showCleanModal} onClose={() => setShowCleanModal(false)} originalImage={imageSrc} generatedImages={cleanImages} onRegenerate={handleRegenerateSimulation} onManualFallback={handleManualFallback} />
+             <SimulationResultModal isOpen={showCleanModal} onClose={() => setShowCleanModal(false)} originalImage={imageSrc} generatedImages={cleanImages} generatedPrompt={generatedSimPrompt} onRegenerate={handleRegenerateSimulation} onManualFallback={handleManualFallback} onAnalyzeSimulation={onAnalyzeGeneratedImage} />
              <ManualSimulationModal isOpen={showManualSimModal} onClose={() => setShowManualSimModal(false)} promptText={manualSimPrompt} onImagePasted={handleManualSimulationPasted} />
              
              {/* THE HIDDEN PRINT MODULE */}
@@ -537,9 +539,20 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
              <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
                 <h2 className="text-2xl font-bold text-blue-400 font-sci-fi">LAPORAN PEMERIKSAAN KKM</h2>
                 <div className="flex gap-2">
-                    <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 rounded text-sm font-bold uppercase tracking-wider transition-all border border-green-500/50 hover:bg-green-900/30 text-green-400 bg-slate-900 shadow-lg">
+                    <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 rounded text-sm font-bold uppercase tracking-wider transition-all border border-green-500/50 hover:bg-green-900/30 text-green-400 bg-slate-900 shadow-lg" title="Cetak Laporan PDF">
                         🖨️ {t('btn_print_pdf') || 'CETAK LAPORAN PDF'}
                     </button>
+                    
+                    {onOpenBypass && (
+                       <button 
+                         onClick={onOpenBypass} 
+                         className="flex items-center gap-2 px-4 py-2 rounded text-sm font-bold uppercase tracking-wider transition-all border border-emerald-500/50 hover:bg-emerald-900/30 text-emerald-400 bg-slate-900 shadow-lg"
+                         title="Memintas kuota atau tampal huraian AI Claude/GPT"
+                       >
+                         🧬 {language === 'ms' ? 'TAMPAL JSON LUARAN' : 'PASTE EXTERNAL JSON'}
+                       </button>
+                    )}
+
                     {allSessions.length > 1 && (
                         <div className="bg-blue-900/40 border border-blue-500/50 px-4 py-2 rounded flex items-center gap-3 shadow-lg">
                             <div className="flex flex-col items-end">
@@ -593,6 +606,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                         <div className="border border-slate-700 rounded-xl bg-slate-950">
                             <ImageAnnotator 
                                 imageSrc={imageSrc} 
+                                cleanedImageSrc={cleanImages[cleanImages.length - 1]}
                                 risks={filteredRisks} 
                                 onRiskSelect={handleRiskChange} 
                                 selectedId={activeRisk?.id} 
@@ -803,7 +817,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       )}
       {toastMsg && <Toast message={toastMsg.msg} type={toastMsg.type} onClose={() => setToastMsg(null)} />}
       <SimulationConfigModal isOpen={showConfigModal} onClose={() => setShowConfigModal(false)} onStart={startSimulation} />
-      <SimulationResultModal isOpen={showCleanModal} onClose={() => setShowCleanModal(false)} originalImage={imageSrc} generatedImages={cleanImages} onRegenerate={handleRegenerateSimulation} onManualFallback={handleManualFallback} />
+      <SimulationResultModal isOpen={showCleanModal} onClose={() => setShowCleanModal(false)} originalImage={imageSrc} generatedImages={cleanImages} generatedPrompt={generatedSimPrompt} onRegenerate={handleRegenerateSimulation} onManualFallback={handleManualFallback} onAnalyzeSimulation={onAnalyzeGeneratedImage} />
       <ManualSimulationModal isOpen={showManualSimModal} onClose={() => setShowManualSimModal(false)} promptText={manualSimPrompt} onImagePasted={handleManualSimulationPasted} />
       
       {/* THE HIDDEN PRINT MODULE */}
@@ -849,6 +863,16 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
             <button onClick={handlePrint} className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded text-xs md:text-sm font-bold uppercase tracking-wider transition-all border border-green-500/50 hover:bg-green-900/30 text-green-400">
                 🖨️ {t('btn_print_pdf')}
             </button>
+            
+            {onOpenBypass && (
+               <button 
+                 onClick={onOpenBypass} 
+                 className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded text-xs md:text-sm font-bold uppercase tracking-wider transition-all border border-emerald-500/50 hover:bg-emerald-900/30 text-emerald-400 bg-slate-900 shadow-md"
+                 title="Memintas kuota atau tampal huraian AI Claude/GPT"
+               >
+                 🧬 {language === 'ms' ? 'TAMPAL JSON LUARAN' : 'PASTE EXTERNAL JSON'}
+               </button>
+            )}
 
             {onDeleteSession && (
                <button 
@@ -907,7 +931,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     {isAutoScrollEnabled ? '✅ Auto-Scroll (ON)' : '❌ Auto-Scroll (OFF)'}
                  </button>
               </div>
-              <ImageAnnotator imageSrc={imageSrc} risks={filteredRisks} onRiskSelect={handleRiskChange} selectedId={activeRisk?.id} isEditing={isEditing} onRegionDrawn={handleRegionDrawn} />
+              <ImageAnnotator imageSrc={imageSrc} cleanedImageSrc={cleanImages[cleanImages.length - 1]} risks={filteredRisks} onRiskSelect={handleRiskChange} selectedId={activeRisk?.id} isEditing={isEditing} onRegionDrawn={handleRegionDrawn} />
                
               {activeRisk && (
                   <div className="p-4 bg-slate-950 border-t border-slate-700">

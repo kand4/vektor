@@ -5,7 +5,7 @@ interface ManualSimulationModalProps {
   isOpen: boolean;
   onClose: () => void;
   promptText: string;
-  onImagePasted: (base64Image: string) => void;
+  onImagePasted: (base64Image: string, jsonText?: string) => void;
 }
 
 export const ManualSimulationModal: React.FC<ManualSimulationModalProps> = ({ 
@@ -13,6 +13,8 @@ export const ManualSimulationModal: React.FC<ManualSimulationModalProps> = ({
 }) => {
   const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
+  const [jsonInput, setJsonInput] = useState('');
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -26,8 +28,6 @@ export const ManualSimulationModal: React.FC<ManualSimulationModalProps> = ({
     navigator.clipboard.writeText(promptText).catch(console.error);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    // Note: Do not e.preventDefault() so the native href target="_blank" can execute.
-    // If it's blocked by the iframe sandbox, the native link is the best bet.
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,7 +40,7 @@ export const ManualSimulationModal: React.FC<ManualSimulationModalProps> = ({
   const processFile = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
-      onImagePasted(e.target?.result as string);
+      setUploadedImage(e.target?.result as string);
     };
     reader.readAsDataURL(file);
   }
@@ -56,26 +56,38 @@ export const ManualSimulationModal: React.FC<ManualSimulationModalProps> = ({
      }
   }
 
+  const handleSubmit = () => {
+     if (uploadedImage) {
+         onImagePasted(uploadedImage, jsonInput.trim() !== '' ? jsonInput : undefined);
+     }
+  }
+
   return (
     <div className="fixed inset-0 z-[170] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in no-print" onPaste={handlePaste}>
-        <div className="bg-slate-900 border border-cyan-500 rounded-xl p-6 w-full max-w-2xl shadow-[0_0_50px_rgba(34,211,238,0.3)] max-h-[90vh] flex flex-col">
+        <div className="bg-slate-900 border border-cyan-500 rounded-xl p-6 w-full max-w-4xl shadow-[0_0_50px_rgba(34,211,238,0.3)] max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-sci-fi font-bold text-cyan-400 flex items-center gap-2">
-                ✍️ Simulasi Manual (Gemini Web)
+                ✍️ Mod Eksternal Sifar-Kuota (Manual)
                 </h3>
                 <button onClick={onClose} className="text-slate-400 hover:text-white">✕</button>
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2">
+                
+                {/* LANGKAH 1 */}
                 <div className="bg-slate-800 border border-slate-700 rounded p-4">
-                    <p className="text-sm text-slate-300 font-mono-sci uppercase mb-3 text-emerald-400">
-                      1. Muat Naik Imej Asal & Tampal Prompt ini di Gemini Web
-                    </p>
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="w-8 h-8 rounded-full bg-cyan-600 text-white flex items-center justify-center font-bold text-lg">1</div>
+                        <p className="text-sm text-cyan-400 font-mono-sci uppercase">
+                          Salin Arahan & Buka AI Luaran (DALL-E / Gemini)
+                        </p>
+                    </div>
+                    
                     <div className="relative">
                         <textarea 
                             readOnly 
                             value={promptText} 
-                            className="w-full h-64 bg-slate-950 border border-slate-800 rounded p-4 text-slate-300 text-xs md:text-sm font-mono focus:outline-none whitespace-pre-wrap" 
+                            className="w-full h-32 bg-slate-950 border border-slate-800 rounded p-4 text-slate-300 text-xs font-mono focus:outline-none whitespace-pre-wrap select-all" 
                         />
                         <button 
                             onClick={handleCopy}
@@ -90,34 +102,88 @@ export const ManualSimulationModal: React.FC<ManualSimulationModalProps> = ({
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={handleCopyAndOpenGemini}
-                        className="mt-4 w-full py-3 bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(34,211,238,0.3)] hover:shadow-[0_0_25px_rgba(34,211,238,0.5)] uppercase tracking-wider text-xs md:text-sm text-center border border-cyan-400/30"
+                        className="mt-4 w-full py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded transition-all flex items-center justify-center gap-2 uppercase tracking-wider text-xs border border-slate-600"
                     >
-                        <span>🚀 {copied ? 'TELAH DISALIN! KLIK UNTUK BUKA GEMINI AI' : 'SALIN PROMPT & BUKA GEMINI WEB'}</span>
+                        <span>🚀 BUKA GEMINI AI DI TAB BAHARU (PILIHAN)</span>
                     </a>
-                    <p className="text-[10px] text-slate-500 mt-2 text-center">
-                        Jika tab baharu tidak dibuka, sila klik kanan butang di atas dan pilih "Buka pautan di tab baharu", atau pergi ke: <span className="text-cyan-400 select-all">https://gemini.google.com/app</span>
-                    </p>
                 </div>
 
-                <div className="bg-slate-800 border border-slate-700 rounded p-6 mt-4 text-center border-dashed">
-                    <p className="text-sm text-slate-300 font-mono-sci uppercase mb-3 text-cyan-400">
-                      2. Muat Naik / Tampal Imej Hasil (Ctrl+V)
-                    </p>
-                    <p className="text-xs text-slate-500 mb-4">Simpan atau salin imej yang dijana oleh Gemini dan muat naik ke sini.</p>
-                    
-                    <input 
-                        type="file" 
-                        accept="image/*" 
-                        id="manual-sim-upload" 
-                        className="hidden" 
-                        onChange={handleFileChange} 
-                    />
-                    <label 
-                        htmlFor="manual-sim-upload"
-                        className="inline-block px-5 py-2 rounded bg-cyan-600/20 border border-cyan-500/50 text-cyan-400 hover:bg-cyan-600/40 cursor-pointer transition font-bold"
-                    >
-                        Pilih Fail Imej
-                    </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* LANGKAH 2 */}
+                    <div className="bg-slate-800 border border-slate-700 rounded p-6 flex flex-col items-center justify-center text-center">
+                        <div className="flex flex-col items-center gap-3 mb-4 w-full">
+                            <div className="flex items-center gap-3 w-full self-start">
+                                <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-lg shrink-0">2</div>
+                                <p className="text-sm text-emerald-400 font-mono-sci uppercase text-left break-words">
+                                  Muat Naik / Tampal Imej Baharu
+                                </p>
+                            </div>
+                        </div>
+                        
+                        {uploadedImage ? (
+                            <div className="relative w-full aspect-video rounded overflow-hidden border border-emerald-500/50 mb-4">
+                                <img src={uploadedImage} alt="Uploaded" className="w-full h-full object-cover" />
+                                <button 
+                                    onClick={() => setUploadedImage(null)} 
+                                    className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded hover:bg-red-500 text-xs font-bold"
+                                >
+                                    BUANG
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="w-full h-32 border-2 border-dashed border-slate-600 rounded flex flex-col items-center justify-center mb-4 bg-slate-900/50 text-slate-500">
+                                <span className="text-2xl mb-2">🖼️</span>
+                                <span className="text-xs">Klik bawah atau (Ctrl+V) imej di sini</span>
+                            </div>
+                        )}
+
+                        <input 
+                            type="file" 
+                            accept="image/*" 
+                            id="manual-sim-upload" 
+                            className="hidden" 
+                            onChange={handleFileChange} 
+                        />
+                        <label 
+                            htmlFor="manual-sim-upload"
+                            className="inline-block w-full py-2 rounded bg-emerald-600/20 border border-emerald-500/50 text-emerald-400 hover:bg-emerald-600/40 cursor-pointer transition font-bold text-sm"
+                        >
+                            TAMPAL / PILIH IMEJ
+                        </label>
+                    </div>
+
+                    {/* LANGKAH 3 */}
+                    <div className="bg-slate-800 border border-slate-700 rounded p-6 flex flex-col">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shrink-0">3</div>
+                            <p className="text-sm text-indigo-400 font-mono-sci uppercase text-left">
+                              Tampal JSON Analisis (Pilihan)
+                            </p>
+                        </div>
+                        <p className="text-xs text-slate-400 mb-3 leading-relaxed">
+                            Jika anda turut meminta kod JSON daripada AI, tampal di sini untuk terus menganalisis imej baharu secara automatik.
+                        </p>
+                        <textarea 
+                            className="w-full flex-1 min-h-[120px] bg-slate-950 border border-indigo-500/30 rounded p-3 text-emerald-300 text-xs font-mono focus:outline-none focus:border-indigo-500 transition resize-none custom-scrollbar" 
+                            placeholder='{"risks": [...]}'
+                            value={jsonInput}
+                            onChange={(e) => setJsonInput(e.target.value)}
+                        />
+                    </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-slate-700">
+                     <button
+                        disabled={!uploadedImage}
+                        onClick={handleSubmit}
+                        className={`w-full py-4 rounded-lg font-bold font-sci-fi uppercase tracking-widest transition-all text-sm shadow-lg ${
+                            uploadedImage 
+                            ? 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-cyan-600/20' 
+                            : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                        }`}
+                     >
+                         {jsonInput.trim() !== '' ? 'JANA IMEJ & TERUSKAN ANALISIS JSON' : 'HANYA PAPARKAN IMEJ'}
+                     </button>
                 </div>
             </div>
             

@@ -1004,7 +1004,7 @@ export const generateSimulationPrompt = async (base64Image: string, config: Simu
     }
 };
 
-export const generateCleanSimulation = async (base64Image: string, mimeType: string, config: SimulationConfig): Promise<string> => {
+export const generateCleanSimulation = async (base64Image: string, mimeType: string, config: SimulationConfig): Promise<{imageUrl: string, finalPrompt: string}> => {
     let finalPrompt = "";
     
     // Attempt to generate a smart prompt using Gemini, but fallback gracefully if it fails (e.g. no key or rate limit)
@@ -1067,7 +1067,7 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
             
             for (const part of response.candidates?.[0]?.content?.parts || []) {
                 if (part.inlineData) {
-                    return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                    return { imageUrl: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`, finalPrompt };
                 }
             }
             throw new Error("No inlineData image from Gemini");
@@ -1090,7 +1090,7 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
 
                 const bytes = imagenResponse.generatedImages?.[0]?.image?.imageBytes;
                 if (bytes) {
-                    return `data:image/png;base64,${bytes}`;
+                    return { imageUrl: `data:image/png;base64,${bytes}`, finalPrompt };
                 }
                 throw new Error("No image bytes from Imagen 4.0");
             } catch (imagen4Error: any) {
@@ -1112,7 +1112,7 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
 
                     const bytes = imagen3Response.generatedImages?.[0]?.image?.imageBytes;
                     if (bytes) {
-                        return `data:image/png;base64,${bytes}`;
+                        return { imageUrl: `data:image/png;base64,${bytes}`, finalPrompt };
                     }
                     throw new Error("No image bytes from Imagen 3.0");
                 } catch (imagen3Error) {
@@ -1128,7 +1128,7 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
     const seed = Math.floor(Math.random() * 999999);
     const encodedPrompt = encodeURIComponent(finalPrompt);
     const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1280&height=720&seed=${seed}&model=flux&nolog=true`;
-    return url;
+    return { imageUrl: url, finalPrompt };
 };
 
 export const askRiskFollowUp = async (risk: RiskDetection, question: string, language: string = 'ms'): Promise<string> => {
