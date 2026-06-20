@@ -583,11 +583,28 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
             4. summary: string (Professional executive summary in ${targetLang})
             5. recommendation: string (e.g., "ARAHAN PENUTUPAN PREMIS (14 HARI)" or "PREMIS BERSIH & MEMUASKAN")
             6. sections: Array of EXACTLY 16 Objects. Each must have:
-               - code: string (1-16)
-               - title: string (Must correspond to: Lantai, Dinding, Siling, Pengudaraan, Pencahayaan, Penstoran, Pengendalian Makanan, Bekalan Air, Pelupusan Sisa, Perangkap Minyak, Kawalan Perosak, Peralatan, Pencuci Tangan, Tandas, Perparitan, Suntikan Typhoid)
-               - totalPoints: number (Max points for section)
-               - demeritReceived: number (Points deducted based on image)
-               - violations: string[] (List specific faults if demerit > 0)
+               - code: string ("1" to "16")
+               - title: string (One of the 16 KKM elements:
+                   "1" -> "Lantai (Kebersihan / Struktur)" (max totalPoints: 5)
+                   "2" -> "Dinding (Kebersihan / Struktur)" (max totalPoints: 5)
+                   "3" -> "Siling (Kering / Tiada Habuk)" (max totalPoints: 5)
+                   "4" -> "Pengudaraan (Suhu / Aliran)" (max totalPoints: 5)
+                   "5" -> "Pencahayaan (Terang / Cukup)" (max totalPoints: 5)
+                   "6" -> "Penstoran Bahan (Suhu / Label)" (max totalPoints: 10)
+                   "7" -> "Pengendalian Makanan (Kebersihan)" (max totalPoints: 15)
+                   "8" -> "Bekalan Air Bersih" (max totalPoints: 5)
+                   "9" -> "Pelupusan Sisa Pepejal/Sair" (max totalPoints: 10)
+                   "10" -> "Pemasangan Perangkap Minyak" (max totalPoints: 5)
+                   "11" -> "Kawalan Lalat, Lipas & Tikus" (max totalPoints: 10)
+                   "12" -> "Peralatan & Perkakas Bersih" (max totalPoints: 10)
+                   "13" -> "Kemudahan Cuci Tangan & Sabun" (max totalPoints: 5)
+                   "14" -> "Kemudahan Tandas Berfungsi/Bersih" (max totalPoints: 5)
+                   "15" -> "Sistem Perparitan Sempurna" (max totalPoints: 5)
+                   "16" -> "Suntikan Typhoid & Kursus KKM" (max totalPoints: 5)
+               )
+               - totalPoints: number (Must exactly match the max points listed above: e.g. 5, 10 or 15)
+               - demeritReceived: number (Points deducted based on visual hazards found in the image, must be between 0 and totalPoints)
+               - violations: string[] (List specific faults if demeritReceived > 0, written in Malay language e.g. "Perangkap minyak berminyak dan tersumbat")
 
          - risks: Array of Objects. Each Object MUST contain specific visual findings for evidence:
             1. box_2d: [ymin, xmin, ymax, xmax] 

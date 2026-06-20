@@ -666,7 +666,7 @@ const HUDCallout: React.FC<HUDCalloutProps> = ({ risk, isSelected, index, border
   if (leftPercent < 15) offsetX = 0;
   else if (leftPercent > 85) offsetX = -120;
 
-  const offsetY = isTooHigh ? 10 : -40;
+  const offsetY = isTooHigh ? 10 : -50;
 
   // Track dragging state using local React refs to avoid lag
   const isDraggingRef = useRef(false);
@@ -716,12 +716,10 @@ const HUDCallout: React.FC<HUDCalloutProps> = ({ risk, isSelected, index, border
       onPointerCancel={handlePointerUp}
       className="absolute pointer-events-auto cursor-grab active:cursor-grabbing select-none"
       style={{
-        left: `calc(${leftPercent}% + ${offsetX}px)`,
-        top: isTooHigh ? `calc(${(risk.box_2d?.ymax || 0) / 10}% + ${offsetY}px)` : `calc(${(risk.box_2d?.ymin || 0) / 10}% + ${offsetY}px)`,
+        left: `calc(${leftPercent}% + ${offsetX + dragPos.x}px)`,
+        top: isTooHigh ? `calc(${(risk.box_2d?.ymax || 0) / 10}% + ${offsetY + dragPos.y}px)` : `calc(${(risk.box_2d?.ymin || 0) / 10}% + ${offsetY + dragPos.y}px)`,
         touchAction: "none",
         zIndex: isSelected ? 400 : 100,
-        x: dragPos.x,
-        y: dragPos.y,
       }}
     >
         <div

@@ -6,6 +6,9 @@ import { analyzeAdultMosquito } from '../services/geminiService';
 import { useLanguage } from '../contexts/LanguageContext';
 import Mosquito3DViewer from './Mosquito3DViewer';
 
+import AegyptiImg from '../src/assets/images/Aegypti.jpg';
+import AlbopictusImg from '../src/assets/images/Albopictus.jpg';
+
 interface Prediction {
     x: number;
     y: number;
@@ -30,9 +33,9 @@ const AdultMosquitoScanner: React.FC = () => {
     const [imageDimensions, setImageDimensions] = useState<{naturalWidth: number, naturalHeight: number} | null>(null);
     const [show3DModel, setShow3DModel] = useState(false);
     
-    // Adult Mosquito Poster References - Loaded locally from the new pics directory for maximum speed and security
-    const AEGYPTI_POSTER_URL = "https://cdn5.telesco.pe/file/DnDbT53O0nYfuXARxkHKtfz5FOJAOjPQ3Iq6KZ0tME25OPbDFHxwhAx_GzJdCQ4M1CjYjauPzgWckPD3yiFe88Irhp-nlBLj8a4QVCz50g0fPR2f8TyMPAsGhoum-iMBJY_jV82HY6IlJVroFspD2EmHPROmW9hgrHmrKdPy1Ktto41TqQ56SuLmCnEyj4jfHjzknT9fvQjIi9yicIz6UteJEDCTGrYWgy-3BbTmAk6C3J13YKJF2DFVE2vXjWjSn9Ie83oHU1uqBwS8jnpRZyCKFlHNwkq7zcJQd2jA9CCyiSXXhf_-gOPjOR4vo-tr1Dx_lqoz0y6uJXCj9v25EQ.jpg"; 
-    const ALBOPICTUS_POSTER_URL = "https://cdn5.telesco.pe/file/jnM1NUyTM6c22FPU99sdXVUkjSUQT9dL6FmiYSabaKOQ2GSc7C3QXH9-THPT9aiwL3CxKn0hX02_no_qIzsRbj4CGgHCNPJZzA-cWXE0NI3ohivYwGo5Hm21gBhCARcnBwp7zjIWz5Q9jQN61sh8C0vNW2Ri8BQf9c6Cnb9wAlLKoEHrugZxT8epqjT8D2mSGkhYmRKB72Nw1UKCWlgNw09VmulCWzCy4PDUZgb9U2AVclzDCwAZvpQGg8OYcTx6tl37MbOVMqd5TZwzfiBO9rVNoGsKoBIv0fl0AL5O9MlyGZgMb6c7-KQiTeqEeqX-YO6xwAnU9hchy5WDzAgTIg.jpg"; 
+    // Adult Mosquito Poster References
+    const AEGYPTI_POSTER_URL = AegyptiImg; 
+    const ALBOPICTUS_POSTER_URL = AlbopictusImg; 
 
     const imageRef = useRef<HTMLImageElement | null>(null);
 
@@ -282,7 +285,7 @@ const AdultMosquitoScanner: React.FC = () => {
                         <button 
                             onClick={handleForensicScan}
                             disabled={!imagePreview || isScanning}
-                            className="px-6 py-3 rounded-lg font-bold font-sci-fi tracking-widest bg-purple-600 hover:bg-purple-500 text-white shadow-purple-900/50 hover:shadow-purple-500/50"
+                            className="px-4 py-2.5 rounded-lg text-xs md:text-sm font-bold font-sci-fi tracking-wider bg-purple-600 hover:bg-purple-500 text-white shadow-md hover:shadow-purple-500/30 transition-all hover:scale-[1.01] active:scale-[0.98]"
                         >
                             {isScanning ? t('adult_scanner_scanning') : t('adult_scanner_btn')}
                         </button>
@@ -290,14 +293,53 @@ const AdultMosquitoScanner: React.FC = () => {
                     
                     <div className="w-full lg:w-96 flex flex-col gap-6">
                         {diagnosis && (
-                            <div className="bg-emerald-950/30 border-l-4 border-emerald-500 border-t border-r border-b border-emerald-500/30 rounded-r-xl p-4 sm:p-5 overflow-y-auto max-h-[500px] shadow-[0_0_20px_rgba(16,185,129,0.1)] relative">
-                                <div className="absolute top-0 right-0 w-8 h-8 bg-[linear-gradient(135deg,transparent_50%,rgba(16,185,129,0.2)_50%)]"></div>
-                                <h3 className="text-emerald-400 font-bold mb-4 font-sci-fi tracking-widest text-sm flex items-center gap-2">
-                                    <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping mr-1"></span>
-                                    {t('adult_scanner_result_title')}
-                                </h3>
-                                <div className="text-sm text-slate-300 prose prose-invert prose-emerald max-w-none break-words">
-                                    <ReactMarkdown>{diagnosis}</ReactMarkdown>
+                            <div className="bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border border-emerald-500/30 rounded-2xl p-6 shadow-[0_0_30px_rgba(16,185,129,0.15)] relative overflow-hidden group">
+                                {/* Decorative tech accents */}
+                                <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"></div>
+                                <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent"></div>
+                                <div className="absolute top-2 right-2 flex gap-1.5 opacity-40">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/60"></span>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/30"></span>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-emerald-500/20 pb-4 mb-5 flex-wrap">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="relative flex items-center justify-center">
+                                            <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-500/20 animate-ping"></span>
+                                            <div className="w-9 h-9 rounded-xl bg-emerald-950/80 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-md">
+                                                🔬
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-emerald-400 font-bold font-sci-fi tracking-widest text-sm flex items-center gap-2">
+                                                {t('adult_scanner_result_title')}
+                                            </h3>
+                                            <p className="text-[9px] text-emerald-500/70 font-mono tracking-wider uppercase">Laporan Analisis Bio-Molekular Pintar</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Download / Print button */}
+                                    <button 
+                                        type="button"
+                                        onClick={() => window.print()}
+                                        className="self-start sm:self-auto px-2.5 py-1.5 rounded-lg border border-emerald-500/20 hover:border-emerald-500/50 bg-emerald-950/20 text-emerald-400 hover:text-emerald-300 font-mono text-[9px] font-bold tracking-wider uppercase transition-all flex items-center gap-1.5 shadow-md active:scale-95 no-print"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                        </svg>
+                                        CETAK LAPORAN
+                                    </button>
+                                </div>
+
+                                <div className="bg-slate-950/90 border border-slate-900 p-5 rounded-xl shadow-inner max-h-[500px] overflow-y-auto scrollbar-thin">
+                                    <div className="text-sm text-slate-300 prose prose-invert prose-emerald max-w-none break-words leading-relaxed selection:bg-emerald-500/20 text-left">
+                                        <ReactMarkdown>{diagnosis}</ReactMarkdown>
+                                    </div>
+                                </div>
+                                <div className="mt-4 flex items-center justify-between text-[9px] text-slate-500 font-mono border-t border-slate-900/40 pt-3 flex-wrap gap-2">
+                                    <span>KLASIFIKASI: SEPARA-AUTOMASI</span>
+                                    <span>SISTEM DISOKONG OLEH GEMINI LLM</span>
                                 </div>
                             </div>
                         )}

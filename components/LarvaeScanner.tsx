@@ -5,6 +5,8 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { motion } from 'motion/react';
 import { generateLarvaeDiagnosis, deepLarvaeAnalysis } from '../services/geminiService';
 
+import LarvaImg from '../src/assets/images/Larva.png';
+
 interface Prediction {
     x: number;
     y: number;
@@ -17,7 +19,7 @@ interface Prediction {
 }
 
 const LarvaeScanner: React.FC = () => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [predictions, setPredictions] = useState<Prediction[] | null>(null);
     const [dragPositions, setDragPositions] = useState<{[key: number]: {x: number, y: number}}>({});
@@ -28,6 +30,65 @@ const LarvaeScanner: React.FC = () => {
     const [isGeneratingDiagnosis, setIsGeneratingDiagnosis] = useState(false);
     const [imageDimensions, setImageDimensions] = useState<{naturalWidth: number, naturalHeight: number} | null>(null);
     
+    // Magnifier states & controls
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [isMagnifierActive, setIsMagnifierActive] = useState(false);
+    const [magnifierState, setMagnifierState] = useState({
+        show: false,
+        x: 0,
+        y: 0,
+        bgX: '0%',
+        bgY: '0%'
+    });
+
+    const handleMouseMoveOrTouch = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+        if (!isMagnifierActive || !containerRef.current) return;
+        
+        const container = containerRef.current;
+        const rect = container.getBoundingClientRect();
+        
+        let clientX = 0;
+        let clientY = 0;
+        
+        if ('touches' in e) {
+            if (e.touches.length === 0) return;
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+        
+        if (x < 0 || y < 0 || x > rect.width || y > rect.height) {
+            setMagnifierState(prev => ({ ...prev, show: false }));
+            return;
+        }
+        
+        const bgX = ((x / rect.width) * 100).toFixed(2) + '%';
+        const bgY = ((y / rect.height) * 100).toFixed(2) + '%';
+        
+        setMagnifierState({
+            show: true,
+            x,
+            y,
+            bgX,
+            bgY
+        });
+    };
+
+    const handleMouseEnter = () => {
+        if (isMagnifierActive) {
+            setMagnifierState(prev => ({ ...prev, show: true }));
+        }
+    };
+
+    const handleMouseLeave = () => {
+        setMagnifierState(prev => ({ ...prev, show: false }));
+    };
+
     // Roboflow parameters
     const [confidenceThreshold, setConfidenceThreshold] = useState<number>(40); // default 40%
     const [overlapThreshold, setOverlapThreshold] = useState<number>(30); // default 30% IOU
@@ -36,7 +97,7 @@ const LarvaeScanner: React.FC = () => {
     const imageRef = useRef<HTMLImageElement | null>(null);
 
     // Anatomy Poster Reference - Loaded locally from the new pics directory for maximum speed and security
-    const LARVAE_POSTER_URL = "https://cdn5.telesco.pe/file/N7DK6Wmrw3Yg_lWwRRJkxLAMLNYb2LctslhdaWHeGVKetxErpkC9N-CdNDTJfXwzxDYAguPVIGPczWkR-THpHY0OxZtFzBFtRdL9uHJnkuMfltsORct_ZGiLKgXUKqFFs8-di2iwTsckzqQ1saG-nUoDwGCzYk9UJ7_XRqW-XoLVlim_RmNEIZrOtDTXG8E-X9lsPDesis_b--03-w_KMutjhl1e33SEICdmjy9HQnSsSnfu8dwlLHmio3r0c72qpgy5pLoJhenEeBZatBvrulbuE6X3KD3PWdxQ04wYVF6XGW6IFAe1I8RaS8QyU-oab3NHgSq0cjoWBIADsv5lbg.jpg"; 
+    const LARVAE_POSTER_URL = LarvaImg; 
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -213,12 +274,14 @@ const LarvaeScanner: React.FC = () => {
                             <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-cyan-500/70 pointer-events-none"></div>
                             <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-cyan-500/70 pointer-events-none"></div>
                             
-                            <input 
-                                type="file" 
-                                accept="image/*" 
-                                onChange={handleImageUpload} 
-                                className="absolute inset-0 opacity-0 cursor-pointer z-20"
-                            />
+                            {!imagePreview && (
+                                <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    onChange={handleImageUpload} 
+                                    className="absolute inset-0 opacity-0 cursor-pointer z-20"
+                                />
+                            )}
                             {!imagePreview ? (
                                 <div className="text-center p-6 disabled-group-hover">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.2} stroke="currentColor" className="w-16 h-16 mx-auto text-slate-500 mb-3 group-hover:text-cyan-400 transition-colors">
@@ -229,7 +292,63 @@ const LarvaeScanner: React.FC = () => {
                                 </div>
                             ) : (
                                 <div className="relative flex items-center justify-center p-2 w-full min-h-[400px]">
-                                    <div className="relative inline-block max-w-full max-h-[60vh]">
+                                    {/* Toolbar overlay inside image container */}
+                                    <div className="absolute top-4 left-4 right-4 z-30 flex justify-between items-center no-print">
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setImagePreview(null);
+                                                    setPredictions(null);
+                                                    setDiagnosis(null);
+                                                }}
+                                                className="px-3 py-1.5 rounded-lg bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-400 hover:text-red-300 font-mono text-[10px] font-bold tracking-widest transition-all uppercase flex items-center gap-1 shadow-lg"
+                                            >
+                                                🗑️ {t('clear_btn') || 'PADAM'}
+                                            </button>
+                                            <label className="px-3 py-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white font-mono text-[10px] font-bold tracking-widest transition-all uppercase flex items-center gap-1 shadow-lg cursor-pointer">
+                                                📁 {t('change_btn') || 'TUKAR'}
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    onChange={handleImageUpload} 
+                                                    className="hidden"
+                                                />
+                                            </label>
+                                        </div>
+                                        
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setIsMagnifierActive(!isMagnifierActive);
+                                                if (!isMagnifierActive) {
+                                                    setMagnifierState(prev => ({ ...prev, show: false }));
+                                                }
+                                            }}
+                                            className={`px-3 py-1.5 rounded-lg border font-mono text-[10px] font-bold tracking-widest transition-all uppercase flex items-center gap-1.5 shadow-lg ${
+                                                isMagnifierActive 
+                                                    ? 'bg-cyan-500 text-slate-950 border-cyan-300 shadow-cyan-500/20 scale-105' 
+                                                    : 'bg-slate-900/90 text-slate-300 border-slate-700 hover:text-white hover:border-slate-500'
+                                            }`}
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.637 10.637Z" />
+                                            </svg>
+                                            <span>{isMagnifierActive ? 'KANTA AKTIF' : 'KANTA ZOOM'}</span>
+                                        </button>
+                                    </div>
+
+                                    <div 
+                                        ref={containerRef}
+                                        className={`relative inline-block max-w-full max-h-[60vh] overflow-hidden ${isMagnifierActive ? 'cursor-none select-none' : ''}`}
+                                        onMouseMove={handleMouseMoveOrTouch}
+                                        onTouchMove={handleMouseMoveOrTouch}
+                                        onMouseEnter={handleMouseEnter}
+                                        onMouseLeave={handleMouseLeave}
+                                        onTouchStart={handleMouseEnter}
+                                        onTouchEnd={handleMouseLeave}
+                                    >
                                         <img 
                                             src={imagePreview} 
                                             alt="Preview" 
@@ -240,6 +359,21 @@ const LarvaeScanner: React.FC = () => {
                                                 setImageDimensions({ naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight });
                                             }}
                                         />
+
+                                        {isMagnifierActive && magnifierState.show && (
+                                            <div
+                                                className="absolute rounded-full pointer-events-none border-2 border-cyan-400 z-50 shadow-[0_0_20px_rgba(0,0,0,0.5),inset_0_0_10px_rgba(255,255,255,0.2)] bg-no-repeat"
+                                                style={{
+                                                    width: '150px',
+                                                    height: '150px',
+                                                    left: `${magnifierState.x - 75}px`,
+                                                    top: `${magnifierState.y - 75}px`,
+                                                    backgroundImage: `url(${imagePreview})`,
+                                                    backgroundSize: '250%', // 2.5x Zoom
+                                                    backgroundPosition: `${parseFloat(magnifierState.bgX)}% ${parseFloat(magnifierState.bgY)}%`,
+                                                }}
+                                            />
+                                        )}
                                         {(predictions && imageDimensions) && (
                                             <>
                                                 {/* SVG Lines Overlay */}
@@ -356,15 +490,15 @@ const LarvaeScanner: React.FC = () => {
                             )}
                         </div>
 
-                        <div className="flex justify-center md:justify-start gap-4 flex-wrap">
+                        <div className="flex justify-center md:justify-start gap-3 flex-wrap animate-fade-in">
                             <button 
                                 onClick={handleScan}
                                 disabled={!imagePreview || isScanning}
-                                className={`px-6 py-3 rounded-lg font-bold font-sci-fi tracking-widest transition-all shadow-lg flex items-center gap-2 ${!imagePreview || isScanning ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-cyan-900/50 hover:shadow-cyan-500/50'}`}
+                                className={`px-4 py-2.5 rounded-lg text-xs md:text-sm font-bold font-sci-fi tracking-wider transition-all shadow-md flex items-center gap-2 ${!imagePreview || isScanning ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-cyan-900/50 hover:shadow-cyan-500/50 hover:scale-[1.01] active:scale-[0.98]'}`}
                             >
                                 {isScanning && !isGeneratingDiagnosis ? (
                                     <>
-                                        <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
@@ -372,7 +506,7 @@ const LarvaeScanner: React.FC = () => {
                                     </>
                                 ) : (
                                     <>
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                                           <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z" />
                                           <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75ZM6.75 16.5h.75v.75h-.75v-.75ZM16.5 6.75h.75v.75h-.75v-.75ZM13.5 13.5h.75v.75h-.75v-.75ZM13.5 19.5h.75v.75h-.75v-.75ZM19.5 13.5h.75v.75h-.75v-.75ZM19.5 19.5h.75v.75h-.75v-.75ZM16.5 16.5h.75v.75h-.75v-.75Z" />
                                         </svg>
@@ -384,7 +518,7 @@ const LarvaeScanner: React.FC = () => {
                             <button 
                                 onClick={handleDeepScan}
                                 disabled={!imagePreview || isScanning}
-                                className={`px-6 py-3 rounded-lg font-bold font-sci-fi tracking-widest transition-all shadow-lg flex items-center gap-2 ${!imagePreview || isScanning ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-900/50 hover:shadow-purple-500/50 relative overflow-hidden group'}`}
+                                className={`px-4 py-2.5 rounded-lg text-xs md:text-sm font-bold font-sci-fi tracking-wider transition-all shadow-lg flex items-center gap-2 ${!imagePreview || isScanning ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-900/50 hover:shadow-purple-500/50 hover:scale-[1.01] active:scale-[0.98] relative overflow-hidden group'}`}
                             >
                                 {!imagePreview || isScanning ? null : (
                                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
@@ -411,7 +545,7 @@ const LarvaeScanner: React.FC = () => {
                                 <button
                                     onClick={handleGenerateDiagnosis}
                                     disabled={isGeneratingDiagnosis}
-                                    className={`px-6 py-3 rounded-lg font-bold font-sci-fi tracking-widest transition-all shadow-lg flex items-center gap-2 ${isGeneratingDiagnosis ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/50 hover:shadow-emerald-500/50'}`}
+                                    className={`px-4 py-2.5 rounded-lg text-xs md:text-sm font-bold font-sci-fi tracking-wider transition-all shadow-md flex items-center gap-2 ${isGeneratingDiagnosis ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950 hover:shadow-emerald-500/30 font-bold'}`}
                                 >
                                     {isGeneratingDiagnosis ? 'MENJANA...' : 'JANA DIAGNOSA AI'}
                                 </button>
@@ -464,14 +598,53 @@ const LarvaeScanner: React.FC = () => {
                         </div>
 
                         {diagnosis && (
-                            <div className="bg-emerald-950/30 border-l-4 border-emerald-500 border-t border-r border-b border-emerald-500/30 rounded-r-xl p-4 sm:p-5 overflow-y-auto max-h-[500px] shadow-[0_0_20px_rgba(16,185,129,0.1)] relative">
-                                <div className="absolute top-0 right-0 w-8 h-8 bg-[linear-gradient(135deg,transparent_50%,rgba(16,185,129,0.2)_50%)]"></div>
-                                <h3 className="text-emerald-400 font-bold mb-4 font-sci-fi tracking-widest text-sm flex items-center gap-2">
-                                    <span className="w-2 h-2 bg-emerald-400 rounded-full animate-ping mr-1"></span>
-                                    DIAGNOSA SAINTIFIK AI
-                                </h3>
-                                <div className="text-sm text-slate-300 prose prose-invert prose-emerald max-w-none break-words">
-                                    <ReactMarkdown>{diagnosis}</ReactMarkdown>
+                            <div className="bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border border-emerald-500/30 rounded-2xl p-6 shadow-[0_0_30px_rgba(16,185,129,0.15)] relative overflow-hidden group">
+                                {/* Decorative tech accents */}
+                                <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"></div>
+                                <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent"></div>
+                                <div className="absolute top-2 right-2 flex gap-1.5 opacity-40">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/60"></span>
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/30"></span>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-emerald-500/20 pb-4 mb-5 flex-wrap">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="relative flex items-center justify-center">
+                                            <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-500/20 animate-ping"></span>
+                                            <div className="w-9 h-9 rounded-xl bg-emerald-950/80 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-md">
+                                                🔬
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-emerald-400 font-bold font-sci-fi tracking-widest text-sm flex items-center gap-2">
+                                                DIAGNOSA SAINTIFIK AI
+                                            </h3>
+                                            <p className="text-[9px] text-emerald-500/70 font-mono tracking-wider uppercase">Laporan Analisis Bio-Molekular Pintar</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Download / Print button */}
+                                    <button 
+                                        type="button"
+                                        onClick={() => window.print()}
+                                        className="self-start sm:self-auto px-2.5 py-1.5 rounded-lg border border-emerald-500/20 hover:border-emerald-500/50 bg-emerald-950/20 text-emerald-400 hover:text-emerald-300 font-mono text-[9px] font-bold tracking-wider uppercase transition-all flex items-center gap-1.5 shadow-md active:scale-95 no-print"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                        </svg>
+                                        CETAK LAPORAN
+                                    </button>
+                                </div>
+
+                                <div className="bg-slate-950/90 border border-slate-900 p-5 rounded-xl shadow-inner max-h-[500px] overflow-y-auto scrollbar-thin">
+                                    <div className="text-sm text-slate-300 prose prose-invert prose-emerald max-w-none break-words leading-relaxed selection:bg-emerald-500/20 text-left">
+                                        <ReactMarkdown>{diagnosis}</ReactMarkdown>
+                                    </div>
+                                </div>
+                                <div className="mt-4 flex items-center justify-between text-[9px] text-slate-500 font-mono border-t border-slate-900/40 pt-3 flex-wrap gap-2">
+                                    <span>KLASIFIKASI: SEPARA-AUTOMASI</span>
+                                    <span>SISTEM DISOKONG OLEH GEMINI LLM</span>
                                 </div>
                             </div>
                         )}

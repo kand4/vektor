@@ -757,7 +757,7 @@ ${textPrompt}`;
 
                  {/* Bottom: Report taking full width but layout stays clean */}
                  <div className="w-full xl:w-[80%] mx-auto">
-                    <KKMReport result={result} />
+                    <KKMReport result={result} onUpdateResult={onUpdateResult} />
                  </div>
              </div>
              
