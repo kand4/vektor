@@ -5,6 +5,7 @@ import { analyzeAdultMosquito } from '../services/geminiService';
 
 import { useLanguage } from '../contexts/LanguageContext';
 import Mosquito3DViewer from './Mosquito3DViewer';
+import ImageMagnifier from './ImageMagnifier';
 
 import AegyptiImg from '../src/assets/images/Aegypti.jpg';
 import AlbopictusImg from '../src/assets/images/Albopictus.jpg';
@@ -421,11 +422,12 @@ const AdultMosquitoScanner: React.FC = () => {
                             </div>
                             <div className="bg-slate-950/40 border border-slate-800 rounded-2xl overflow-hidden p-2 group">
                                 <div className="relative aspect-[16/10] bg-slate-900 rounded-xl overflow-hidden">
-                                    <img 
+                                    <ImageMagnifier 
                                         src={AEGYPTI_POSTER_URL} 
                                         alt="Poster Aedes aegypti"
-                                        referrerPolicy="no-referrer"
-                                        className="w-full h-full object-contain opacity-90 group-hover:opacity-100 transition-opacity duration-300"
+                                        zoomLevel={2.5}
+                                        imageClassName="w-full h-full object-contain opacity-90 group-hover:opacity-100 transition-opacity duration-300"
+                                        className="w-full h-full flex items-center justify-center"
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 to-transparent pointer-events-none"></div>
                                 </div>
@@ -450,11 +452,12 @@ const AdultMosquitoScanner: React.FC = () => {
                             </div>
                             <div className="bg-slate-950/40 border border-slate-800 rounded-2xl overflow-hidden p-2 group">
                                 <div className="relative aspect-[16/10] bg-slate-900 rounded-xl overflow-hidden">
-                                    <img 
+                                    <ImageMagnifier 
                                         src={ALBOPICTUS_POSTER_URL} 
                                         alt="Poster Aedes albopictus"
-                                        referrerPolicy="no-referrer"
-                                        className="w-full h-full object-contain opacity-90 group-hover:opacity-100 transition-opacity duration-300"
+                                        zoomLevel={2.5}
+                                        imageClassName="w-full h-full object-contain opacity-90 group-hover:opacity-100 transition-opacity duration-300"
+                                        className="w-full h-full flex items-center justify-center"
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 to-transparent pointer-events-none"></div>
                                 </div>

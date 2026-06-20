@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../contexts/LanguageContext';
 import { motion } from 'motion/react';
 import { generateLarvaeDiagnosis, deepLarvaeAnalysis } from '../services/geminiService';
+import ImageMagnifier from './ImageMagnifier';
 
 import LarvaImg from '../src/assets/images/Larva.png';
 
@@ -678,11 +679,12 @@ const LarvaeScanner: React.FC = () => {
 
                     <div className="bg-slate-950/40 border border-slate-800 rounded-2xl overflow-hidden p-2 group">
                         <div className="relative aspect-[16/10] sm:aspect-[16/9] bg-slate-900 rounded-xl overflow-hidden cursor-zoom-in">
-                            <img 
+                            <ImageMagnifier 
                                 src={LARVAE_POSTER_URL} 
                                 alt="Poster Anatomi Larva"
-                                referrerPolicy="no-referrer"
-                                className="w-full h-full object-contain opacity-90 group-hover:opacity-100 transition-opacity duration-300"
+                                zoomLevel={2.5}
+                                imageClassName="w-full h-full object-contain opacity-90 group-hover:opacity-100 transition-opacity duration-300"
+                                className="w-full h-full flex items-center justify-center"
                             />
                             {/* Overlay info */}
                             <div className="absolute bottom-4 left-4 bg-slate-900/60 backdrop-blur-md border border-slate-700/50 p-3 rounded-lg max-w-sm hidden md:block">
