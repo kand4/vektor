@@ -35,7 +35,7 @@ export const translations = {
     // Results
     btn_manual_scan: "IMBAS MANUAL",
     btn_simulation: "SIMULASI BIO-BERSIH",
-    btn_export: "EKSPORT KE AI LUAR",
+    btn_export: "EKSPORT (TELEGRAM & TELEGRAPH)",
     btn_view_report: "LIHAT LAPORAN",
     tab_official: "RASMI",
     tab_savage: "PEDAS",
@@ -265,7 +265,7 @@ export const translations = {
 
     btn_manual_scan: "MANUAL SCAN",
     btn_simulation: "BIO-CLEANSE SIM",
-    btn_export: "EXPORT TO EXT. AI",
+    btn_export: "EXPORT (TELEGRAM & TELEGRAPH)",
     btn_view_report: "VIEW REPORT",
     tab_official: "OFFICIAL",
     tab_savage: "SAVAGE",
@@ -492,7 +492,7 @@ export const translations = {
 
     btn_manual_scan: "手动扫描",
     btn_simulation: "生物净化模拟",
-    btn_export: "导出至外部 AI",
+    btn_export: "导出至 TELEGRAM & TELEGRAPH",
     btn_view_report: "查看报告",
     tab_official: "官方",
     tab_savage: "毒舌模式",
@@ -717,7 +717,7 @@ export const translations = {
 
     btn_manual_scan: "கையேடு ஸ்கேன்",
     btn_simulation: "சுத்திகரிப்பு சிமுலேஷன்",
-    btn_export: "வெளிப்புற AI",
+    btn_export: "டெலிகிராம் & டெலிகிராப்பிற்கு ஏற்றுமதி",
     btn_view_report: "அறிக்கையைப் பார்",
     tab_official: "அதிகாரப்பூர்வ",
     tab_savage: "கடுமையான",

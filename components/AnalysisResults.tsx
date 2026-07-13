@@ -9,6 +9,7 @@ import { Toast } from './Toast';
 import { SimulationConfigModal } from './Modals/SimulationConfigModal';
 import { SimulationResultModal } from './Modals/SimulationResultModal';
 import { ManualSimulationModal } from './Modals/ManualSimulationModal';
+import { ExportModal } from './Modals/ExportModal';
 import { DualScoreCard } from './DualScoreCard';
 
 const getRiskColorParams = (category: RiskCategory) => {
@@ -96,6 +97,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   const [cleanImages, setCleanImages] = useState<string[]>(savedSimulationImage ? [savedSimulationImage] : []);
   const [showCleanModal, setShowCleanModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [showManualSimModal, setShowManualSimModal] = useState(false);
   const [manualSimPrompt, setManualSimPrompt] = useState("");
   const [generatedSimPrompt, setGeneratedSimPrompt] = useState("");
@@ -489,6 +491,7 @@ ${textPrompt}`;
              <SimulationConfigModal isOpen={showConfigModal} onClose={() => setShowConfigModal(false)} onStart={startSimulation} />
              <SimulationResultModal isOpen={showCleanModal} onClose={() => setShowCleanModal(false)} originalImage={imageSrc} generatedImages={cleanImages} generatedPrompt={generatedSimPrompt} onRegenerate={handleRegenerateSimulation} onManualFallback={handleManualFallback} onAnalyzeSimulation={onAnalyzeGeneratedImage} />
              <ManualSimulationModal isOpen={showManualSimModal} onClose={() => setShowManualSimModal(false)} promptText={manualSimPrompt} onImagePasted={handleManualSimulationPasted} />
+             <ExportModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} sessions={allSessions} />
              
              {/* THE HIDDEN PRINT MODULE */}
              <PrintLayout sessions={allSessions.map(session => {
@@ -539,6 +542,9 @@ ${textPrompt}`;
              <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
                 <h2 className="text-2xl font-bold text-blue-400 font-sci-fi">LAPORAN PEMERIKSAAN KKM</h2>
                 <div className="flex gap-2">
+                    <button onClick={() => setShowExportModal(true)} className="flex items-center gap-2 px-4 py-2 rounded text-sm font-bold uppercase tracking-wider transition-all border border-blue-500/50 hover:bg-blue-900/30 text-blue-400 bg-slate-900 shadow-lg" title="Eksport ke Telegram/Telegraph">
+                        📤 {t('btn_export') || 'EKSPORT (TG)'}
+                    </button>
                     <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 rounded text-sm font-bold uppercase tracking-wider transition-all border border-green-500/50 hover:bg-green-900/30 text-green-400 bg-slate-900 shadow-lg" title="Cetak Laporan PDF">
                         🖨️ {t('btn_print_pdf') || 'CETAK LAPORAN PDF'}
                     </button>
@@ -819,6 +825,7 @@ ${textPrompt}`;
       <SimulationConfigModal isOpen={showConfigModal} onClose={() => setShowConfigModal(false)} onStart={startSimulation} />
       <SimulationResultModal isOpen={showCleanModal} onClose={() => setShowCleanModal(false)} originalImage={imageSrc} generatedImages={cleanImages} generatedPrompt={generatedSimPrompt} onRegenerate={handleRegenerateSimulation} onManualFallback={handleManualFallback} onAnalyzeSimulation={onAnalyzeGeneratedImage} />
       <ManualSimulationModal isOpen={showManualSimModal} onClose={() => setShowManualSimModal(false)} promptText={manualSimPrompt} onImagePasted={handleManualSimulationPasted} />
+      <ExportModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} sessions={allSessions} />
       
       {/* THE HIDDEN PRINT MODULE */}
       <PrintLayout sessions={allSessions} />
@@ -859,7 +866,9 @@ ${textPrompt}`;
             <button onClick={handleOpenSimulation} disabled={isCleaning} className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded text-xs md:text-sm font-bold uppercase tracking-wider transition-all border border-cyan-500/50 hover:bg-cyan-900/30 text-cyan-400 disabled:opacity-50`}>
                 {isCleaning ? <span className="animate-pulse">SIMULATING...</span> : <>✨ {t('btn_simulation')}</>}
             </button>
-            
+            <button onClick={() => setShowExportModal(true)} className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded text-xs md:text-sm font-bold uppercase tracking-wider transition-all border border-blue-500/50 hover:bg-blue-900/30 text-blue-400 bg-slate-900 shadow-md" title="Eksport ke Telegram/Telegraph">
+                📤 {t('btn_export') || 'EKSPORT (TG)'}
+            </button>
             <button onClick={handlePrint} className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded text-xs md:text-sm font-bold uppercase tracking-wider transition-all border border-green-500/50 hover:bg-green-900/30 text-green-400">
                 🖨️ {t('btn_print_pdf')}
             </button>
@@ -932,15 +941,6 @@ ${textPrompt}`;
                  </button>
               </div>
               <ImageAnnotator imageSrc={imageSrc} cleanedImageSrc={cleanImages[cleanImages.length - 1]} risks={filteredRisks} onRiskSelect={handleRiskChange} selectedId={activeRisk?.id} isEditing={isEditing} onRegionDrawn={handleRegionDrawn} />
-               
-              {activeRisk && (
-                  <div className="p-4 bg-slate-950 border-t border-slate-700">
-                      <h4 className="text-emerald-500 font-bold text-xs font-sci-fi uppercase mb-1">{t('label_analysis')}</h4>
-                      <p className="text-slate-300 text-sm leading-relaxed">{activeRisk.description}</p>
-                      <h4 className="text-emerald-500 font-bold text-xs font-sci-fi uppercase mt-3 mb-1">{t('card_recommendation')}</h4>
-                      <p className="text-slate-200 text-sm italic">{activeRisk.solution}</p>
-                  </div>
-              )}
            </div>
 
            {/* SENSITIVITY CONTROL SECTION (STANDARD) */}

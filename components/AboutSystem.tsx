@@ -129,7 +129,7 @@ const AboutSystem: React.FC<AboutSystemProps> = ({ isOpen, onClose }) => {
                         </div>
                         <div className="bg-emerald-950/40 border border-emerald-800/40 px-3 py-1.5 text-emerald-400 rounded-lg font-mono-sci text-xs flex items-center gap-2 max-w-max shadow-lg shadow-emerald-950/25">
                             <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
-                            STATUS: v3.2.0-STABLE
+                            STATUS: v3.4.3-STABLE
                         </div>
                     </div>
 
@@ -137,18 +137,83 @@ const AboutSystem: React.FC<AboutSystemProps> = ({ isOpen, onClose }) => {
                         <div className="text-slate-300 space-y-2 border-b border-slate-900 pb-4">
                             <span className="text-emerald-500 font-mono-sci font-bold uppercase tracking-wider block">ℹ️ Membaca Nombor Versi (Format SemVer):</span>
                             <p className="leading-relaxed">
-                                Format versi yang digunakan bagi VectorGuard.AI adalah format piawai industri <strong className="text-emerald-400 font-mono">MAJOR.MINOR.PATCH</strong> (Contoh: <code className="text-emerald-400 bg-emerald-950/50 px-1 py-0.5 rounded font-mono">3.2.0</code>):
+                                Format versi yang digunakan bagi VectorGuard.AI adalah format piawai industri <strong className="text-emerald-400 font-mono">MAJOR.MINOR.PATCH</strong> (Contoh: <code className="text-emerald-400 bg-emerald-950/50 px-1 py-0.5 rounded font-mono">3.4.3</code>):
                             </p>
                             <ul className="list-disc pl-5 mt-2 space-y-1 text-slate-400">
                                 <li><strong className="text-slate-200 font-mono">MAJOR [3]</strong> : Perubahan reka bentuk struktur utama / penaiktarafan generasi sistem (v3 melambangkan migrasi AI penuh).</li>
-                                <li><strong className="text-slate-200 font-mono">MINOR [2]</strong> : Kemas kini modul berskala besar seperti penambahan Carta Anatomi/Poster Side-By-Side & Profil Aedes Albopictus.</li>
-                                <li><strong className="text-slate-200 font-mono">PATCH [0]</strong> : Pembetulan pepijat (bug fixes), suntingan pautan fail, dan pengoptimuman kelajuan sistem.</li>
+                                <li><strong className="text-slate-200 font-mono">MINOR [4]</strong> : Kemas kini modul berskala besar seperti penyepaduan panel Pengkalan Data Biodiversiti Global (GBIF).</li>
+                                <li><strong className="text-slate-200 font-mono">PATCH [3]</strong> : Pembaikan pepijat, sokongan eksport Telegram & Telegraph automatik.</li>
                             </ul>
                         </div>
 
                         {/* Timeline logs */}
                         <div className="space-y-4 pt-2">
                             <div className="relative border-l border-slate-800 pl-4 space-y-6">
+                                {/* Item v3.4.3 */}
+                                <div className="relative">
+                                    <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-4 ring-emerald-950/60 animate-pulse"></span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-mono text-emerald-400 font-bold bg-emerald-950/50 px-2 py-0.5 rounded">v3.4.3</span>
+                                        <span className="text-slate-500 font-mono text-[10px]">03 JUL 2026</span>
+                                    </div>
+                                    <h5 className="font-bold text-white mt-1 uppercase font-sci-fi tracking-wider">Integrasi Pelaporan Telegram & Telegraph</h5>
+                                    <p className="text-slate-400 mt-1 leading-relaxed">
+                                        Memperkenalkan modul perkongsian dan eksport terus ke Telegram (Kumpulan/Saluran/Bot) beserta penjanaan artikel Telegraph tanpa had imej, bagi menyokong operasi bilik gerakan dan siaran laporan kesihatan secara masa nyata.
+                                    </p>
+                                </div>
+
+                                {/* Item v3.4.2 */}
+                                <div className="relative">
+                                    <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-4 ring-emerald-950/60 animate-pulse"></span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-mono text-emerald-400 font-bold bg-emerald-950/50 px-2 py-0.5 rounded">v3.4.2</span>
+                                        <span className="text-slate-500 font-mono text-[10px]">22 JUN 2026</span>
+                                    </div>
+                                    <h5 className="font-bold text-white mt-1 uppercase font-sci-fi tracking-wider">Sinkronisasi Dinamik Data Taksonomi GBIF</h5>
+                                    <p className="text-slate-400 mt-1 leading-relaxed">
+                                        Panel pangkalan data antarabangsa GBIF dikemas kini agar paparan taksonomi dan taburan peta segerak dengan bacaan AI terkini. Pengelasan spesis nyamuk yang tidak terhad kepada <i>Aedes</i> (cth: <i>Culex</i>, <i>Anopheles</i>) akan menarik data API berkaitan secara pintar.
+                                    </p>
+                                </div>
+
+                                {/* Item v3.4.1 */}
+                                <div className="relative">
+                                    <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-4 ring-emerald-950/60 animate-pulse"></span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-mono text-emerald-400 font-bold bg-emerald-950/50 px-2 py-0.5 rounded">v3.4.1</span>
+                                        <span className="text-slate-500 font-mono text-[10px]">22 JUN 2026</span>
+                                    </div>
+                                    <h5 className="font-bold text-white mt-1 uppercase font-sci-fi tracking-wider">Lensa Pembesar Pintar & Pemetaan Anomali Spasial AI</h5>
+                                    <p className="text-slate-400 mt-1 leading-relaxed">
+                                        Pengoptimuman antara muka dengan fitur <i>Magnifier</i> yang tidak menghalang interaksi sentuhan diletakkan pada keseluruhan imej input di modul Nyamuk Dewasa dan Detektif Jejentik. Prom kejuruteraan sistem forensik AI Gemini dinaiktaraf untuk mendepani orientasi visual bukan-ideal secara cemerlang.
+                                    </p>
+                                </div>
+
+                                {/* Item v3.4.0 */}
+                                <div className="relative">
+                                    <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-4 ring-emerald-950/60 animate-pulse"></span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-mono text-emerald-400 font-bold bg-emerald-950/50 px-2 py-0.5 rounded">v3.4.0</span>
+                                        <span className="text-slate-500 font-mono text-[10px]">22 JUN 2026</span>
+                                    </div>
+                                    <h5 className="font-bold text-white mt-1 uppercase font-sci-fi tracking-wider">Penyepaduan "Global Biodiversity Information Facility" (GBIF)</h5>
+                                    <p className="text-slate-400 mt-1 leading-relaxed">
+                                        Memperkenalkan panel statistik canggih bersumberkan pangkalan data terbuka GBIF terus ke atas hasil pengimbasan "Detektif Jejentik" dan "Analisis Nyamuk Dewasa". Paparan rekabentuk Dark Cybertech ini menyalurkan taksonomi terperinci dan maklumat peta taburan vektor berskala global (tanpa API Key bertutup).
+                                    </p>
+                                </div>
+
+                                {/* Item v3.3.0 */}
+                                <div className="relative">
+                                    <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-4 ring-emerald-950/60 animate-pulse"></span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-mono text-emerald-400 font-bold bg-emerald-950/50 px-2 py-0.5 rounded">v3.3.0</span>
+                                        <span className="text-slate-500 font-mono text-[10px]">22 JUN 2026</span>
+                                    </div>
+                                    <h5 className="font-bold text-white mt-1 uppercase font-sci-fi tracking-wider">Permainan "Aedes Hunt", Penyah-tindihan & Kerangka Kerja Keselamatan</h5>
+                                    <p className="text-slate-400 mt-1 leading-relaxed">
+                                        Melancarkan secara rasmi modul latihan gamifikasi interaktif <strong>"Aedes Hunt"</strong> untuk mencabar kecekapan pegawai lapangan mengesan zon pembiakan virtual. Menyingkirkan ulasan "Saranan Kesihatan Awam" sekunder yang bertindih terus di bawah gambar imbasan bagi melunaskan reka bentuk bento-grid yang lebih padat dan kemas, manakala ulasan berwibawa di bawah modul "Hygiene Ancaman" dikekalkan seadanya. Menyediakan dokumentasi audit risiko keselamatan siber dan perbincangan gerbang API rasmi untuk kegunaan agensi/kerajaan.
+                                    </p>
+                                </div>
+
                                 {/* Item v3.2.0 */}
                                 <div className="relative">
                                     <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-4 ring-emerald-950/60 animate-pulse"></span>

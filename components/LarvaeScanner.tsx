@@ -5,6 +5,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { motion } from 'motion/react';
 import { generateLarvaeDiagnosis, deepLarvaeAnalysis } from '../services/geminiService';
 import ImageMagnifier from './ImageMagnifier';
+import GBIFDataPanel from './GBIFDataPanel';
 
 import LarvaImg from '../src/assets/images/Larva.png';
 
@@ -33,62 +34,6 @@ const LarvaeScanner: React.FC = () => {
     
     // Magnifier states & controls
     const containerRef = useRef<HTMLDivElement>(null);
-    const [isMagnifierActive, setIsMagnifierActive] = useState(false);
-    const [magnifierState, setMagnifierState] = useState({
-        show: false,
-        x: 0,
-        y: 0,
-        bgX: '0%',
-        bgY: '0%'
-    });
-
-    const handleMouseMoveOrTouch = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
-        if (!isMagnifierActive || !containerRef.current) return;
-        
-        const container = containerRef.current;
-        const rect = container.getBoundingClientRect();
-        
-        let clientX = 0;
-        let clientY = 0;
-        
-        if ('touches' in e) {
-            if (e.touches.length === 0) return;
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-        } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
-        }
-        
-        const x = clientX - rect.left;
-        const y = clientY - rect.top;
-        
-        if (x < 0 || y < 0 || x > rect.width || y > rect.height) {
-            setMagnifierState(prev => ({ ...prev, show: false }));
-            return;
-        }
-        
-        const bgX = ((x / rect.width) * 100).toFixed(2) + '%';
-        const bgY = ((y / rect.height) * 100).toFixed(2) + '%';
-        
-        setMagnifierState({
-            show: true,
-            x,
-            y,
-            bgX,
-            bgY
-        });
-    };
-
-    const handleMouseEnter = () => {
-        if (isMagnifierActive) {
-            setMagnifierState(prev => ({ ...prev, show: true }));
-        }
-    };
-
-    const handleMouseLeave = () => {
-        setMagnifierState(prev => ({ ...prev, show: false }));
-    };
 
     // Roboflow parameters
     const [confidenceThreshold, setConfidenceThreshold] = useState<number>(40); // default 40%
@@ -317,64 +262,22 @@ const LarvaeScanner: React.FC = () => {
                                                 />
                                             </label>
                                         </div>
-                                        
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setIsMagnifierActive(!isMagnifierActive);
-                                                if (!isMagnifierActive) {
-                                                    setMagnifierState(prev => ({ ...prev, show: false }));
-                                                }
-                                            }}
-                                            className={`px-3 py-1.5 rounded-lg border font-mono text-[10px] font-bold tracking-widest transition-all uppercase flex items-center gap-1.5 shadow-lg ${
-                                                isMagnifierActive 
-                                                    ? 'bg-cyan-500 text-slate-950 border-cyan-300 shadow-cyan-500/20 scale-105' 
-                                                    : 'bg-slate-900/90 text-slate-300 border-slate-700 hover:text-white hover:border-slate-500'
-                                            }`}
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.637 10.637Z" />
-                                            </svg>
-                                            <span>{isMagnifierActive ? 'KANTA AKTIF' : 'KANTA ZOOM'}</span>
-                                        </button>
                                     </div>
 
                                     <div 
                                         ref={containerRef}
-                                        className={`relative inline-block max-w-full max-h-[60vh] overflow-hidden ${isMagnifierActive ? 'cursor-none select-none' : ''}`}
-                                        onMouseMove={handleMouseMoveOrTouch}
-                                        onTouchMove={handleMouseMoveOrTouch}
-                                        onMouseEnter={handleMouseEnter}
-                                        onMouseLeave={handleMouseLeave}
-                                        onTouchStart={handleMouseEnter}
-                                        onTouchEnd={handleMouseLeave}
+                                        className={`relative inline-block max-w-full max-h-[60vh] overflow-hidden`}
                                     >
-                                        <img 
+                                        <ImageMagnifier 
                                             src={imagePreview} 
                                             alt="Preview" 
-                                            className="max-w-full max-h-[60vh] rounded drop-shadow-2xl"
-                                            ref={imageRef}
-                                            onLoad={(e) => {
+                                            imageClassName="max-w-full max-h-[60vh] rounded drop-shadow-2xl"
+                                            imageRef={imageRef}
+                                            onLoad={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
                                                 const img = e.target as HTMLImageElement;
                                                 setImageDimensions({ naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight });
                                             }}
                                         />
-
-                                        {isMagnifierActive && magnifierState.show && (
-                                            <div
-                                                className="absolute rounded-full pointer-events-none border-2 border-cyan-400 z-50 shadow-[0_0_20px_rgba(0,0,0,0.5),inset_0_0_10px_rgba(255,255,255,0.2)] bg-no-repeat"
-                                                style={{
-                                                    width: '150px',
-                                                    height: '150px',
-                                                    left: `${magnifierState.x - 75}px`,
-                                                    top: `${magnifierState.y - 75}px`,
-                                                    backgroundImage: `url(${imagePreview})`,
-                                                    backgroundSize: '250%', // 2.5x Zoom
-                                                    backgroundPosition: `${parseFloat(magnifierState.bgX)}% ${parseFloat(magnifierState.bgY)}%`,
-                                                }}
-                                            />
-                                        )}
                                         {(predictions && imageDimensions) && (
                                             <>
                                                 {/* SVG Lines Overlay */}
@@ -648,6 +551,25 @@ const LarvaeScanner: React.FC = () => {
                                     <span>SISTEM DISOKONG OLEH GEMINI LLM</span>
                                 </div>
                             </div>
+                        )}
+
+                        {/* GBIF DATA PANEL */}
+                        {diagnosis && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                                className="mt-6"
+                            >
+                                <GBIFDataPanel speciesName={(() => {
+                                    const text = diagnosis.toLowerCase();
+                                    if (text.includes("culex")) return "Culex";
+                                    if (text.includes("anopheles")) return "Anopheles";
+                                    if (text.includes("mansonia")) return "Mansonia";
+                                    if (text.includes("armigeres")) return "Armigeres";
+                                    return "Aedes";
+                                })()} />
+                            </motion.div>
                         )}
                     </div>
                 </div>

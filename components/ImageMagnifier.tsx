@@ -4,13 +4,15 @@ import { createPortal } from 'react-dom';
 interface ImageMagnifierProps {
     src: string;
     alt: string;
-    width?: string;
-    height?: string;
+    width?: string | number;
+    height?: string | number;
     magnifierHeight?: number;
     magnifierWidth?: number;
     zoomLevel?: number;
     className?: string;
     imageClassName?: string;
+    onLoad?: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void;
+    imageRef?: React.RefObject<HTMLImageElement>;
 }
 
 const ImageMagnifier: React.FC<ImageMagnifierProps> = ({
@@ -22,7 +24,9 @@ const ImageMagnifier: React.FC<ImageMagnifierProps> = ({
     magnifierWidth = 250,
     zoomLevel = 2.5,
     className = '',
-    imageClassName = ''
+    imageClassName = '',
+    onLoad,
+    imageRef
 }) => {
     const [[x, y], setXY] = useState([0, 0]);
     const [[clientX, clientY], setClientPos] = useState([0, 0]);
@@ -134,12 +138,14 @@ const ImageMagnifier: React.FC<ImageMagnifierProps> = ({
             style={{ width, height }}
         >
             <img
+                ref={imageRef}
                 src={src}
                 alt={alt}
                 draggable={false}
                 style={{ WebkitTouchCallout: 'none' }}
                 className={`${imageClassName} touch-none select-none`}
                 onContextMenu={(e) => { e.preventDefault(); return false; }}
+                onLoad={onLoad}
                 onMouseEnter={handleMouseEnter}
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}

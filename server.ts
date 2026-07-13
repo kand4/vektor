@@ -128,6 +128,203 @@ async function startServer() {
     }
   });
 
+  // API proxy route for Telegram
+  app.post("/api/telegram/send", async (req, res) => {
+    try {
+      const { text, mediaUrls, clientBotToken, clientChatId } = req.body;
+      const botToken = (clientBotToken || process.env.TELEGRAM_BOT_TOKEN || '').toString().trim();
+      const chatId = (clientChatId || process.env.TELEGRAM_CHAT_ID || '').toString().trim();
+
+      if (!botToken || !chatId) {
+        return res.status(400).json({
+          error: { message: "Telegram Bot Token dan Chat ID tidak dikonfigurasi dalam Server Secrets atau tetapan pengguna." }
+        });
+      }
+
+      // Helper function to chunk text
+      const chunkText = (str: string, maxLength: number = 4000): string[] => {
+        if (str.length <= maxLength) return [str];
+        const chunks = [];
+        let currentChunk = '';
+        const paragraphs = str.split('\n\n');
+        for (const p of paragraphs) {
+            if (currentChunk.length + p.length > maxLength) {
+                if (currentChunk.trim()) chunks.push(currentChunk.trim());
+                currentChunk = p + '\n\n';
+            } else {
+                currentChunk += p + '\n\n';
+            }
+        }
+        if (currentChunk.trim()) chunks.push(currentChunk.trim());
+        return chunks;
+      };
+
+      // 1. Send text chunks
+      if (text) {
+          const chunks = chunkText(text, 4000);
+          for (const chunk of chunks) {
+              const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                      chat_id: chatId,
+                      text: chunk,
+                      parse_mode: 'HTML'
+                  })
+              });
+              if (!response.ok) {
+                  let errorDescription = 'Ralat tidak diketahui';
+                  try {
+                      const errorData = await response.json();
+                      errorDescription = errorData.description || JSON.stringify(errorData);
+                  } catch (e) {
+                      const textError = await response.text();
+                      errorDescription = `Status ${response.status}: ${textError.substring(0, 200)}`;
+                  }
+                  
+                  if (errorDescription.includes("chat not found")) {
+                      errorDescription += " (Petunjuk: Jika ini ID Kumpulan/Saluran(Channel), pastikan ia bermula dengan tanda '-' seperti -100xxxx. Pastikan juga Bot anda telah dimasukkan ke dalam kumpulan/saluran tersebut sebagai Admin)";
+                  }
+                  throw new Error(`Telegram Text Error: ${errorDescription}`);
+              }
+          }
+      }
+
+      // 2. Send media groups if provided
+      if (mediaUrls && Array.isArray(mediaUrls) && mediaUrls.length > 0) {
+          const chunks = [];
+          for (let i = 0; i < mediaUrls.length; i += 10) {
+              chunks.push(mediaUrls.slice(i, i + 10));
+          }
+          for (const chunk of chunks) {
+              const mediaGroup = chunk.map(url => ({
+                  type: 'photo',
+                  media: url
+              }));
+              const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMediaGroup`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                      chat_id: chatId,
+                      media: mediaGroup
+                  })
+              });
+              if (!response.ok) {
+                  let errorDescription = 'Ralat media tidak diketahui';
+                  try {
+                      const errorData = await response.json();
+                      errorDescription = errorData.description || JSON.stringify(errorData);
+                  } catch (e) {
+                      const textError = await response.text();
+                      errorDescription = `Status ${response.status}: ${textError.substring(0, 200)}`;
+                  }
+                  
+                  if (errorDescription.includes("chat not found")) {
+                      errorDescription += " (Petunjuk: Jika ini ID Kumpulan/Saluran(Channel), pastikan ia bermula dengan tanda '-' seperti -100xxxx. Pastikan juga Bot anda telah dimasukkan ke dalam kumpulan/saluran tersebut sebagai Admin)";
+                  }
+                  throw new Error(`Telegram Media Error: ${errorDescription}`);
+              }
+          }
+      }
+
+      return res.json({ success: true, message: "Laporan berjaya dihantar ke Telegram." });
+    } catch (error: any) {
+      console.error("Telegram proxy error:", error);
+      res.status(500).json({
+        error: { message: error?.message || String(error) }
+      });
+    }
+  });
+
+  // API proxy route for Telegraph Upload (Bypass CORS via Freeimage.host because Telegraph blocks IP)
+  app.post("/api/telegraph/upload", async (req, res) => {
+    try {
+      const { image } = req.body;
+      if (!image) {
+        return res.status(400).json({ error: "Tiada imej diberikan." });
+      }
+
+      const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      if (!matches || matches.length !== 3) {
+        return res.status(400).json({ error: "Rentetan base64 tidak sah." });
+      }
+
+      const type = matches[1];
+      const base64Data = matches[2];
+      const buffer = Buffer.from(base64Data, 'base64');
+      const blob = new Blob([buffer], { type });
+
+      const formData = new FormData();
+      formData.append('source', blob, 'image.jpg');
+      formData.append('type', 'file');
+      formData.append('action', 'upload');
+      formData.append('format', 'json');
+      // Public API key for freeimage.host
+      formData.append('key', '6d207e02198a847aa98d0a2a901485a5');
+
+      const response = await fetch('https://freeimage.host/api/1/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`Ralat muat naik imej: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (data && data.image && data.image.url) {
+        return res.json({ url: data.image.url });
+      }
+      
+      throw new Error("Respons tidak sah dari pelayan imej.");
+    } catch (error: any) {
+      console.error("Image upload proxy error:", error);
+      res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  // API proxy route for Telegraph createAccount (Bypass CORS)
+  app.post("/api/telegraph/createAccount", async (req, res) => {
+    try {
+      const { authorName } = req.body;
+      const response = await fetch(`https://api.telegra.ph/createAccount?short_name=${encodeURIComponent(authorName)}&author_name=${encodeURIComponent(authorName)}`);
+      const data = await response.json();
+      if (data.ok) {
+        return res.json(data);
+      }
+      throw new Error(data.error || 'Failed to create Telegraph account');
+    } catch (error: any) {
+      console.error("Telegraph account proxy error:", error);
+      res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  // API proxy route for Telegraph createPage (Bypass CORS)
+  app.post("/api/telegraph/createPage", async (req, res) => {
+    try {
+      const { accessToken, title, authorName, content } = req.body;
+      const response = await fetch('https://api.telegra.ph/createPage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            access_token: accessToken,
+            title,
+            author_name: authorName,
+            content: JSON.stringify(content),
+            return_content: false
+        })
+      });
+      const data = await response.json();
+      if (data.ok) {
+        return res.json(data);
+      }
+      throw new Error(data.error || 'Failed to create Telegraph page');
+    } catch (error: any) {
+      console.error("Telegraph page proxy error:", error);
+      res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

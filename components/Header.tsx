@@ -9,10 +9,11 @@ interface HeaderProps {
   onGoHome?: () => void;
   onGoLarvae?: () => void;
   onGoAdult?: () => void;
-  currentView?: 'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION' | 'MANUAL_SIMULATION';
+  onGoGame?: () => void;
+  currentView?: 'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION' | 'MANUAL_SIMULATION' | 'GAME';
 }
 
-const Header: React.FC<HeaderProps> = ({ onOpenAbout, onOpenSettings, onGoHome, onGoLarvae, onGoAdult, currentView = 'HOME' }) => {
+const Header: React.FC<HeaderProps> = ({ onOpenAbout, onOpenSettings, onGoHome, onGoLarvae, onGoAdult, onGoGame, currentView = 'HOME' }) => {
   const { language, setLanguage, t } = useLanguage();
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);

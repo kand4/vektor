@@ -6,6 +6,7 @@ import { analyzeAdultMosquito } from '../services/geminiService';
 import { useLanguage } from '../contexts/LanguageContext';
 import Mosquito3DViewer from './Mosquito3DViewer';
 import ImageMagnifier from './ImageMagnifier';
+import GBIFDataPanel from './GBIFDataPanel';
 
 import AegyptiImg from '../src/assets/images/Aegypti.jpg';
 import AlbopictusImg from '../src/assets/images/Albopictus.jpg';
@@ -158,12 +159,12 @@ const AdultMosquitoScanner: React.FC = () => {
                             ) : (
                                 <div className="relative flex items-center justify-center p-2 w-full min-h-[400px]">
                                     <div className="relative inline-block max-w-full max-h-[60vh]">
-                                        <img 
+                                        <ImageMagnifier 
                                             src={imagePreview} 
                                             alt="Preview" 
-                                            className="max-w-full max-h-[60vh] rounded drop-shadow-2xl"
-                                            ref={imageRef}
-                                            onLoad={(e) => {
+                                            imageClassName="max-w-full max-h-[60vh] rounded drop-shadow-2xl"
+                                            imageRef={imageRef}
+                                            onLoad={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
                                                 const img = e.target as HTMLImageElement;
                                                 setImageDimensions({ naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight });
                                             }}
@@ -343,6 +344,25 @@ const AdultMosquitoScanner: React.FC = () => {
                                     <span>SISTEM DISOKONG OLEH GEMINI LLM</span>
                                 </div>
                             </div>
+                        )}
+
+                        {/* GBIF DATA PANEL */}
+                        {diagnosis && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                                className="mt-6"
+                            >
+                                <GBIFDataPanel speciesName={(() => {
+                                    const text = diagnosis.toLowerCase();
+                                    if (text.includes("culex")) return "Culex";
+                                    if (text.includes("anopheles")) return "Anopheles";
+                                    if (text.includes("mansonia")) return "Mansonia";
+                                    if (text.includes("armigeres")) return "Armigeres";
+                                    return "Aedes";
+                                })()} />
+                            </motion.div>
                         )}
 
                         {/* AEDES ALBOPICTUS QUICK REFERENCE BOX */}

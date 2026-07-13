@@ -39,7 +39,7 @@ const Footer: React.FC<FooterProps> = ({ onOpenAbout }) => {
            </div>
            <span className="hidden sm:inline text-slate-800 font-mono-sci">|</span>
            <span className="text-[10px] md:text-xs font-mono-sci text-emerald-500/50 uppercase tracking-widest">
-             BUILD: v3.2.0-STABLE
+             BUILD: v3.4.3-STABLE
            </span>
         </div>
 

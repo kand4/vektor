@@ -1024,9 +1024,39 @@ export const generateSimulationPrompt = async (base64Image: string, config: Simu
 export const generateCleanSimulation = async (base64Image: string, mimeType: string, config: SimulationConfig): Promise<{imageUrl: string, finalPrompt: string}> => {
     let finalPrompt = "";
     
+    // Determine Aspect Ratio
+    let aspectRatio: "1:1" | "3:4" | "4:3" | "9:16" | "16:9" = "16:9";
+    let width = 1280;
+    let height = 720;
+    let formatLabel = "LANDSCAPE";
+    
+    if (typeof window !== 'undefined') {
+        try {
+            const img = new Image();
+            await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = reject;
+                img.src = base64Image;
+            });
+            const ratio = img.width / img.height;
+            width = img.width;
+            height = img.height;
+            
+            if (ratio > 1.5) { aspectRatio = "16:9"; formatLabel = "LANDSCAPE"; width = 1280; height = 720; }
+            else if (ratio > 1.1) { aspectRatio = "4:3"; formatLabel = "LANDSCAPE"; width = 1024; height = 768; }
+            else if (ratio < 0.6) { aspectRatio = "9:16"; formatLabel = "PORTRAIT"; width = 720; height = 1280; }
+            else if (ratio < 0.9) { aspectRatio = "3:4"; formatLabel = "PORTRAIT"; width = 768; height = 1024; }
+            else { aspectRatio = "1:1"; formatLabel = "SQUARE"; width = 1024; height = 1024; }
+        } catch (e) {
+            console.warn("Could not determine image aspect ratio, defaulting to 16:9");
+        }
+    }
+
     // Attempt to generate a smart prompt using Gemini, but fallback gracefully if it fails (e.g. no key or rate limit)
     try {
         finalPrompt = await generateSimulationPrompt(base64Image, config);
+        // Force aspect ratio instruction into the smart prompt
+        finalPrompt += ` [CRITICAL: EXACTLY MATCH THE ORIGINAL IMAGE ASPECT RATIO (${formatLabel}). Do NOT change a portrait image into landscape or vice versa.]`;
     } catch (error) {
         console.warn("Could not generate smart prompt with Gemini, using config base prompt as fallback:", error);
         
@@ -1059,7 +1089,7 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
             }
         }
         
-        basePrompt += " Ultra-photorealistic, 8k resolution, highly detailed pristine photography.";
+        basePrompt += ` Ultra-photorealistic, 8k resolution, highly detailed pristine photography. [CRITICAL: EXACTLY MATCH THE ORIGINAL IMAGE ASPECT RATIO (${formatLabel}). Do NOT change a portrait image into landscape or vice versa.]`;
         finalPrompt = basePrompt;
     }
 
@@ -1076,7 +1106,7 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
                     contents: {
                         parts: [
                             { inlineData: { data: optimizedImage, mimeType: 'image/jpeg' } },
-                            { text: `TASK: Reimagine this scene strictly following these instructions: ${finalPrompt}. CRITICAL: Maintain exact camera perspective and angle.` }
+                            { text: `TASK: Reimagine this scene strictly following these instructions: ${finalPrompt}. CRITICAL: Maintain exact camera perspective, angle, and aspect ratio (${formatLabel}).` }
                         ]
                     }
                 });
@@ -1093,14 +1123,14 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
             
             // 2. Try Imagen 4.0 Generate (Google Engine Upgrade)
             try {
-                console.log("🎨 Attempting Google Imagen 4.0 (imagen-4.0-generate-001)...");
+                console.log(`🎨 Attempting Google Imagen 4.0 (imagen-4.0-generate-001) with ${aspectRatio}...`);
                 const imagenResponse = await retryWithBackoff(async () => {
                     return await ai.models.generateImages({
                         model: "imagen-4.0-generate-001",
                         prompt: finalPrompt,
                         config: {
                             numberOfImages: 1,
-                            aspectRatio: "16:9"
+                            aspectRatio: aspectRatio
                         }
                     });
                 });
@@ -1115,14 +1145,14 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
                 
                 // 3. Try Imagen 3.0 Generate (Legacy Fallback)
                 try {
-                    console.log("🎨 Attempting Google Imagen 3.0 (imagen-3.0-generate-002)...");
+                    console.log(`🎨 Attempting Google Imagen 3.0 (imagen-3.0-generate-002) with ${aspectRatio}...`);
                     const imagen3Response = await retryWithBackoff(async () => {
                         return await ai.models.generateImages({
                             model: "imagen-3.0-generate-002",
                             prompt: finalPrompt,
                             config: {
                                 numberOfImages: 1,
-                                aspectRatio: "16:9"
+                                aspectRatio: aspectRatio
                             }
                         });
                     });
@@ -1141,10 +1171,10 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
     }
 
     // Default or Fallback: Pollinations
-    console.log("🎨 Using Pollinations (External) Fallback...");
+    console.log(`🎨 Using Pollinations (External) Fallback with w:${width} h:${height}...`);
     const seed = Math.floor(Math.random() * 999999);
     const encodedPrompt = encodeURIComponent(finalPrompt);
-    const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1280&height=720&seed=${seed}&model=flux&nolog=true`;
+    const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&model=flux&nolog=true`;
     return { imageUrl: url, finalPrompt };
 };
 
@@ -1182,7 +1212,7 @@ export const deepLarvaeAnalysis = async (base64Image: string): Promise<{ diagnos
     - **Kepala**: Bentuk kapsul kepala dan susunan sesungut (antennae).
     - **Abdomen**: Struktur segmen anal dan 'saddle'.
     - **Ciri Tambahan**: Corak pada kulit atau kehadiran 'anal papillae'.
- 3. Bounding box (box_2d) mestilah tepat melingkungi feature anatomi yang disebut.
+ 3. **PENTING UNTUK IMBASAN BUKAN IDEAL**: Imej larva atau serangga mungkin senget, terbalik, berada dalam air yang kotor, melengkung, atau tidak rata. Anda dibekalkan dengan kecerdasan spasial tinggi untuk merotasi pemetaan mental anda. Pastikan Bounding box (box_2d) yang dijana adalah **TEPAT JITU** mengikut posisi sebenar ciri anatomi pada gambar tanpa mengira orientasinya. [Skala koordinat: 0 hingga 1000].
  4. Diagnosis mestilah mengesahkan spesis yang paling berkemungkinan berdasarkan bukti visual kuat yang ditemui.
  
  FORMAT OUTPUT JSON SAHAJA:
@@ -1293,18 +1323,18 @@ Spesis ini merupakan ancaman kritikal vektor nyamuk pembawa virus Demam Denggi d
 export const analyzeAdultMosquito = async (base64Image: string): Promise<{ diagnosis: string, predictions: any[] }> => {
     try {
         const optimizedImage = await compressImage(base64Image, 1024, 0.8);
-        
-        const prompt = `Anda adalah Pakar Entomologi Forensik dan Pakar Sektor Vektor. Fokus anda ialah pengelasan spesis nyamuk melalui morfologi visual yang ketat.
- 
- TUGAS ANDA:
- 1. Lakukan pengenalan spesis nyamuk yang tepat (contoh: Aedes aegypti, Aedes albopictus, Culex quinquefasciatus).
- 2. Cari secara khusus ciri diagnostik berikut (SILA SENARAIKAN CIRI INI DALAM PREDIKSI JIKA DITEMUI):
-    - **Toraks**: Cari corak lyre (Aedes aegypti) atau jalur putih median (Aedes albopictus).
-    - **Kaki**: Cari jalur putih pada tarsus atau femur.
-    - **Sayap**: Analisa corak venasi sayap dan kehadiran sisik pada urat sayap.
-    - **Anatomi Tambahan**: Proborcis, palpus maksilari.
- 3. Bounding box (box_2d) mestilah tepat melingkungi feature anatomi yang disebut.
- 4. Diagnosis mestilah mengesahkan spesis yang paling berkemungkinan berdasarkan bukti visual kuat yang ditemui.
+    
+    const prompt = `Anda adalah Pakar Entomologi Forensik dan Pakar Sektor Vektor. Fokus anda ialah pengelasan spesis nyamuk melalui morfologi visual yang ketat.
+
+TUGAS ANDA:
+1. Lakukan pengenalan spesis nyamuk yang tepat (contoh: Aedes aegypti, Aedes albopictus, Culex quinquefasciatus).
+2. Cari secara khusus ciri diagnostik berikut (SILA SENARAIKAN CIRI INI DALAM PREDIKSI JIKA DITEMUI):
+   - **Toraks**: Cari corak lyre (Aedes aegypti) atau jalur putih median (Aedes albopictus).
+   - **Kaki**: Cari jalur putih pada tarsus atau femur.
+   - **Sayap**: Analisa corak venasi sayap dan kehadiran sisik pada urat sayap.
+   - **Anatomi Tambahan**: Proborcis, palpus maksilari.
+3. **PENTING UNTUK IMBASAN BUKAN IDEAL**: Imej nyamuk dewasa mungkin senget, terbalik, melekat pada dinding, renyuk akibat pukulan, mati, atau tidak rata. Anda dibekalkan dengan masa berfikir spasial tinggi untuk memetakan anatomi pada sebarang orientasi. Pastikan Bounding box (box_2d) adalah **TEPAT JITU** mengelilingi posisi mutlak anatomi spesifik pada imej asal, waima condong atau terbalik arahnya. [Skala koordinat: 0 hingga 1000].
+4. Diagnosis mestilah mengesahkan spesis yang paling berkemungkinan berdasarkan bukti visual kuat yang ditemui.
  
  FORMAT OUTPUT JSON SAHAJA:
  {

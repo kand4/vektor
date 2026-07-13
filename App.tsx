@@ -23,6 +23,7 @@ import { resizeAndCompressImage } from './utils/imageUtils';
 import { dbGet, dbSet, dbClear } from './utils/db';
 import { Toast } from './components/Toast';
 import { ManualJsonBypassPanel } from './components/ManualJsonBypassPanel';
+import { AedesHuntGame } from './components/AedesHuntGame';
 
 const MANUAL_SIMULATION_DEFAULT_PROMPT = `Sila gunakan tool penjana imej (Imagen) untuk mengubah imej yang saya kongsikan ini:
 
@@ -41,7 +42,7 @@ const App: React.FC = () => {
       localStorage.removeItem('gemini_model_preference');
     }
   }, []);
-  const [currentView, setCurrentView] = useState<'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION' | 'MANUAL_SIMULATION'>('HOME');
+  const [currentView, setCurrentView] = useState<'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION' | 'MANUAL_SIMULATION' | 'GAME'>('HOME');
   const [currentHomeSubView, setCurrentHomeSubView] = useState<'MENU' | 'FORENSIC' | 'ANALYTICS'>('MENU');
   const [sessions, setSessions] = useState<AnalysisSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -424,6 +425,7 @@ const App: React.FC = () => {
          }} 
          onGoLarvae={() => setCurrentView('LARVAE_DETECTION')}
          onGoAdult={() => setCurrentView('ADULT_MOSQUITO_DETECTION')}
+         onGoGame={() => setCurrentView('GAME')}
          currentView={currentView}
       />
 
@@ -433,6 +435,22 @@ const App: React.FC = () => {
             <LarvaeScanner />
         ) : currentView === 'ADULT_MOSQUITO_DETECTION' ? (
             <AdultMosquitoScanner />
+        ) : currentView === 'GAME' ? (
+            <div className="animate-fade-in pb-12">
+                <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-slate-900/40 p-4 rounded-xl border border-slate-800">
+                    <button 
+                        onClick={() => setCurrentView('HOME')}
+                        className="flex items-center gap-2 text-xs font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 border border-emerald-800/80 hover:border-emerald-500 px-4 py-2.5 rounded-lg transition-colors font-mono uppercase tracking-widest"
+                    >
+                        ← KEMBALI KE MEJA UTAMA
+                    </button>
+                    <div className="text-left sm:text-right">
+                        <span className="block text-[10px] text-slate-500 uppercase tracking-widest font-mono">MODUL SEKARANG</span>
+                        <span className="block text-sm font-bold text-white font-sans uppercase tracking-wider">ARKED DETEKTIF HABITAT VEKTOR AI</span>
+                    </div>
+                </div>
+                <AedesHuntGame sessions={sessions} />
+            </div>
         ) : currentView === 'MANUAL_SIMULATION' ? (
             <ManualSimulationPage 
                 onBack={() => setCurrentView('HOME')} 
@@ -551,6 +569,26 @@ const App: React.FC = () => {
                                         </div>
                                         <div className="mt-6 flex items-center justify-between text-[11px] font-bold text-rose-400 group-hover:translate-x-1 transition-transform">
                                             <span>Simulasi Arena</span>
+                                            <span>→</span>
+                                        </div>
+                                    </button>
+
+                                    {/* Card 6: Interactive Vector Hunt Game */}
+                                    <button 
+                                        onClick={() => {
+                                            setCurrentView('GAME');
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                        }}
+                                        className="group relative cursor-pointer text-left bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-emerald-500/50 p-6 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] flex flex-col justify-between"
+                                    >
+                                        <div>
+                                            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all">🎮</div>
+                                            <div className="inline-block bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] font-bold px-2 py-0.5 rounded-full mb-2 tracking-wide uppercase font-mono-sci">EDUTAINMENT ARCADE</div>
+                                            <h3 className="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors font-sci-fi tracking-wide mb-2">DETEKTIF HABITAT VEKTOR</h3>
+                                            <p className="text-xs text-slate-400 leading-relaxed">Permainan interaktif menjejaki dan menghapuskan takungan air pembiakan vektor ghaib dengan bantuan AI bagi mendidik komuniti.</p>
+                                        </div>
+                                        <div className="mt-6 flex items-center justify-between text-[11px] font-bold text-emerald-400 group-hover:translate-x-1 transition-transform">
+                                            <span>Buka Dewan Arked</span>
                                             <span>→</span>
                                         </div>
                                     </button>
