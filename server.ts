@@ -41,12 +41,35 @@ async function startServer() {
           return res.status(400).json({ error: { message: "Model dan prompt diperlukan untuk generateImages." } });
         }
         console.log(`🎨 Backend calling Imagen model: ${model}`);
-        const response = await ai.models.generateImages({
+
+        const imagenFallbackList = Array.from(new Set([
           model,
-          prompt,
-          config
+          "imagen-3.0-generate-002",
+          "imagen-3.0-fast-generate-001",
+          "imagen-3.0-generate-001"
+        ]));
+
+        let lastImagenError: any = null;
+        for (const targetImagenModel of imagenFallbackList) {
+          try {
+            console.log(`🎨 Attempting Imagen model: ${targetImagenModel}`);
+            const response = await ai.models.generateImages({
+              model: targetImagenModel,
+              prompt,
+              config
+            });
+            return res.json(response);
+          } catch (err: any) {
+            console.warn(`⚠️ Imagen model ${targetImagenModel} failed:`, err?.message || err);
+            lastImagenError = err;
+          }
+        }
+
+        return res.status(404).json({
+          error: {
+            message: lastImagenError?.message || "Penjana imej Imagen tidak disokong pada API Key ini."
+          }
         });
-        return res.json(response);
       } else {
         if (!model || !contents) {
           return res.status(400).json({ 

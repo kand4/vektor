@@ -523,7 +523,7 @@ ${additionalDirectives ? `6. ARAHAN TAMBAHAN PENGGUNA: ${additionalDirectives}` 
                 Klik butang pink <span className="text-indigo-400 font-bold">"SALIN PROMPT & BUKA GEMINI"</span> di atas bagi membolehkan prompt kami dimuatkan ke clipboard anda sebelum tab dibuka.
               </li>
               <li>
-                Di Gemini Web, tampal prompt tersebut dan hantar bersama foto tersebut. Gemini AI akan melancarkan <span className="text-cyan-400">Imagen 3/4</span> di belakang tab dan mengembalikan hasil gambar yang bersih secara otomatik.
+                Di Gemini Web, tampal prompt tersebut dan hantar bersama foto tersebut. Gemini AI akan melancarkan <span className="text-cyan-400">Imagen 4</span> di belakang tab dan mengembalikan hasil gambar yang bersih secara otomatik.
               </li>
               <li>
                 Menerusi Gemini Web, klik butang muat turun gambarnya atau salin imej tersebut dan tampal kembali di bahagian <span className="text-emerald-400 font-bold">IMEJ SIMULASI</span> di atas.

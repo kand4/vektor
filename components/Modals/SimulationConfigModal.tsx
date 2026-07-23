@@ -64,7 +64,7 @@ export const SimulationConfigModal: React.FC<SimulationConfigModalProps> = ({ is
                 <div>
                    <label className="text-xs text-slate-400 font-mono-sci uppercase block mb-2">{t('label_ai_engine')}</label>
                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                      <OptionBtn label="✨ GEMINI (Imagen 3)" selected={engine === 'GEMINI_IMAGEN'} onClick={() => setEngine('GEMINI_IMAGEN')} />
+                      <OptionBtn label="✨ GEMINI (Imagen 4)" selected={engine === 'GEMINI_IMAGEN'} onClick={() => setEngine('GEMINI_IMAGEN')} />
                       <OptionBtn label="🌸 FLUX (Pollinations)" selected={engine === 'POLLINATIONS'} onClick={() => setEngine('POLLINATIONS')} />
                       <OptionBtn label="✍️ MANUAL (Web)" selected={engine === 'MANUAL'} onClick={() => setEngine('MANUAL')} />
                    </div>

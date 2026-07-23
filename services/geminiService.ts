@@ -1119,53 +1119,26 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
             }
             throw new Error("No inlineData image from Gemini");
         } catch (error) {
-            console.warn("Gemini 2.5 Flash Image Failed, falling back to Imagen 4.0:", error);
+            console.warn("Gemini Flash Image Generation unavailable, attempting Imagen API:", error?.message || error);
             
-            // 2. Try Imagen 4.0 Generate (Google Engine Upgrade)
+            // 2. Try Imagen 3.0 Generate
             try {
-                console.log(`🎨 Attempting Google Imagen 4.0 (imagen-4.0-generate-001) with ${aspectRatio}...`);
-                const imagenResponse = await retryWithBackoff(async () => {
-                    return await ai.models.generateImages({
-                        model: "imagen-4.0-generate-001",
-                        prompt: finalPrompt,
-                        config: {
-                            numberOfImages: 1,
-                            aspectRatio: aspectRatio
-                        }
-                    });
+                console.log(`🎨 Attempting Google Imagen 3.0 (imagen-3.0-generate-002) with ${aspectRatio}...`);
+                const imagenResponse = await ai.models.generateImages({
+                    model: "imagen-3.0-generate-002",
+                    prompt: finalPrompt,
+                    config: {
+                        numberOfImages: 1,
+                        aspectRatio: aspectRatio
+                    }
                 });
 
-                const bytes = imagenResponse.generatedImages?.[0]?.image?.imageBytes;
+                const bytes = imagenResponse?.generatedImages?.[0]?.image?.imageBytes;
                 if (bytes) {
                     return { imageUrl: `data:image/png;base64,${bytes}`, finalPrompt };
                 }
-                throw new Error("No image bytes from Imagen 4.0");
-            } catch (imagen4Error: any) {
-                console.warn("Google Imagen 4.0 Failed, trying legacy Imagen 3.0 fallback:", imagen4Error);
-                
-                // 3. Try Imagen 3.0 Generate (Legacy Fallback)
-                try {
-                    console.log(`🎨 Attempting Google Imagen 3.0 (imagen-3.0-generate-002) with ${aspectRatio}...`);
-                    const imagen3Response = await retryWithBackoff(async () => {
-                        return await ai.models.generateImages({
-                            model: "imagen-3.0-generate-002",
-                            prompt: finalPrompt,
-                            config: {
-                                numberOfImages: 1,
-                                aspectRatio: aspectRatio
-                            }
-                        });
-                    });
-
-                    const bytes = imagen3Response.generatedImages?.[0]?.image?.imageBytes;
-                    if (bytes) {
-                        return { imageUrl: `data:image/png;base64,${bytes}`, finalPrompt };
-                    }
-                    throw new Error("No image bytes from Imagen 3.0");
-                } catch (imagen3Error) {
-                    console.warn("Google Imagen 3.0 Fallback to External:", imagen3Error);
-                    // Fallthrough to external
-                }
+            } catch (imagenError: any) {
+                console.warn("Google Imagen API unavailable on current API Key, falling back to Pollinations (Flux):", imagenError?.message || imagenError);
             }
         }
     }
