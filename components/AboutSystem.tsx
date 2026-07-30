@@ -76,8 +76,9 @@ const AboutSystem: React.FC<AboutSystemProps> = ({ isOpen, onClose }) => {
                 </div>
 
                 <div>
-                    <h2 className="text-3xl font-sci-fi font-bold text-white mb-1">PKAK MAIL</h2>
-                    <p className="text-slate-400 text-sm font-mono-sci mb-4">INNOVATOR | EHO | DevOps</p>
+                    <h2 className="text-xl md:text-2xl font-sci-fi font-bold text-white mb-1">MUHAMMAD ISMAIL BIN AB RAHMAN</h2>
+                    <p className="text-emerald-400 text-xs font-mono-sci font-bold uppercase tracking-wider mb-1">Pembantu Kesihatan Awam Kanan</p>
+                    <p className="text-slate-400 text-[11px] font-mono-sci mb-4">Unit Inspektorat Kesihatan Awam, Hoshas Temerloh, Pahang</p>
                     <p className="text-slate-300 text-sm leading-relaxed max-w-xs mx-auto italic border-t border-b border-slate-800 py-4">
                         {t('architect_quote')}
                     </p>
@@ -94,6 +95,9 @@ const AboutSystem: React.FC<AboutSystemProps> = ({ isOpen, onClose }) => {
                 </div>
 
                 <div className="prose prose-invert prose-lg max-w-none text-slate-300 font-light leading-relaxed space-y-6">
+                   <p className="bg-emerald-950/40 border-l-4 border-emerald-500 p-4 rounded-r-xl text-emerald-200 text-sm font-medium leading-relaxed shadow-lg shadow-emerald-950/30">
+                      {t('vg_desc_creator')}
+                   </p>
                    <p>
                       {t('vg_desc_1')}
                    </p>
@@ -129,7 +133,7 @@ const AboutSystem: React.FC<AboutSystemProps> = ({ isOpen, onClose }) => {
                         </div>
                         <div className="bg-emerald-950/40 border border-emerald-800/40 px-3 py-1.5 text-emerald-400 rounded-lg font-mono-sci text-xs flex items-center gap-2 max-w-max shadow-lg shadow-emerald-950/25">
                             <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
-                            STATUS: v3.4.3-STABLE
+                            STATUS: v3.4.4-STABLE
                         </div>
                     </div>
 
@@ -137,12 +141,12 @@ const AboutSystem: React.FC<AboutSystemProps> = ({ isOpen, onClose }) => {
                         <div className="text-slate-300 space-y-2 border-b border-slate-900 pb-4">
                             <span className="text-emerald-500 font-mono-sci font-bold uppercase tracking-wider block">ℹ️ Membaca Nombor Versi (Format SemVer):</span>
                             <p className="leading-relaxed">
-                                Format versi yang digunakan bagi VectorGuard.AI adalah format piawai industri <strong className="text-emerald-400 font-mono">MAJOR.MINOR.PATCH</strong> (Contoh: <code className="text-emerald-400 bg-emerald-950/50 px-1 py-0.5 rounded font-mono">3.4.3</code>):
+                                Format versi yang digunakan bagi VectorGuard.AI adalah format piawai industri <strong className="text-emerald-400 font-mono">MAJOR.MINOR.PATCH</strong> (Contoh: <code className="text-emerald-400 bg-emerald-950/50 px-1 py-0.5 rounded font-mono">3.4.4</code>):
                             </p>
                             <ul className="list-disc pl-5 mt-2 space-y-1 text-slate-400">
                                 <li><strong className="text-slate-200 font-mono">MAJOR [3]</strong> : Perubahan reka bentuk struktur utama / penaiktarafan generasi sistem (v3 melambangkan migrasi AI penuh).</li>
                                 <li><strong className="text-slate-200 font-mono">MINOR [4]</strong> : Kemas kini modul berskala besar seperti penyepaduan panel Pengkalan Data Biodiversiti Global (GBIF).</li>
-                                <li><strong className="text-slate-200 font-mono">PATCH [3]</strong> : Pembaikan pepijat, sokongan eksport Telegram & Telegraph automatik.</li>
+                                <li><strong className="text-slate-200 font-mono">PATCH [4]</strong> : Pembaikan, pengemaskinian profil pencipta & penambahbaikan sistem.</li>
                             </ul>
                         </div>
 
