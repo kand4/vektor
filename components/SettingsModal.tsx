@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useDeviceDetect } from '../utils/deviceDetect';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -7,6 +8,7 @@ interface SettingsModalProps {
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
+  const deviceInfo = useDeviceDetect();
   const [apiKey, setApiKey] = useState('');
   const [apiKey2, setApiKey2] = useState('');
   const [apiKey3, setApiKey3] = useState('');
@@ -249,9 +251,32 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               value={roboflowModel}
               onChange={(e) => setRoboflowModel(e.target.value)}
             />
-            <p className="text-xs text-slate-500 mt-2">
-              Keys are stored securely in localStorage.
-            </p>
+          </div>
+
+          {/* Smart Device Detection Status */}
+          <div className="bg-slate-950/60 border border-emerald-500/30 rounded-lg p-3.5 space-y-1.5">
+             <div className="flex items-center justify-between">
+                <span className="text-xs font-bold font-mono-sci text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                   ⚡ DETEKSI SMART PERANTI
+                </span>
+                <span className="text-[10px] bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/40 font-mono font-bold">
+                   AUTO-ADAPTIF
+                </span>
+             </div>
+             <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300 font-mono pt-1">
+                <div>
+                   <span className="text-slate-500">Mod Peranti:</span> <strong className="text-white">{deviceInfo.isMobile ? '📱 Peranti Mobil' : deviceInfo.isTablet ? '📱 Tablet' : '💻 PC Desktop'}</strong>
+                </div>
+                <div>
+                   <span className="text-slate-500">Resolusi:</span> <strong className="text-white">{deviceInfo.screenWidth} x {deviceInfo.screenHeight} px</strong>
+                </div>
+                <div>
+                   <span className="text-slate-500">Touch Screen:</span> <strong className="text-white">{deviceInfo.isTouchDevice ? 'Ya' : 'Tidak'}</strong>
+                </div>
+                <div>
+                   <span className="text-slate-[500]">Papar Grafik:</span> <strong className="text-emerald-400">{deviceInfo.isMobile ? 'Optimasi Bateri & Laju' : 'Prestasi Maksimum HD'}</strong>
+                </div>
+             </div>
           </div>
         </div>
 

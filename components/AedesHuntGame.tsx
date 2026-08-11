@@ -1170,6 +1170,21 @@ export const AedesHuntGame: React.FC<AedesHuntGameProps> = ({ sessions }) => {
   const allAvailableScenes = [...PRESET_SCENES, ...sessionScenes];
   const [shuffledActiveSpots, setShuffledActiveSpots] = useState<HuntSpot[]>([]);
 
+  // Advanced Game Metrics State
+  const [streakCount, setStreakCount] = useState<number>(0);
+  const [comboPopup, setComboPopup] = useState<string | null>(null);
+  const [lensZoom, setLensZoom] = useState<number>(2.2);
+  const [timeElapsed, setTimeElapsed] = useState<number>(0);
+
+  // Active Timer Interval
+  useEffect(() => {
+    if (gameCompleted || isAiScanning) return;
+    const interval = setInterval(() => {
+      setTimeElapsed(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [gameCompleted, isAiScanning]);
+
   useEffect(() => {
     let spotsToShuffle = isAiMode ? customSpots : activeScene.spots;
     const processed = spotsToShuffle.map(spot => {
@@ -1194,12 +1209,22 @@ export const AedesHuntGame: React.FC<AedesHuntGameProps> = ({ sessions }) => {
 
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Format seconds to MM:SS
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   // Reset Game function
   const resetGame = useCallback((sceneToSet: GameScene, useCustom = false) => {
     playSound('tap');
     setShowClues(false);
     setIsViewCleanWhole(false);
     setQuizFailedAttempts({});
+    setStreakCount(0);
+    setTimeElapsed(0);
+    setComboPopup(null);
     if (useCustom) {
       setFoundSpots([]);
       setSelectedSpot(null);
@@ -1443,9 +1468,31 @@ Format maklum balas WAJIB mengikut struktur JSON ini sahaja tanpa sebarang penje
       playSound('sparkle');
       playSound('success');
       
+      const newStreak = streakCount + 1;
+      setStreakCount(newStreak);
+
+      let multiplier = 1;
+      let comboMsg = '';
+      if (newStreak === 2) {
+        multiplier = 1.5;
+        comboMsg = isMalay ? '🔥 KOMBO 2x DETEKTIF (+45 PTS)!' : '🔥 DETECTIVE COMBO 2x (+45 PTS)!';
+      } else if (newStreak === 3) {
+        multiplier = 2.0;
+        comboMsg = isMalay ? '⚡ KOMBO 3x INTI-VEKTOR (+60 PTS)!' : '⚡ VECTOR COMBO 3x (+60 PTS)!';
+      } else if (newStreak >= 4) {
+        multiplier = 2.5;
+        comboMsg = isMalay ? '🌟 KOMBO MAX 2.5x PAKAR SANITASI (+75 PTS)!' : '🌟 MAX COMBO 2.5x SANITATION MASTER (+75 PTS)!';
+      }
+
+      if (comboMsg) {
+        setComboPopup(comboMsg);
+        setTimeout(() => setComboPopup(null), 2200);
+      }
+
+      const pointsGained = Math.round(30 * multiplier);
       const updatedFound = [...foundSpots, spot.id];
       setFoundSpots(updatedFound);
-      setScore(prev => prev + 30); // 30 points for CORRECT quiz answer & sanitization!
+      setScore(prev => prev + pointsGained);
       
       // Check win condition
       const totalToFind = activeSpots.length;
@@ -1457,6 +1504,7 @@ Format maklum balas WAJIB mengikut struktur JSON ini sahaja tanpa sebarang penje
       }
     } else {
       playSound('error');
+      setStreakCount(0); // reset streak on wrong answer
       // Record failed option
       setQuizFailedAttempts(prev => ({
         ...prev,
@@ -1800,24 +1848,35 @@ Format maklum balas WAJIB mengikut struktur JSON ini sahaja tanpa sebarang penje
           {/* LEFT: Game Viewport (Interactive Image Canvas) */}
           <div className="lg:col-span-8 flex flex-col gap-4">
             
-            {/* Scoreboard and Status Bar */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-2xl text-center">
-                <span className="block text-[9px] text-slate-500 uppercase tracking-widest font-mono font-bold">{isMalay ? 'SKOR PENYIASAT' : 'DETECTIVE SCORE'}</span>
-                <span className="text-xl sm:text-2xl font-black text-[#00E5FF] font-mono leading-none">{score} <span className="text-[10px] text-slate-500 font-normal">PTS</span></span>
-              </div>
-              <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-2xl text-center">
-                <span className="block text-[9px] text-slate-500 uppercase tracking-widest font-mono font-bold">{isMalay ? 'SUDAH DIBERSIH' : 'MUTATED/CLEANED'}</span>
-                <span className="text-xl sm:text-2xl font-black text-emerald-400 font-mono leading-none">{foundSpots.length} <span className="text-slate-500 font-sans text-xs">/ {activeSpots.length}</span></span>
-              </div>
+            {/* Scoreboard and Status Bar (4-Column Layout) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-2xl text-center flex flex-col justify-center">
+                <span className="block text-[9px] text-slate-500 uppercase tracking-widest font-mono font-bold">{isMalay ? 'SKOR PENYIASAT' : 'SCORE'}</span>
+                <span className="text-xl sm:text-2xl font-black text-[#00E5FF] font-mono leading-none flex items-center justify-center gap-1">
+                  {score} <span className="text-[10px] text-slate-500 font-normal">PTS</span>
+                </span>
+              </div>
+
+              <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-2xl text-center flex flex-col justify-center">
+                <span className="block text-[9px] text-slate-500 uppercase tracking-widest font-mono font-bold">{isMalay ? 'KOMBO BERUNTUN' : 'STREAK COMBO'}</span>
+                <span className="text-xl sm:text-2xl font-black text-amber-400 font-mono leading-none">
+                  {streakCount > 1 ? `🔥 ${streakCount}x` : `${streakCount}`}
+                </span>
+              </div>
+
+              <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-2xl text-center flex flex-col justify-center">
+                <span className="block text-[9px] text-slate-500 uppercase tracking-widest font-mono font-bold">{isMalay ? 'MASA SARINGAN' : 'TIME ELAPSED'}</span>
+                <span className="text-xl sm:text-2xl font-black text-indigo-400 font-mono leading-none">{formatTime(timeElapsed)}</span>
+              </div>
+
+              <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-2xl text-center flex flex-col justify-center col-span-2 sm:col-span-1">
                 <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 rounded-full transition-all duration-500"
                     style={{ width: `${progressPercent}%` }}
                   ></div>
                 </div>
-                <span className="text-[9px] text-emerald-400 font-mono-sci font-bold tracking-widest mt-1.5 uppercase">{isMalay ? `SANITASI: ${progressPercent}%` : `SANITIZED: ${progressPercent}%`}</span>
+                <span className="text-[9px] text-emerald-400 font-mono-sci font-bold tracking-widest mt-1.5 uppercase">{isMalay ? `SANITASI: ${progressPercent}%` : `SANIFIED: ${progressPercent}%`}</span>
               </div>
             </div>
 
@@ -1883,6 +1942,38 @@ Format maklum balas WAJIB mengikut struktur JSON ini sahaja tanpa sebarang penje
               onMouseLeave={() => { setIsHoverLens(false); }}
               onTouchEnd={() => { setIsHoverLens(false); }}
             >
+              {/* Zoom Level Selector Overlay */}
+              <div className="absolute top-3 right-3 z-30 flex items-center gap-1 bg-slate-950/85 border border-slate-800 p-1 rounded-xl shadow-lg backdrop-blur-md">
+                <span className="text-[9px] font-mono font-bold text-slate-400 px-1">🔎 ZOOM:</span>
+                {[1.8, 2.5, 3.5].map(z => (
+                  <button
+                    key={z}
+                    onClick={() => { playSound('tap'); setLensZoom(z); }}
+                    className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition ${
+                      lensZoom === z 
+                        ? 'bg-cyan-500 text-black shadow-md font-bold' 
+                        : 'text-slate-300 hover:bg-slate-800'
+                    }`}
+                  >
+                    {z}x
+                  </button>
+                ))}
+              </div>
+
+              {/* Combo Banner Toast Animation */}
+              <AnimatePresence>
+                {comboPopup && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.5, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, y: -20 }}
+                    className="absolute top-12 left-1/2 -translate-x-1/2 z-40 bg-gradient-to-r from-amber-400 to-emerald-400 text-slate-950 font-black px-4 py-2 rounded-2xl shadow-[0_0_25px_rgba(245,158,11,0.6)] font-sci-fi text-xs sm:text-sm uppercase tracking-wider flex items-center gap-2 pointer-events-none"
+                  >
+                    {comboPopup}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* SVG Mask Definition with dynamic keys to force browser re-renders */}
               <svg className="absolute w-0 h-0" style={{ position: 'absolute', width: 0, height: 0 }}>
                 <defs>
@@ -2011,9 +2102,9 @@ Format maklum balas WAJIB mengikut struktur JSON ini sahaja tanpa sebarang penje
                     top: `${xyCoord[1] - 140}px`, // Float nicely above finger/cursor
                     backgroundImage: `url('${isAiMode ? customImage : activeScene.image}')`,
                     backgroundRepeat: 'no-repeat',
-                    backgroundSize: `${containerRef.current ? containerRef.current.clientWidth * 1.8 : 800}px ${containerRef.current ? containerRef.current.clientHeight * 1.8 : 450}px`,
-                    backgroundPositionX: `${-xyCoord[0] * 1.8 + 60}px`,
-                    backgroundPositionY: `${-xyCoord[1] * 1.8 + 60}px`,
+                    backgroundSize: `${containerRef.current ? containerRef.current.clientWidth * lensZoom : 800}px ${containerRef.current ? containerRef.current.clientHeight * lensZoom : 450}px`,
+                    backgroundPositionX: `${-xyCoord[0] * lensZoom + 60}px`,
+                    backgroundPositionY: `${-xyCoord[1] * lensZoom + 60}px`,
                   }}
                 >
                   {/* Scope Overlay Crosshair */}
@@ -2037,48 +2128,66 @@ Format maklum balas WAJIB mengikut struktur JSON ini sahaja tanpa sebarang penje
           <div className="lg:col-span-4 flex flex-col gap-4">
             
             {/* Triumphant Win Screen State */}
-            {gameCompleted && (
-              <motion.div 
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-emerald-950/45 border border-emerald-500 rounded-3xl p-5 text-center text-slate-100 flex flex-col items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.25)] relative overflow-hidden"
-              >
-                {/* Clean sparkles visual backdrop */}
-                <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/10 to-transparent pointer-events-none"></div>
-                
-                <span className="text-4xl mb-2 animate-bounce">🏆</span>
-                <h3 className="text-xl font-black font-sci-fi text-[#00FF66] uppercase tracking-wider mb-1">
-                  {isMalay ? 'PREMIS BERSIH SEPENUHNYA!' : 'IMMACULATE SANITATION!'}
-                </h3>
-                <p className="text-[11px] text-slate-200 leading-normal mb-3 max-w-sm">
-                  {isMalay 
-                    ? 'Tahniah! Anda telah berjaya mengesan & menghapuskan setiap satu sarang pembiakan vektor berbahaya di kawasan ini.'
-                    : 'Congratulations! You successfully spotted and eliminated every stagnant vector breeding node in this area.'}
-                </p>
+            {gameCompleted && (() => {
+              const rankInfo = score >= 120 
+                ? { title: isMalay ? 'PANGKAT S: GRANDMASTER ENTOMOLOGI' : 'RANK S: ENTOMOLOGY GRANDMASTER', color: 'text-amber-400', badge: '🎖️ SIJIL PAKAR VEKTOR KKM' }
+                : score >= 90
+                ? { title: isMalay ? 'PANGKAT A: SENIOR INSPEKTOR VEKTOR' : 'RANK A: SENIOR VECTOR INSPECTOR', color: 'text-cyan-400', badge: '🏅 SIJIL KANAN SANITASI' }
+                : score >= 50
+                ? { title: isMalay ? 'PANGKAT B: PENYIASAT HABITAT VEKTOR' : 'RANK B: HABITAT INVESTIGATOR', color: 'text-emerald-400', badge: '🎗️ LESEN PENYIASAT JUNIOR' }
+                : { title: isMalay ? 'PANGKAT C: PELATIH SANITASI PREMIS' : 'RANK C: SANITATION TRAINEE', color: 'text-slate-300', badge: '📜 PASS LATIHAN SANITASI' };
 
-                <div className="bg-slate-900/90 border border-emerald-500/20 p-2.5 rounded-xl w-full mb-3 flex items-center justify-around text-xs">
-                  <div className="text-center">
-                    <span className="block text-[8px] text-slate-400 uppercase tracking-widest font-mono">{isMalay ? 'Total Skor' : 'Total Score'}</span>
-                    <span className="font-bold text-white font-mono text-sm">{score} PTS</span>
-                  </div>
-                  <div className="h-6 w-[1.5px] bg-slate-800"></div>
-                  <div className="text-center">
-                    <span className="block text-[8px] text-slate-400 uppercase tracking-widest font-mono">{isMalay ? 'Tahap Kebersihan' : 'Cleanliness Tier'}</span>
-                    <span className="font-bold text-[#00E5FF] font-mono text-sm">NASA LAB TAHAP 5</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => resetGame(activeScene, isAiMode)}
-                  className="w-full bg-emerald-500 text-black font-bold py-2 px-4 rounded-xl hover:bg-emerald-400 transition-all uppercase text-[10px] sm:text-xs tracking-widest flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 font-mono"
+              return (
+                <motion.div 
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-emerald-950/45 border border-emerald-500 rounded-3xl p-5 text-center text-slate-100 flex flex-col items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.25)] relative overflow-hidden"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                  </svg>
-                  {isMalay ? 'Main Semula' : 'Replay Scene'}
-                </button>
-              </motion.div>
-            )}
+                  {/* Clean sparkles visual backdrop */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/10 to-transparent pointer-events-none"></div>
+                  
+                  <span className="text-4xl mb-1 animate-bounce">🏆</span>
+                  <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-mono font-bold px-2 py-0.5 rounded-full uppercase tracking-wider mb-2">
+                    {rankInfo.badge}
+                  </span>
+                  
+                  <h3 className={`text-sm font-black font-sci-fi ${rankInfo.color} uppercase tracking-wider mb-1`}>
+                    {rankInfo.title}
+                  </h3>
+                  
+                  <p className="text-[11px] text-slate-300 leading-normal mb-3 max-w-sm">
+                    {isMalay 
+                      ? 'Tahniah! Anda telah berjaya mengesan & menghapuskan setiap satu sarang pembiakan vektor di kawasan ini.'
+                      : 'Congratulations! You successfully spotted and eliminated every stagnant vector breeding node in this area.'}
+                  </p>
+
+                  <div className="bg-slate-900/90 border border-emerald-500/20 p-2.5 rounded-xl w-full mb-3 grid grid-cols-3 gap-2 text-xs">
+                    <div className="text-center">
+                      <span className="block text-[8px] text-slate-400 uppercase tracking-widest font-mono">{isMalay ? 'Total Skor' : 'Score'}</span>
+                      <span className="font-bold text-white font-mono text-sm">{score} PTS</span>
+                    </div>
+                    <div className="text-center border-x border-slate-800">
+                      <span className="block text-[8px] text-slate-400 uppercase tracking-widest font-mono">{isMalay ? 'Masa' : 'Time'}</span>
+                      <span className="font-bold text-[#00E5FF] font-mono text-sm">{formatTime(timeElapsed)}</span>
+                    </div>
+                    <div className="text-center">
+                      <span className="block text-[8px] text-slate-400 uppercase tracking-widest font-mono">{isMalay ? 'Kombo Max' : 'Max Combo'}</span>
+                      <span className="font-bold text-amber-400 font-mono text-sm">{streakCount > 0 ? `${streakCount}x` : '1x'}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => resetGame(activeScene, isAiMode)}
+                    className="w-full bg-emerald-500 text-black font-bold py-2.5 px-4 rounded-xl hover:bg-emerald-400 transition-all uppercase text-[10px] sm:text-xs tracking-widest flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 font-mono"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                    {isMalay ? 'Main Semula Peringkat' : 'Replay Scene'}
+                  </button>
+                </motion.div>
+              );
+            })()}
 
             {/* Always keep the Selected Spot educational details visible below the victory card or individually */}
             {renderSelectedSpotDetail()}

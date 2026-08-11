@@ -24,6 +24,7 @@ import { dbGet, dbSet, dbClear } from './utils/db';
 import { Toast } from './components/Toast';
 import { ManualJsonBypassPanel } from './components/ManualJsonBypassPanel';
 import { AedesHuntGame } from './components/AedesHuntGame';
+import { useDeviceDetect } from './utils/deviceDetect';
 
 const MANUAL_SIMULATION_DEFAULT_PROMPT = `Sila gunakan tool penjana imej (Imagen) untuk mengubah imej yang saya kongsikan ini:
 
@@ -35,6 +36,8 @@ const MANUAL_SIMULATION_DEFAULT_PROMPT = `Sila gunakan tool penjana imej (Imagen
 5. Hasilkan imej yang ultra-fotorealistik, fotografi resolusi tinggi (8k), dengan pencahayaan semula jadi yang bersih, terang, dan bergemerlapan.`;
 
 const App: React.FC = () => {
+  const { isMobile } = useDeviceDetect();
+
   useEffect(() => {
     // Proactive sanitization of forbidden model preferences
     const model = localStorage.getItem('gemini_model_preference');
@@ -429,7 +432,7 @@ const App: React.FC = () => {
          currentView={currentView}
       />
 
-      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-20 md:mt-32 relative z-10 w-full transition-all duration-300 pointer-events-auto">
+      <main className="flex-grow max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mt-18 md:mt-24 relative z-10 w-full transition-all duration-300 pointer-events-auto">
         
         {currentView === 'LARVAE_DETECTION' ? (
             <LarvaeScanner />

@@ -55,26 +55,26 @@ const KKMReport: React.FC<KKMReportProps> = ({ result, onUpdateResult }) => {
     let calculatedGrade: 'A' | 'B' | 'C' | 'D' | 'F' | 'TUTUP' = 'A';
     let calculatedRecommendation = '';
 
-    if (calculatedScore >= 90) {
+    if (calculatedScore >= 86) {
       calculatedGrade = 'A';
       calculatedRecommendation = language === 'ms' 
-        ? 'PREMIS BERSIH & MEMUASKAN (LULUS)' 
-        : 'CLEAN & SATISFACTORY PREMISE (PASS)';
-    } else if (calculatedScore >= 80) {
+        ? 'PREMIS SANGAT BERSIH & MEMUASKAN (LULUS SANGAT CEMERLANG)' 
+        : 'EXCELLENT & CLEAN PREMISE (HIGH PASS)';
+    } else if (calculatedScore >= 71) {
       calculatedGrade = 'B';
       calculatedRecommendation = language === 'ms' 
-        ? 'PREMIS DI TAHAP MEMUASKAN (LULUS)' 
-        : 'SATISFACTORY PREMISE (PASS)';
-    } else if (calculatedScore >= 70) {
+        ? 'PREMIS BERSIH DI TAHAP MEMUASKAN (LULUS STANDARD KKM)' 
+        : 'SATISFACTORY CLEAN PREMISE (PASS)';
+    } else if (calculatedScore >= 51) {
       calculatedGrade = 'C';
       calculatedRecommendation = language === 'ms' 
-        ? 'PREMIS DI BAWAH PEMANTAUAN (LULUS BERSYARAT - TINDAKAN PEMBETULAN DALAM 14 HARI)' 
+        ? 'PREMIS DI BAWAH PEMANTAUAN (LULUS BERSYARAT - ARAHAN PINDAAN DALAM MASA 14 HARI)' 
         : 'PREMISE UNDER MONITORING (CONDITIONAL PASS - RECTIFICATION WITHIN 14 DAYS)';
-    } else if (calculatedScore >= 50) {
+    } else if (calculatedScore >= 35) {
       calculatedGrade = 'D';
       calculatedRecommendation = language === 'ms' 
-        ? 'ARAHAN TINDAKAN PEMBETULAN KETAT DAN AMARAN KKM SEGERA' 
-        : 'STRICT CORRECTIVE ACTION Directives & IMMEDIATE WARNING ISSUED';
+        ? 'ARAHAN TINDAKAN PEMBETULAN KETAT DAN NOTIS AMARAN SANITASI KKM' 
+        : 'STRICT CORRECTIVE ACTION DIRECTIVE & SANITATION WARNING ISSUED';
     } else {
       calculatedGrade = 'TUTUP';
       calculatedRecommendation = language === 'ms' 

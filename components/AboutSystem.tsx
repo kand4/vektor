@@ -133,7 +133,7 @@ const AboutSystem: React.FC<AboutSystemProps> = ({ isOpen, onClose }) => {
                         </div>
                         <div className="bg-emerald-950/40 border border-emerald-800/40 px-3 py-1.5 text-emerald-400 rounded-lg font-mono-sci text-xs flex items-center gap-2 max-w-max shadow-lg shadow-emerald-950/25">
                             <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
-                            STATUS: v3.4.4-STABLE
+                            STATUS: v3.5.0-STABLE
                         </div>
                     </div>
 
@@ -141,18 +141,31 @@ const AboutSystem: React.FC<AboutSystemProps> = ({ isOpen, onClose }) => {
                         <div className="text-slate-300 space-y-2 border-b border-slate-900 pb-4">
                             <span className="text-emerald-500 font-mono-sci font-bold uppercase tracking-wider block">ℹ️ Membaca Nombor Versi (Format SemVer):</span>
                             <p className="leading-relaxed">
-                                Format versi yang digunakan bagi VectorGuard.AI adalah format piawai industri <strong className="text-emerald-400 font-mono">MAJOR.MINOR.PATCH</strong> (Contoh: <code className="text-emerald-400 bg-emerald-950/50 px-1 py-0.5 rounded font-mono">3.4.4</code>):
+                                Format versi yang digunakan bagi VectorGuard.AI adalah format piawai industri <strong className="text-emerald-400 font-mono">MAJOR.MINOR.PATCH</strong> (Contoh: <code className="text-emerald-400 bg-emerald-950/50 px-1 py-0.5 rounded font-mono">3.5.0</code>):
                             </p>
                             <ul className="list-disc pl-5 mt-2 space-y-1 text-slate-400">
                                 <li><strong className="text-slate-200 font-mono">MAJOR [3]</strong> : Perubahan reka bentuk struktur utama / penaiktarafan generasi sistem (v3 melambangkan migrasi AI penuh).</li>
-                                <li><strong className="text-slate-200 font-mono">MINOR [4]</strong> : Kemas kini modul berskala besar seperti penyepaduan panel Pengkalan Data Biodiversiti Global (GBIF).</li>
-                                <li><strong className="text-slate-200 font-mono">PATCH [4]</strong> : Pembaikan, pengemaskinian profil pencipta & penambahbaikan sistem.</li>
+                                <li><strong className="text-slate-200 font-mono">MINOR [5]</strong> : Penaiktarafan algoritmik utama KKM, gamifikasi Detektif Habitat & deteksi peranti pintar.</li>
+                                <li><strong className="text-slate-200 font-mono">PATCH [0]</strong> : Pembaikan, pengemaskinian profil pencipta & penambahbaikan sistem.</li>
                             </ul>
                         </div>
 
                         {/* Timeline logs */}
                         <div className="space-y-4 pt-2">
                             <div className="relative border-l border-slate-800 pl-4 space-y-6">
+                                {/* Item v3.5.0 */}
+                                <div className="relative">
+                                    <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 bg-emerald-400 rounded-full ring-4 ring-emerald-950/60 animate-pulse"></span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-mono text-emerald-300 font-bold bg-emerald-900/60 border border-emerald-500/40 px-2 py-0.5 rounded">v3.5.0</span>
+                                        <span className="text-emerald-400 font-mono text-[10px]">10 OGOS 2026 (TERKINI)</span>
+                                    </div>
+                                    <h5 className="font-bold text-white mt-1 uppercase font-sci-fi tracking-wider">Algoritma KKM Pembaikan, Modul Detektif Habitat Profesional & Auto-Deteksi Peranti</h5>
+                                    <p className="text-slate-300 mt-1 leading-relaxed">
+                                        Penaiktarafan algoritmik skala penilaian kebersihan premis makanan mengikut Borang K-PPKM KKM (Gred A/B/C/D/TUTUP). Modul <strong>"Aedes Hunt"</strong> kini diperlengkapkan dengan Skor Kombo Beruntun (Streak Multiplier 1.5x - 2.5x), Lensa Pembesar Zoom Dinamik (1.8x, 2.5x, 3.5x), Pengukur Masa Real-Time, dan Penarafan Sijil Pangkat S/A/B/C KKM. Ditambah dengan pengesanan pintar peranti (Mobile vs Desktop) untuk susun atur UI adaptif.
+                                    </p>
+                                </div>
+
                                 {/* Item v3.4.3 */}
                                 <div className="relative">
                                     <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-4 ring-emerald-950/60 animate-pulse"></span>

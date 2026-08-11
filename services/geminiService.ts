@@ -846,21 +846,21 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
           let grade: 'A' | 'B' | 'C' | 'D' | 'F' | 'TUTUP' = 'A';
           let recommendation = 'PREMIS BERSIH & MEMUASKAN';
           
-          if (totalScore >= 90) {
+          if (totalScore >= 86) {
               grade = 'A';
-              recommendation = 'PREMIS BERSIH & MEMUASKAN';
-          } else if (totalScore >= 80) {
+              recommendation = 'PREMIS SANGAT BERSIH & MEMUASKAN (LULUS SANGAT CEMERLANG)';
+          } else if (totalScore >= 71) {
               grade = 'B';
-              recommendation = 'PREMIS DI TAHAP MEMUASKAN (LULUS)';
-          } else if (totalScore >= 70) {
+              recommendation = 'PREMIS BERSIH DI TAHAP MEMUASKAN (LULUS STANDARD KKM)';
+          } else if (totalScore >= 51) {
               grade = 'C';
-              recommendation = 'PREMIS DI BAWAH PEMANTAUAN (LULUS BERSYARAT - TINDAKAN 14 HARI)';
-          } else if (totalScore >= 50) {
+              recommendation = 'PREMIS DI BAWAH PEMANTAUAN (LULUS BERSYARAT - ARAHAN PINDAAN DALAM MASA 14 HARI)';
+          } else if (totalScore >= 35) {
               grade = 'D';
-              recommendation = 'ARAHAN TINDAKAN PEMBETULAN KERAS (BERI AMARAN KKM)';
+              recommendation = 'ARAHAN TINDAKAN PEMBETULAN KETAT DAN NOTIS AMARAN SANITASI KKM';
           } else {
               grade = 'TUTUP';
-              recommendation = 'ARAHAN PENUTUPAN PREMIS SERTA MERTA DI BAWAH SEKSYEN 11 AKTA MAKANAN 1983';
+              recommendation = 'ARAHAN PENUTUPAN PREMIS SERTA MERTA DI BAWAH SEKSYEN 11 AKTA MAKANAN 1983 (KERANA KEADAAN TIDAK SUCI)';
           }
 
           const summaryText = risks.length > 0
@@ -1118,7 +1118,7 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
                 }
             }
             throw new Error("No inlineData image from Gemini");
-        } catch (error) {
+        } catch (error: any) {
             console.warn("Gemini Flash Image Generation unavailable, attempting Imagen API:", error?.message || error);
             
             // 2. Try Imagen 3.0 Generate
