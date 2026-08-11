@@ -44,10 +44,10 @@ export const ManualSimulationPage: React.FC<ManualSimulationPageProps> = ({ onBa
       ? '5. KEKALKAN semua manusia/pekerja di kedudukan yang sama seperti imej asal, cuma pastikan pakaian mereka disterilkan atau ditukar kepada uniform yang bersih.'
       : '5. Alih keluar atau hilangkan sebarang kelibat manusia/pekerja di dalam gambar supaya hanya kelihatan persekitaran bertaraf steril.';
 
-    return `Sila gunakan tool penjana imej (Imagen) untuk mengubah imej kotor/tidak sanitasi ini berdasarkan panduan berikut:
+    return `Sila gunakan tool penjana imej (Imagen / Image FX) untuk mengubah imej kotor/tidak sanitasi ini berdasarkan panduan berikut:
 
 [PARAMETRE UTAMA / CRITICAL PARAMETERS]:
-1. PERSPEKTIF & STRUKTUR: Kekalkan 100% sudut kamera, perspektif, susun atur perabot, pintu, dan tingkap dari imej asal. Jangan ubah struktur asas.
+1. PERSPEKTIF & GEOMETRI MUTLAK: WAJIB kekalkan 100% sudut kamera, orientasi perspektif, ketinggian pandangan (camera elevation), field of view, nisbah aspek, dan struktur spatial tepat mengikut imej asal TANPA PERUBAHAN WALAUPUN SEDIKIT. Dilarang keras memusingkan sudut pandangan, menukar focal length, zooming, panning, atau mengubah kedudukan dinding/pintu/tingkap asal.
 2. KEBERSIHAN MAKSIMUM: Ubah status kebersihan semasanya kepada "${levelText}". Buang semua kotoran, kesan karat, minyak, takungan air, jentik-jentik, lalat, serangga, sampah sarap, habuk, dan sisa tercemar.
 3. PEMULIHAN DINDING/LANTAI: Sekiranya ada lantai pecah, tiles rosak, cat dinding terkopat atau berlumut, gantikan dengan cat baru/lantai baru yang kukuh dan berkilat.
 4. PENCAHAYAAN: Gunakan "${lightText}" untuk memperlihatkan tahap kesterilan kawasan secara profesional.

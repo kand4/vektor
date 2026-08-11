@@ -25,15 +25,16 @@ import { Toast } from './components/Toast';
 import { ManualJsonBypassPanel } from './components/ManualJsonBypassPanel';
 import { AedesHuntGame } from './components/AedesHuntGame';
 import { useDeviceDetect } from './utils/deviceDetect';
+import { MobileBottomNav } from './components/MobileBottomNav';
 
-const MANUAL_SIMULATION_DEFAULT_PROMPT = `Sila gunakan tool penjana imej (Imagen) untuk mengubah imej yang saya kongsikan ini:
+const MANUAL_SIMULATION_DEFAULT_PROMPT = `Sila gunakan tool penjana imej (Imagen / Image FX) untuk mengubah imej ini dengan MEMATUHI ARAHAN STRICT PERSPEKTIF BERIKUT:
 
-[PANDUAN UTAMA / CRITICAL INSTRUCTIONS]:
-1. KEKALKAN SUDUT KAMERA, PERSPEKTIF, ELEVASI, DAN FIELD OF VIEW YANG SAMA SEPERTI IMEJ ASAL.
-2. Jadikan kawasan ini kelihatan sangat bersih, kemas, kering sepenuhnya, tersusun rapi, dan mematuhi standard kebersihan yang sangat tinggi (spotless, immaculate, and pristine).
-3. Pastikan seluruh lantai, dinding, dan permukaan rata kelihatan sangat bersih, kering, licin berkilat tanpa sebarang cela atau kotoran.
-4. Semua objek, peranti, atau perabot diaturkan dengan sangat kemas, teratur, dan tersusun rapi mengikut susun atur asal.
-5. Hasilkan imej yang ultra-fotorealistik, fotografi resolusi tinggi (8k), dengan pencahayaan semula jadi yang bersih, terang, dan bergemerlapan.`;
+[ARAHAN KETAT PERSPEKTIF & GEOMETRI / STRICT PERSPECTIVE RULES]:
+1. WAJIB KEKALKAN PERSPEKTIF 100% SAMA: Sudut kamera, jarak fokus (field of view), orientasi ruang, ketinggian elevasi, vanishing points, dan nisbah bidang (aspect ratio) HAKIKI DARI IMEJ ASAL WAKTU TANPA SEBARANG PERUBAHAN WALAUPUN SEDIKIT. Dilarang keras menukar sudut pandangan (camera angle), zooming, panning, atau mengubah struktur geometri asal!
+2. KEBERSIHAN MAKSIMUM (PRISTINE SANITATION): Hasilkan versi kawasan yang sama tetapi berada dalam keadaan amat bersih, kering sepenuhnya, tersusun rapi, dan disanitasi secara profesional (spotless, immaculate, pristine).
+3. PERMUKAAN & LANTAI: Semua lantai, dinding, dan permukaan rata dibersihkan, dilap kering, dan bebas daripada sebarang kotoran, kesan minyak, takungan air, atau sisa buangan.
+4. PERABOT & OBJEK: Susun atur asal perabot, kabinet, dinding, atau pintu DITEKALKAN di kedudukan spatial yang tepat sama mengikut garisan geometri imej asal.
+5. FOTOREALISTIK: Hasilkan imej yang ultra-fotorealistik, resolusi 8k, dengan pencahayaan semula jadi yang bersih dan segar tanpa distorsi kanta.`;
 
 const App: React.FC = () => {
   const { isMobile } = useDeviceDetect();
@@ -369,6 +370,21 @@ const App: React.FC = () => {
     setCurrentHomeSubView('MENU');
     window.scrollTo({ top: 0, behavior: 'smooth' }); 
   };
+
+  const handleSelectMobileNav = (
+    view: 'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION' | 'MANUAL_SIMULATION' | 'GAME',
+    subView?: 'MENU' | 'FORENSIC' | 'ANALYTICS'
+  ) => {
+    setIsLiveMode(false);
+    setCurrentView(view);
+    if (view === 'HOME' && subView) {
+      setCurrentHomeSubView(subView);
+    }
+    if (view === 'HOME' && subView === 'MENU') {
+      setActiveSessionId(null);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   
   const getActiveSession = () => sessions.find(s => s.id === activeSessionId);
   const completedCount = sessions.filter(s => s.status === 'SUCCESS').length;
@@ -432,7 +448,7 @@ const App: React.FC = () => {
          currentView={currentView}
       />
 
-      <main className="flex-grow max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mt-18 md:mt-24 relative z-10 w-full transition-all duration-300 pointer-events-auto">
+      <main className="flex-grow max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mt-18 md:mt-24 relative z-10 w-full transition-all duration-300 pointer-events-auto pb-24 md:pb-8">
         
         {currentView === 'LARVAE_DETECTION' ? (
             <LarvaeScanner />
@@ -894,6 +910,15 @@ const App: React.FC = () => {
         activeImageSrc={activeSessionId ? getActiveSession()?.imageSrc : undefined}
         activeMode={analysisMode}
         onApplyJson={handleApplyExternalJson}
+      />
+
+      <MobileBottomNav 
+        currentView={currentView}
+        currentHomeSubView={currentHomeSubView}
+        onSelectView={handleSelectMobileNav}
+        onOpenHeatmap={() => setShowHeatmap(true)}
+        onOpenSimulation={handleManualSimulation}
+        sessionsCount={sessions.length}
       />
     </div>
   );

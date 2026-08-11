@@ -18,12 +18,12 @@ export const getSimulatedLandscapeResponse = (analysisMode: AnalysisMode, sensit
     hygieneLevel: isKKM ? 4 : 3,
     safetyLevel: 3,
     generalAdvice: isKKM 
-      ? "Sistem mengesan beberapa perlanggaran kritikal kebersihan di kawasan penyediaan makanan termasuk sisa makanan terdedah dan mendapan grease tebal. Tindakan pembetulan wajib dilaksanakan segera."
-      : "Sistem mengesan takungan air berisiko tinggi dan sisa terkumpul di persekitaran. Langkah segera penyemburan larvasid serta pembersihan mekanikal harus dijalankan.",
+      ? "Sistem mengesan beberapa perlanggaran kritikal kebersihan di kawasan penyediaan makanan termasuk sisa makanan terdedah, timbunan kayu/papan tempat sarang lipas, dan mendapan grease tebal. Tindakan pembetulan wajib dilaksanakan segera."
+      : "Sistem mengesan takungan air berisiko tinggi serta timbunan kayu & sampah sisa tempat pembiakan lipas dan lalat di persekitaran. Langkah segera penyemburan, pembersihan kayu/sampah, serta pembersihan mekanikal harus dijalankan.",
     savageCommentary: isKKM
-      ? "Kawasan penyediaan makanan ini kelihatan seperti pesta kuman berbanding dapur yang waras. Lalat dan lipas sudah mula menandatangani surat perjanjian sewa di atas meja anda!"
-      : "Siri takungan air dibiarkan tanpa sebarang penutup di bawah terik matahari, mengundang seluruh generasi nyamuk Aedes untuk menyewa hartanah percuma ini. Adakah anda sedang menternak bio-senjata?",
-    detected_keywords: ["stagnant water", "clutter", "plastic container", "exposed waste"],
+      ? "Kawasan penyediaan makanan ini kelihatan seperti pesta kuman dan habitat terbuka berbanding dapur yang waras. Lalat dan lipas sudah mula menandatangani surat perjanjian sewa di atas meja anda!"
+      : "Siri takungan air dibiarkan tanpa penutup bersanding dengan timbunan kayu dan sampah buangan, mengundang koloni lipas, lalat hijau, dan generasi nyamuk Aedes untuk menyewa hartanah percuma ini. Adakah anda sedang menternak bio-senjata?",
+    detected_keywords: ["stagnant water", "clutter", "plastic container", "exposed waste", "wood pile", "cockroach harborage"],
     risks: [
       {
         id: "sim-risk-1",
@@ -55,8 +55,8 @@ export const getSimulatedLandscapeResponse = (analysisMode: AnalysisMode, sensit
         disease: isKKM ? "Premise Contamination" : "Food Poisoning / Leptospirosis",
         statistics: isKKM ? "Sistem saliran tersumbat menyumbang 40% penutupan premis oleh KKM." : "Kes kencing tikus mencatatkan morbiditi tinggi di kawasan perparitan tidak diselenggara.",
         description: isKKM
-          ? "Perangkap minyak (grease trap) tidak diselenggara secara berkala menyebabkan mendapan sisa lemak tebal dan bau busuk yang kuat."
-          : "Timbunan barangan lusuh, kayu, botol kosong serta plastik bertaburan yang mendedahkan risiko pengumpulan air hujan.",
+          ? "Perangkap minyak (grease trap) tidak diselenggara secara berkala menyebabkan mendapan sisa lemak tebal, bau busuk, dan tarikan utama lalat & lipas Jerman."
+          : "Timbunan barangan lusuh, kayu, botol kosong serta plastik bertaburan yang mendedahkan risiko pengumpulan air hujan dan habitat lipas.",
         solution: isKKM
           ? "Keluarkan mendapan pepejal minyak setiap hujung minggu, gunakan bakteria pengurai lipid khusus, dan pastikan saliran mengalir sempurna."
           : "Lakukan gotong-royong pembersihan, kitar semula botol kosong, kosongkan kawasan daripada barangan lusuh.",
@@ -65,6 +65,21 @@ export const getSimulatedLandscapeResponse = (analysisMode: AnalysisMode, sensit
           : "Kawasan ini kelihatan seperti tapak pelupusan haram berbanding premis kediaman yang waras. Lipas dan tikus sudah mula menandatangani surat perjanjian sewa.",
         confidence: 0.92,
         box_2d: { ymin: 200, xmin: 650, ymax: 500, xmax: 900 },
+        citations: []
+      },
+      {
+        id: "sim-risk-3",
+        category: "VECTOR",
+        label: "Timbunan Kayu & Papan Lusuh (Wood Pile & Timber Harborage)",
+        agent: "Periplaneta americana / Blattella germanica",
+        microbiology: "Shigella dysenteriae / Salmonella enterica",
+        disease: "Dysentery / Allergic Asthma / Food Contamination",
+        statistics: "Timbunan kayu dan papan terdedah menjadi punca 65% infestasi lipas rumah dan perosak struktur di Malaysia.",
+        description: "Timbunan kayu, papan lusuh, dan kotak kadbod basah yang terbiar di sudut premis. Tempat ini menyediakan kelembapan selulosa, ruang gelap, dan suhu ideal untuk sarang koloni lipas serta lalat bertelur.",
+        solution: "Alihkan timbunan kayu sekurang-kurangnya 30cm dari tanah & dinding, lupuskan kayu reput, dan sembur racun umpan gel lipas (Fipronil/Hydramethylnon) di celahan kayu.",
+        savageCommentary: "Timbunan kayu dan papan reput ini bukannya hiasan kotej, ini resort percutian 5-bintang untuk koloni lipas berparti dan membiak secara besar-besaran!",
+        confidence: 0.94,
+        box_2d: { ymin: 600, xmin: 100, ymax: 900, xmax: 450 },
         citations: []
       }
     ],
@@ -189,34 +204,39 @@ Sampel imej ini mempamerkan penanda taksonomi visual yang sepadan dengan spesime
 export const getSimulatedChatResponse = (risk: RiskDetection, question: string, language: string = 'ms'): string => {
   const qStr = question.toLowerCase();
   if (language === 'ms') {
-    if (qStr.includes('bunuh') || qStr.includes('mati') || qStr.includes('racun') || qStr.includes('hancur')) {
-      return `Bagi mengawal ejen vektor **${risk.agent || 'nyamuk'}**, anda dicadangkan mengambil pendekatan bertingkat:
+    if (qStr.includes('bunuh') || qStr.includes('mati') || qStr.includes('racun') || qStr.includes('hancur') || qStr.includes('kawal') || qStr.includes('hapus')) {
+      return `Bagi mengawal dan menghapuskan ejen vektor & perosak **${risk.agent || 'vektor'}**, anda dicadangkan mengambil pendekatan bertingkat mengikut spesis:
       
-1. **Kawalan Fizikal (Mekanikal)**: Kosongkan takungan air setiap 7 hari untuk memotong kitaran hidup pembiakan (dari telur ke dewasa mengambil masa sekitar 7-10 hari). Sental dinding bekas untuk menanggalkan telur yang melekat kuat.
-2. **Kawalan Biologi/Kimia**: Gunakan Abate (Temephos) dengan nisbah 10g bagi setiap 100 liter air. Ia sangat berkesan membunuh jentik-jentik tanpa menjejaskan kualiti air secara luapan gas jika tidak diminum langsung. Alternatif selamat adalah BTI (Bacillus thuringiensis israelensis) yang merupakan kawalan mesra alam.
-3. **Penyemburan Ruang (Fogging)**: Dilakukan di zon hotspot oleh Pejabat Kesihatan Daerah (PKD) bertujuan membunuh nyamuk dewasa aktif.`;
+1. **PENCEGAHAN & KAWALAN LIPAS (*Blattella germanica* / *Periplaneta americana*)**:
+   - **Pembersihan Timbunan Kayu & Sampah**: Alihkan timbunan kayu, papan lusuh, dan kotak kadbod basah sekurang-kurangnya 30cm dari tanah dan dinding. Ini memusnahkan habitat sarang gelap berselulosa.
+   - **Umpan Gel & Asid Borik**: Aplikasikan gel umpan Fipronil/Hydramethylnon di celahan kayu, belakang perkakas, atau perangkap minyak.
+2. **KAWALAN LALAT (*Musca domestica* / *Chrysomya megacephala*)**:
+   - **Pengurusan Sisa**: Gunakan tong sampah bertutup kedap berpijak kaki. Bersihkan lindi sisa makanan harian.
+   - **Perangkap Fizikal**: Pasangkan perangkap pelekat lalat atau lampu pembunuh UV (insect electrocutor) di ruang tertutup.
+3. **KAWALAN NYAMUK (*Aedes* / *Culex*)**:
+   - **Pemusnahan Takungan Air**: Kosongkan takungan air setiap 7 hari untuk memotong kitaran hidup pembiakan. Sental dinding bekas untuk menanggalkan telur.
+   - **Kawalan Larvasid**: Gunakan Abate (Temephos 1% SG) 10g/100L air atau BTI biologi di takungan air tidak diminum.`;
     }
     if (qStr.includes('denda') || qStr.includes('kkm') || qStr.includes('undang') || qStr.includes('salah')) {
-      return `Di bawah **Akta Pemusnahan Serangga Pembawa Penyakit 1975 (Akta 154)**:
+      return `Di bawah **Akta Pemusnahan Serangga Pembawa Penyakit 1975 (Akta 154)** & **Akta Makanan 1983**:
       
-- Sebarang premis yang dikesan membiak serangga pembawa penyakit (seperti nyamuk Aedes) boleh dikenakan **Kompaun serta-merta bernilai RM500** bagi setiap tapak pembiakan yang aktif.
-- Bagi kesalahan pertama mahkamah, denda denda maksimum boleh mencecah **RM10,000 atau penjara sehingga 2 tahun**, atau kedua-duanya sekali.
-- Bagi elemen kebersihan premis makanan (Borang KKM), kegagalan mengekalkan demerit minimum boleh membawa kepada arahan penutupan premis di bawah Seksyen 11 Akta Makanan 1983 selama 14 hari bagi operasi sanitasi penuh.`;
+- Sebarang premis yang dikesan membiak serangga pembawa penyakit (Aedes, lipas, lalat) boleh dikenakan **Kompaun serta-merta bernilai RM500** bagi setiap tapak pembiakan yang aktif.
+- Bagi kesalahan pertama di mahkamah, denda maksimum boleh mencecah **RM10,000 atau penjara sehingga 2 tahun**, atau kedua-duanya sekali.
+- Bagi elemen kebersihan premis makanan (Borang KKM K-PPKM), kegagalan menjaga kawalan perosak (Lalat, Lipas & Tikus) dan premis tidak suci boleh membawa kepada **Arahan Penutupan Premis di bawah Seksyen 11 Akta Makanan 1983** selama 14 hari.`;
     }
     if (qStr.includes('penyakit') || qStr.includes('bahaya') || qStr.includes('jangkit') || qStr.includes('simptom')) {
-      return `Ejen pengesan yang dijumpai berkait rapat dengan patogen **${risk.microbiology || 'Virus'}** yang mencetuskan **${risk.disease || 'Penyakit Berjangkit'}**.
+      return `Ejen pengesan yang dijumpai berkait rapat dengan patogen **${risk.microbiology || 'Patogen Vektor'}** yang mencetuskan **${risk.disease || 'Penyakit Berjangkit'}**.
       
-Gejala utama merangkumi:
-- Demam panas tinggi secara tiba-tiba (3-5 hari).
-- Sakit sendi yang amat sangat (maka nama alternatifnya 'breakbone fever').
-- Ruam merah pada kulit dan sakit di belakang mata.
-- Sekiranya bertukar menjadi Demam Denggi Berdarah (DHF), pesakit berisiko mengalami pendarahan dalaman, kegagalan organ, dan kematian jika lambat menerima rawatan rehidrasi cecair intravena di hospital.`;
+Ancaman Kesihatan Utama:
+- **Serangga Lipas & Lalat**: Memindahkan patogen *Salmonella enterica*, *Shigella dysenteriae*, dan *Escherichia coli* secara mekanikal dari timbunan kayu/sampah ke makanan. Menyebabkan Keracunan Makanan, Cirit-birit, Disentri, Kepialu (Typhoid), serta Alergi/Asma (zarah najis lipas).
+- **Nyamuk Aedes**: Memindahkan Virus Denggi, Zika, dan Chikungunya melalui gigitan betina aktif.
+- **Tikus**: Memindahkan *Leptospira interrogans* (Penyakit Kencing Tikus / Leptospirosis).`;
     }
     return `Sebagai Jurutera Kesihatan Awam Kanan, saya amat menyarankan tindakan pantas berikut diambil untuk risiko "${risk.label}":
 
-1. **Pengasingan & Sanitasi**: Kenal pasti punca takungan air atau sisa sampah dan segera buang atau tutup kedap.
-2. **Pemantauan Harian**: Pastikan tiada pengumpulan semula dalam masa terdekat. Amalkan prinsip pencegahan 10-minit seminggu.
-3. **Hebahan Komuniti**: Maklumkan kepada rukun tetangga atau jawatankuasa premis berhampiran agar tinjauan bersepadu dapat diadakan, memandangkan radius penerbangan nyamuk Aedes dewasa boleh mencecah sekitar 100 hingga 200 meter.`;
+1. **Pengasingan & Sanitasi**: Kenal pasti punca takungan air, timbunan kayu, atau sisa sampah dan segera bersihkan, alih, atau tutup kedap.
+2. **Pemantauan Harian**: Pastikan tiada pengumpulan sisa atau kelembapan semula. Amalkan prinsip sanitasi 10-minit seminggu.
+3. **Pembersihan Struktur**: Susun kayu/papan sekurang-kurangnya 30cm tinggi dari tanah, bersihkan perangkap minyak, dan pastikan pencahayaan cukup di kawasan gelap.`;
   } else {
     return `Regarding the risk titled "${risk.label}" associated with the agent **${risk.agent || 'Vector'}**, here are the technical recommendations:
 
@@ -523,7 +543,13 @@ const retryWithBackoff = async <T>(fn: () => Promise<T>, retries = 2, delay = 20
     }
 };
 
-const CLUTTER_KEYWORDS = ['trash', 'rubbish', 'garbage', 'sampah', 'sisa', 'mess', 'clutter', 'pile', 'plastic bag', 'bottle', 'can', 'food', 'sisa makanan', 'kotor', 'dirty', 'stain', 'habuk', 'dust', 'web', 'sarang labah'];
+const CLUTTER_KEYWORDS = [
+  'trash', 'rubbish', 'garbage', 'sampah', 'sisa', 'mess', 'clutter', 'pile', 
+  'plastic bag', 'bottle', 'can', 'food', 'sisa makanan', 'kotor', 'dirty', 
+  'stain', 'habuk', 'dust', 'web', 'sarang labah', 'kayu', 'wood', 'papan', 
+  'timbunan kayu', 'lumber', 'timber', 'cardboard', 'kotak', 'lipas', 
+  'cockroach', 'lalat', 'fly', 'maggot', 'decay', 'organic waste', 'junk'
+];
 
 export const analyzeLandscape = async (base64Image: string, mimeType: string, mode: 'FAST' | 'DETAILED' = 'DETAILED', language: string = 'ms', sensitivity: SensitivityLevel = 'STANDARD', analysisMode: AnalysisMode = 'VECTOR_CONTROL'): Promise<AnalysisResponse> => {
   const langMap: Record<string, string> = { 'ms': 'Bahasa Melayu', 'en': 'English', 'zh': 'Chinese', 'ta': 'Tamil' };
@@ -564,12 +590,16 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
   if (analysisMode === 'KKM_FOOD_STANDARD') {
       // === KKM INSPECTION MODE ===
       scanProtocol = `
-        PROTOCOL: OFFICIAL KKM FOOD PREMISE INSPECTION (BORANG K-PPKM-01/03).
+        PROTOCOL: OFFICIAL KKM FOOD PREMISE INSPECTION (BORANG K-PPKM-01/03) & VECTOR HARBORAGE SCAN.
         REFERENCE: FOOD HYGIENE REGULATIONS 2009 & FOOD ACT 1983.
+        MANDATORY PEST & VECTOR FOCUS:
+        1. COCKROACHES (Blattella germanica / Periplaneta americana): Scan for active roaches, egg cases (ootheca), dark crevices, timber/wood piles (timbunan kayu/papan), cardboard clutter, and uncleaned grease traps.
+        2. FLIES (Musca domestica / Chrysomya megacephala): Scan for flies on exposed food, open trash bins, organic decay, and moist food residues.
+        3. RODENTS & MOSQUITOES: Scan for rodent droppings/burrows and stagnant water vectors.
         TASK:
-        1. Evaluate the premise based on the 15 standard elements below.
+        1. Evaluate the premise based on the 16 standard KKM elements.
         2. Calculate Demerit Points based on visual evidence.
-        3. Issue a Grade (A/B/C/D) and Recommendation (LULUS / TUTUP).
+        3. Issue a Grade (A/B/C/D/TUTUP) and Recommendation (LULUS / TUTUP).
       `;
 
       schemaDescription = `
@@ -642,7 +672,14 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
 
   } else {
       // === VECTOR / SPATIAL ENGINEERING MODE (DEFAULT) ===
-      scanProtocol = "PROTOCOL: IDENTIFY MACRO-VECTORS (AEDES/CULEX) & SOLID WASTE ACCUMULATION.";
+      scanProtocol = `
+        PROTOCOL: COMPREHENSIVE MULTI-VECTOR & HARBORAGE DETECTOR.
+        YOU MUST IDENTIFY ALL TYPES OF VECTOR HAZARDS AND PEST BREEDING/HARBORAGE SITES IN THE IMAGE:
+        1. MOSQUITO BREEDING (Aedes aegypti / Aedes albopictus / Culex): Stagnant water vessels, flower pots, tires, clogged gutters.
+        2. COCKROACH HARBORAGE (Blattella germanica / Periplaneta americana): Timbunan kayu/papan (wood piles / timber stacks), cardboard box clutter, dark moist crevices, unwashed food trays, grease traps. Highlight how wood/timber piles provide ideal cellulose humidity & shelter for roach colonies!
+        3. FLY BREEDING (Musca domestica / Chrysomya megacephala): Timbunan sampah (trash piles), exposed food waste, decomposing organic matter, leachate.
+        4. RODENT NESTS (Rattus rattus / Rattus norvegicus): Clutter, wood piles, broken drainage.
+      `;
       
       schemaDescription = `
         OUTPUT FORMAT: JSON ONLY.
@@ -964,20 +1001,20 @@ export const generateSimulationPrompt = async (base64Image: string, config: Simu
     let basePrompt = "";
     
     if (config.customPrompt && config.customPrompt.trim().length > 0) {
-        basePrompt = `[CRITICAL: STRICTLY FOLLOW THE USER'S EXACT INSTRUCTIONS. DO NOT ADD ANY EXTRA FEATURES, LAB EQUIPMENT, OR MEDICAL ELEMENTS. EXACTLY MATCH THE ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, AND FIELD OF VIEW.] User instructions: ${config.customPrompt}`;
+        basePrompt = `[ABSOLUTE PERSPECTIVE MANDATE: STRICTLY LOCK AND PRESERVE THE EXACT ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, FIELD OF VIEW, VANISHING POINTS, AND SPATIAL GEOMETRY WITHOUT THE SLIGHTEST CHANGE. DO NOT ROTATE, PAN, ZOOM, SHIFT CAMERA POSITION, OR ALTER SCENE ORIENTATION.] User instructions: ${config.customPrompt}`;
     } else {
-        basePrompt = "[CRITICAL: EXACTLY MATCH THE ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, AND FIELD OF VIEW.] The exact same room structure, but now represented as exceptionally clean, tidy, dry, and pristine. Do not change the general location type into a medical lab, clinic, or clinic hospital.";
+        basePrompt = "[ABSOLUTE PERSPECTIVE MANDATE: STRICTLY LOCK AND PRESERVE THE EXACT ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, FIELD OF VIEW, VANISHING POINTS, AND SPATIAL GEOMETRY WITHOUT THE SLIGHTEST CHANGE. DO NOT ROTATE, PAN, ZOOM, SHIFT CAMERA POSITION, OR ALTER SCENE ORIENTATION.] The exact same physical room structure, but now represented as exceptionally clean, tidy, dry, and pristine. Do not change the general location type into a medical lab, clinic, or clinic hospital.";
         
         if (config.mode === 'UPGRADE_FURNITURE') {
             basePrompt += " Upgrade all equipment or furniture with brand new, modern, perfectly organized alternatives matching the original layout.";
         } else if (config.mode === 'FULL_RECONSTRUCTION') {
-            basePrompt += " Complete architectural renovation with dry sparkling floors, newly painted immaculate walls, keeping the same structural layout.";
+            basePrompt += " Complete architectural renovation with dry sparkling floors, newly painted immaculate walls, keeping the exact same structural layout and camera viewpoint.";
         } else {
             basePrompt += " All surfaces are completely clean, empty of clutter, looking pristine, spotless, and highly organized.";
         }
         
         if (config.humans === 'KEEP_PROTECTED') {
-            basePrompt += " Keep existing people in the image but dressed professionally in clean safety clothing.";
+            basePrompt += " Keep existing people in the image at their exact positions, but dressed professionally in clean safety clothing.";
         } else {
             basePrompt += " Zero humans present, completely quiet empty tidy scene.";
         }
@@ -1003,7 +1040,10 @@ export const generateSimulationPrompt = async (base64Image: string, config: Simu
                     
                     REQUIRED INSTRUCTIONS: "${basePrompt}"
                     
-                    CRITICAL NEGATIVE-PROMPT AVOIDANCE PROTCOLS:
+                    CRITICAL PERSPECTIVE & GEOMETRY LOCK PROTOCOL:
+                    1. The generated prompt MUST EXPLICITLY REQUIRE keeping the exact same camera placement, lens perspective, spatial geometry, vanishing points, depth-of-field, and viewpoint elevation as the input image without the slightest angle change, rotation, zoom, or camera shift.
+
+                    CRITICAL NEGATIVE-PROMPT AVOIDANCE PROTOCOLS:
                     1. The final prompt must NEVER contain negative or dirty words such as "trash", "garbage", "rubbish", "litter", "dirt", "cleaning", "clean up", "remove", "grime", "filth", "clutter", "stains", "debris", "puddle", "standing water", "mud", "disorganized", "waste", "stagnant", "grease", "cockroach", "mosquitoes", "larvae". Mentioning these words will cause image generators to put dirt and trash IN the image!
                     2. Describe the scene ONLY by emphasizing positive clean attributes. Use words like: "dry sparkling surfaces", "spotless flooring", "gleaming shiny table", "neatly organized workspace", "immaculately sterile environment", "tidy shelf", "well-maintained layout", "sparkling and clear dry area". No water logging, no trash.
                     3. Ensure the prompt describes a beautifully sanitised and completely dry version of the input scene, maintaining the exact layout, geometry, and perspective. Just output the final English prompt as a single descriptive paragraph.` }
@@ -1062,9 +1102,9 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
         
         let basePrompt = "";
         if (config.customPrompt && config.customPrompt.trim().length > 0) {
-            basePrompt = `[CRITICAL: STRICTLY FOLLOW THE USER'S EXACT INSTRUCTIONS. DO NOT ADD ANY EXTRA FEATURES, LAB EQUIPMENT, OR MEDICAL ELEMENTS. EXACTLY MATCH THE ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, AND FIELD OF VIEW.] User instructions: ${config.customPrompt}`;
+            basePrompt = `[ABSOLUTE PERSPECTIVE MANDATE: STRICTLY LOCK AND PRESERVE THE EXACT ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, FIELD OF VIEW, VANISHING POINTS, AND SPATIAL GEOMETRY WITHOUT THE SLIGHTEST CHANGE. DO NOT ROTATE, PAN, ZOOM, OR SHIFT CAMERA POSITION.] User instructions: ${config.customPrompt}`;
         } else {
-            basePrompt = "[CRITICAL: EXACTLY MATCH THE ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, AND FIELD OF VIEW.] The exact same room structure, but represented as exceptionally clean, tidy, dry, and pristine. Do not change it into a lab or hospital.";
+            basePrompt = "[ABSOLUTE PERSPECTIVE MANDATE: STRICTLY LOCK AND PRESERVE THE EXACT ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, FIELD OF VIEW, VANISHING POINTS, AND SPATIAL GEOMETRY WITHOUT THE SLIGHTEST CHANGE. DO NOT ROTATE, PAN, ZOOM, OR SHIFT CAMERA POSITION.] The exact same room structure, but represented as exceptionally clean, tidy, dry, and pristine. Do not change it into a lab or hospital.";
             
             if (config.mode === 'UPGRADE_FURNITURE') {
                 basePrompt += " Upgrade with brand new furniture matching the original layout.";
