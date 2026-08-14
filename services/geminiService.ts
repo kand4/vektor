@@ -404,7 +404,7 @@ export const fetchLatestIDengueStats = async (): Promise<iDengueData> => {
       Output JSON Structure: { "cumulativeCases": number, "cumulativeDeaths": number, "activeHotspots": number, "topState": string, "epidemiologicalWeek": string, "lastUpdated": string }`;
 
       const response = await ai.models.generateContent({
-        model: getPreferredModelForText('gemini-3.5-flash'), 
+        model: getPreferredModelForText('gemini-3.7-flash'), 
         contents: { parts: [{ text: prompt }] },
         config: {
           tools: [{ googleSearch: {} }]
@@ -443,7 +443,7 @@ export const fetchRegionalDengueStats = async (state: string, district: string):
         Output JSON: { "stateName": "${state}", "districtName": "${district}", "stateCases": number, "districtCases": number, "districtHotspots": number, "districtRiskLevel": "LOW"|"MEDIUM"|"HIGH"|"EXTREME", "localAdvice": string, "epidemiologicalWeek": string }`;
 
         const response = await ai.models.generateContent({
-          model: getPreferredModelForText('gemini-3.5-flash'),
+          model: getPreferredModelForText('gemini-3.7-flash'),
           contents: { parts: [{ text: prompt }] },
           config: {
             tools: [{ googleSearch: {} }]
@@ -557,7 +557,7 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
   const optimizedImage = await compressImage(base64Image);
   
   // Use preferred model or Flash model for higher spatial intelligence and free API compatibility
-  const modelId = getPreferredModelForScan("gemini-3.5-flash");
+  const modelId = getPreferredModelForScan("gemini-3.7-flash");
 
   let thinkingBudget = 4000; 
   let engineerPersona = "";
@@ -954,8 +954,8 @@ export const analyzeManualRegion = async (base64Image: string, mimeType: string,
         const result = await retryWithBackoff(async () => {
             const ai = getAIClient();
             const resp = await ai.models.generateContent({
-                // Using Pro model for higher spatial intelligence and coordinate handling
-                model: getPreferredModelForText("gemini-3.5-flash"), 
+                // Using Flash model with high spatial intelligence and coordinate handling
+                model: getPreferredModelForText("gemini-3.7-flash"), 
                 contents: { parts: [{ inlineData: { mimeType: 'image/jpeg', data: optimizedImage } }, { text: prompt }] },
                 config: { responseMimeType: "application/json" }
             });
@@ -1032,7 +1032,7 @@ export const generateSimulationPrompt = async (base64Image: string, config: Simu
 
     const promptGeneration = async () => {
         const resp = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.7-flash',
             contents: {
                 parts: [
                     { inlineData: { data: optimizedImage, mimeType: 'image/jpeg' } },
@@ -1137,12 +1137,12 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
         const ai = getAIClient();
         const optimizedImage = await compressImage(base64Image);
         
-        // 1. Try Gemini 2.5 Flash Image-to-Image (Multimodal)
+        // 1. Try Gemini Multimodal Image Generation
         try {
-            console.log("🎨 Attempting Gemini 2.5 Flash Image Generation...");
+            console.log("🎨 Attempting Gemini Flash Image Generation...");
             const response = await retryWithBackoff(async () => {
                 return await ai.models.generateContent({
-                    model: 'gemini-2.5-flash-image',
+                    model: 'gemini-3.1-flash-lite-image',
                     contents: {
                         parts: [
                             { inlineData: { data: optimizedImage, mimeType: 'image/jpeg' } },
@@ -1195,7 +1195,7 @@ export const askRiskFollowUp = async (risk: RiskDetection, question: string, lan
     try {
         const ai = getAIClient();
         const response = await ai.models.generateContent({
-            model: getPreferredModelForText("gemini-2.5-flash"), 
+            model: getPreferredModelForText("gemini-3.7-flash"), 
             contents: {
                 parts: [{
                     text: `CONTEXT: RISK ANALYSIS. Risk: "${risk.label}" (${risk.category}). Agent: ${risk.agent}.
@@ -1244,7 +1244,7 @@ export const deepLarvaeAnalysis = async (base64Image: string): Promise<{ diagnos
         const parsedResult = await retryWithBackoff(async () => {
              const ai = getAIClient();
              const resp = await ai.models.generateContent({
-                 model: getPreferredModelForText("gemini-2.5-flash"),
+                 model: getPreferredModelForText("gemini-3.7-flash"),
                  contents: {
                      parts: [
                          { inlineData: { mimeType: 'image/jpeg', data: optimizedImage } },
@@ -1314,7 +1314,7 @@ Gunakan format markdown yang kemas, profesional, saintifik tetapi difahami awam.
     try {
         const ai = getAIClient();
         const response = await ai.models.generateContent({
-            model: getPreferredModelForText("gemini-2.5-flash"),
+            model: getPreferredModelForText("gemini-3.7-flash"),
             contents: { parts: [{ text: prompt }] }
         });
 
@@ -1365,7 +1365,7 @@ TUGAS ANDA:
         const parsedResult = await retryWithBackoff(async () => {
              const ai = getAIClient();
              const resp = await ai.models.generateContent({
-                 model: getPreferredModelForText("gemini-2.5-flash"),
+                 model: getPreferredModelForText("gemini-3.7-flash"),
                  contents: {
                      parts: [
                          { inlineData: { mimeType: 'image/jpeg', data: optimizedImage } },

@@ -34,7 +34,14 @@ async function startServer() {
       }
 
       const { method, model, contents, prompt, config } = req.body;
-      const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
+      const ai = new GoogleGenAI({
+        apiKey: apiKey.trim(),
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
 
       if (method === "generateImages") {
         if (!model || !prompt) {
@@ -78,12 +85,12 @@ async function startServer() {
         }
         console.log(`🤖 Backend calling Gemini model: ${model}`);
         
-        // Safe and approved fallback models list in order of preference (excluding deprecated models like 1.5 and 2.0)
+        // Safe and approved fallback models list in order of preference (prioritizing active supported models)
         const safeFallbacks = [
-          "gemini-3.5-flash",
-          "gemini-2.5-flash",
+          "gemini-3.7-flash",
           "gemini-flash-latest",
-          "gemini-3.1-flash-lite"
+          "gemini-3.1-flash-lite",
+          "gemini-3.1-pro-preview"
         ];
 
         const modelFallbackList = [model];
@@ -100,7 +107,7 @@ async function startServer() {
         for (const targetModel of uniqueModels) {
           try {
             if (targetModel !== model) {
-              console.log(`🔄 Attempting fallback model: ${targetModel} due to a block or demand spike on ${model}`);
+              console.log(`🔄 Attempting fallback model: ${targetModel} due to high demand or failure on previous attempt`);
             }
 
             // Protect from thinkingConfig on non-supported models
