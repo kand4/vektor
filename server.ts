@@ -160,33 +160,77 @@ async function startServer() {
 
       if (!botToken || !chatId) {
         return res.status(400).json({
-          error: { message: "Telegram Bot Token dan Chat ID tidak dikonfigurasi dalam Server Secrets atau tetapan pengguna." }
+          error: { message: "Telegram Bot Token dan Chat ID diperlukan. Sila masukkan dalam tetapan eksport atau tetapkan TELEGRAM_BOT_TOKEN & TELEGRAM_CHAT_ID dalam fail persekitaran (.env)." }
         });
       }
 
-      // Helper function to chunk text
-      const chunkText = (str: string, maxLength: number = 4000): string[] => {
-        if (str.length <= maxLength) return [str];
-        const chunks = [];
+      // Safe HTML chunker for Telegram ensuring tags like <b>, <i>, <code>, <a> are balanced
+      const chunkHtmlText = (str: string, maxLength: number = 3800): string[] => {
+        if (!str || str.length <= maxLength) return [str || ''];
+        
+        const lines = str.split('\n');
+        const chunks: string[] = [];
         let currentChunk = '';
-        const paragraphs = str.split('\n\n');
-        for (const p of paragraphs) {
-            if (currentChunk.length + p.length > maxLength) {
-                if (currentChunk.trim()) chunks.push(currentChunk.trim());
-                currentChunk = p + '\n\n';
-            } else {
-                currentChunk += p + '\n\n';
+
+        for (const line of lines) {
+          if ((currentChunk + '\n' + line).length > maxLength) {
+            if (currentChunk.trim()) {
+              chunks.push(currentChunk.trim());
             }
+            currentChunk = line;
+          } else {
+            currentChunk = currentChunk ? (currentChunk + '\n' + line) : line;
+          }
         }
-        if (currentChunk.trim()) chunks.push(currentChunk.trim());
-        return chunks;
+        if (currentChunk.trim()) {
+          chunks.push(currentChunk.trim());
+        }
+
+        // Repair unclosed HTML tags across split chunks
+        return chunks.map(chunk => {
+          let fixedChunk = chunk;
+          const openTags: string[] = [];
+          const tagRegex = /<\/?([a-zA-Z0-9]+)(?:\s+[^>]*?)?>/g;
+          let match;
+
+          while ((match = tagRegex.exec(chunk)) !== null) {
+            const isClosing = match[0].startsWith('</');
+            const tagName = match[1].toLowerCase();
+            if (['b', 'i', 'code', 'pre', 'a', 'u', 's'].includes(tagName)) {
+              if (isClosing) {
+                const idx = openTags.lastIndexOf(tagName);
+                if (idx !== -1) openTags.splice(idx, 1);
+              } else {
+                openTags.push(tagName);
+              }
+            }
+          }
+
+          // Close any open tags at the end of this chunk
+          for (let i = openTags.length - 1; i >= 0; i--) {
+            fixedChunk += `</${openTags[i]}>`;
+          }
+          return fixedChunk;
+        });
       };
 
-      // 1. Send text chunks
+      // Helper to strip HTML tags for plain text fallback
+      const stripHtml = (html: string) => {
+        return html
+          .replace(/<br\s*[\/]?>/gi, '\n')
+          .replace(/<[^>]+>/g, '')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#039;/g, "'");
+      };
+
+      // 1. Send text chunks with automatic plain text fallback on entity parse error
       if (text) {
-          const chunks = chunkText(text, 4000);
+          const chunks = chunkHtmlText(text, 3800);
           for (const chunk of chunks) {
-              const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+              let response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
@@ -195,57 +239,87 @@ async function startServer() {
                       parse_mode: 'HTML'
                   })
               });
+
               if (!response.ok) {
                   let errorDescription = 'Ralat tidak diketahui';
+                  let isParseError = false;
                   try {
                       const errorData = await response.json();
                       errorDescription = errorData.description || JSON.stringify(errorData);
+                      if (errorDescription.includes("can't parse entities") || errorDescription.includes("tag")) {
+                          isParseError = true;
+                      }
                   } catch (e) {
                       const textError = await response.text();
                       errorDescription = `Status ${response.status}: ${textError.substring(0, 200)}`;
                   }
-                  
-                  if (errorDescription.includes("chat not found")) {
-                      errorDescription += " (Petunjuk: Jika ini ID Kumpulan/Saluran(Channel), pastikan ia bermula dengan tanda '-' seperti -100xxxx. Pastikan juga Bot anda telah dimasukkan ke dalam kumpulan/saluran tersebut sebagai Admin)";
+
+                  // If HTML parse error, retry with plain text (without parse_mode)
+                  if (isParseError) {
+                      console.warn("⚠️ Telegram HTML parse error. Retrying with plain text fallback...");
+                      const plainChunk = stripHtml(chunk);
+                      response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                              chat_id: chatId,
+                              text: plainChunk
+                          })
+                      });
                   }
-                  throw new Error(`Telegram Text Error: ${errorDescription}`);
+
+                  if (!response.ok) {
+                      let finalErr = errorDescription;
+                      try {
+                          const errJson = await response.json();
+                          finalErr = errJson.description || finalErr;
+                      } catch (_) {}
+                      
+                      if (finalErr.includes("chat not found")) {
+                          finalErr += " (Petunjuk: Jika ID Kumpulan/Saluran, pastikan ia bermula dengan tanda '-' seperti -100xxxx. Pastikan Bot telah dimasukkan ke dalam kumpulan/saluran tersebut sebagai Admin).";
+                      } else if (finalErr.includes("Unauthorized") || finalErr.includes("Not Found")) {
+                          finalErr += " (Petunjuk: Sila periksa semula Telegram Bot Token anda).";
+                      }
+                      throw new Error(`Telegram Text Error: ${finalErr}`);
+                  }
               }
           }
       }
 
       // 2. Send media groups if provided
       if (mediaUrls && Array.isArray(mediaUrls) && mediaUrls.length > 0) {
+          const validUrls = mediaUrls.filter(u => typeof u === 'string' && u.startsWith('http'));
           const chunks = [];
-          for (let i = 0; i < mediaUrls.length; i += 10) {
-              chunks.push(mediaUrls.slice(i, i + 10));
+          for (let i = 0; i < validUrls.length; i += 10) {
+              chunks.push(validUrls.slice(i, i + 10));
           }
           for (const chunk of chunks) {
               const mediaGroup = chunk.map(url => ({
                   type: 'photo',
                   media: url
               }));
-              const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMediaGroup`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                      chat_id: chatId,
-                      media: mediaGroup
-                  })
-              });
-              if (!response.ok) {
-                  let errorDescription = 'Ralat media tidak diketahui';
-                  try {
-                      const errorData = await response.json();
-                      errorDescription = errorData.description || JSON.stringify(errorData);
-                  } catch (e) {
-                      const textError = await response.text();
-                      errorDescription = `Status ${response.status}: ${textError.substring(0, 200)}`;
+              try {
+                  const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMediaGroup`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                          chat_id: chatId,
+                          media: mediaGroup
+                      })
+                  });
+                  if (!response.ok) {
+                      let errorDescription = 'Ralat media tidak diketahui';
+                      try {
+                          const errorData = await response.json();
+                          errorDescription = errorData.description || JSON.stringify(errorData);
+                      } catch (e) {
+                          const textError = await response.text();
+                          errorDescription = `Status ${response.status}: ${textError.substring(0, 200)}`;
+                      }
+                      console.warn("⚠️ Telegram Media Group warning:", errorDescription);
                   }
-                  
-                  if (errorDescription.includes("chat not found")) {
-                      errorDescription += " (Petunjuk: Jika ini ID Kumpulan/Saluran(Channel), pastikan ia bermula dengan tanda '-' seperti -100xxxx. Pastikan juga Bot anda telah dimasukkan ke dalam kumpulan/saluran tersebut sebagai Admin)";
-                  }
-                  throw new Error(`Telegram Media Error: ${errorDescription}`);
+              } catch (mediaErr: any) {
+                  console.warn("⚠️ Failed to send media group to Telegram:", mediaErr?.message || mediaErr);
               }
           }
       }
@@ -285,10 +359,15 @@ async function startServer() {
       // Public API key for freeimage.host
       formData.append('key', '6d207e02198a847aa98d0a2a901485a5');
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+
       const response = await fetch('https://freeimage.host/api/1/upload', {
         method: 'POST',
-        body: formData
+        body: formData,
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`Ralat muat naik imej: ${response.status} ${response.statusText}`);
@@ -310,7 +389,12 @@ async function startServer() {
   app.post("/api/telegraph/createAccount", async (req, res) => {
     try {
       const { authorName } = req.body;
-      const response = await fetch(`https://api.telegra.ph/createAccount?short_name=${encodeURIComponent(authorName)}&author_name=${encodeURIComponent(authorName)}`);
+      const rawAuthor = (authorName || 'VectorGuard AI').toString().trim();
+      // Telegraph requires short_name to be 1-32 chars alphanumeric/underscore
+      const shortName = rawAuthor.replace(/[^a-zA-Z0-9_]/g, '_').substring(0, 30) || 'VectorGuard';
+      const cleanAuthorName = rawAuthor.substring(0, 120) || 'VectorGuard AI';
+
+      const response = await fetch(`https://api.telegra.ph/createAccount?short_name=${encodeURIComponent(shortName)}&author_name=${encodeURIComponent(cleanAuthorName)}`);
       const data = await response.json();
       if (data.ok) {
         return res.json(data);
@@ -326,14 +410,17 @@ async function startServer() {
   app.post("/api/telegraph/createPage", async (req, res) => {
     try {
       const { accessToken, title, authorName, content } = req.body;
+      const safeTitle = (title || 'Laporan Pemeriksaan Vektor & Kebersihan').toString().substring(0, 250);
+      const safeAuthor = (authorName || 'VectorGuard AI').toString().substring(0, 120);
+
       const response = await fetch('https://api.telegra.ph/createPage', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             access_token: accessToken,
-            title,
-            author_name: authorName,
-            content: JSON.stringify(content),
+            title: safeTitle,
+            author_name: safeAuthor,
+            content: JSON.stringify(content || []),
             return_content: false
         })
       });

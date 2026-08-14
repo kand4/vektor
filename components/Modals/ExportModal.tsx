@@ -35,8 +35,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
         localStorage.setItem('telegraph_author_name', telegraphAuthor.trim());
     };
 
-    const escapeHtml = (unsafe: string) => {
-        return unsafe
+    const escapeHtml = (unsafe?: string) => {
+        if (!unsafe) return "";
+        return String(unsafe)
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
@@ -45,91 +46,187 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
     };
 
     const buildMarkdownForSession = (session: AnalysisSession, index: number, total: number, telegraphUrl?: string): string => {
-        let report = `<b>LAPORAN PEMERIKSAAN KESIHATAN & KESELAMATAN (VECTORGUARD AI)</b>\n`;
+        const isKkmMode = session.mode === 'KKM_FOOD_STANDARD' || !!session.result?.kkmReport;
+        const kkm = session.result?.kkmReport;
+        const sensitivity = session.result?.sensitivityUsed || 'STANDARD';
+
+        let report = "";
         if (index === 0) {
-            report += `<i>Tarikh Janaan: ${new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' })}</i>\n\n`;
+            if (isKkmMode) {
+                report += `<b>📋 LAPORAN PENILAIAN PREMIS MAKANAN KKM (BORANG K-PPKM)</b>\n`;
+                report += `<i>Sistem Penguatkuasaan & Forensik Kebersihan Makanan VectorGuard AI</i>\n`;
+            } else {
+                report += `<b>🛡️ LAPORAN PEMERIKSAAN VEKTOR & SANITASI (VECTORGUARD AI)</b>\n`;
+                report += `<i>Sistem Diagnostik Entomologi & Keselamatan Awam</i>\n`;
+            }
+            report += `<i>Tarikh Janaan: ${new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</i>\n`;
+            report += `<i>Tahap Sensitiviti: ${escapeHtml(sensitivity)}</i>\n\n`;
         }
-        report += `<b>SESI ${index + 1} DARIPADA ${total}</b>\n`;
-        if (session.result?.hygieneLevel !== undefined) {
-            report += `Skor Kebersihan: <b>${session.result.hygieneLevel.toFixed(1)}/5.0</b>\n`;
+
+        report += `<b>━━━━━━━━━━━━━━━━━━━━━</b>\n`;
+        report += `<b>SESI ${index + 1} DARIPADA ${total}: ${escapeHtml(session.fileName || 'Pemeriksaan Lapangan')}</b>\n`;
+
+        // KKM Specific Report Section
+        if (isKkmMode && kkm) {
+            const finalScore = typeof kkm.totalScore === 'number' ? kkm.totalScore : Math.max(0, 100 - (kkm.totalDemerit || 0));
+            report += `\n<b>🏛️ KEPUTUSAN GRED KKM:</b>\n`;
+            report += `• Gred Premis: <b>GRED ${escapeHtml(kkm.grade || 'N/A')}</b>\n`;
+            report += `• Skor Keseluruhan: <b>${finalScore}%</b> (Jumlah Demerit: -${kkm.totalDemerit || 0} mata)\n`;
+            if (kkm.recommendation) {
+                report += `• Status Tindakan: <b>${escapeHtml(kkm.recommendation)}</b>\n`;
+            }
+            if (kkm.summary) {
+                report += `• Ulasan Pegawai/AI: <i>${escapeHtml(kkm.summary)}</i>\n`;
+            }
+
+            // Display sections with violations
+            const violatedSections = kkm.sections?.filter(s => (s.demeritReceived > 0 || (s.violations && s.violations.length > 0))) || [];
+            if (violatedSections.length > 0) {
+                report += `\n<b>⚠️ ELEMEN PELANGGARAN KKM (DEMERIT):</b>\n`;
+                violatedSections.forEach((sec) => {
+                    report += `• <b>[${escapeHtml(sec.code)}] ${escapeHtml(sec.title)}</b> (-${sec.demeritReceived} mata)\n`;
+                    if (sec.violations && sec.violations.length > 0) {
+                        sec.violations.forEach((v) => {
+                            report += `   - <i>${escapeHtml(v)}</i>\n`;
+                        });
+                    }
+                });
+            }
+        } else {
+            // General Vector & Hygiene Report
+            if (session.result?.hygieneLevel !== undefined) {
+                report += `• Skor Kebersihan: <b>${session.result.hygieneLevel.toFixed(1)}/5.0</b>\n`;
+            }
+            if (session.result?.safetyLevel !== undefined) {
+                report += `• Skor Keselamatan: <b>${session.result.safetyLevel.toFixed(1)}/5.0</b>\n`;
+            }
+            if (session.result?.predictedOutbreakChance !== undefined) {
+                report += `• Risiko Wabak: <b>${session.result.predictedOutbreakChance}%</b>\n`;
+            }
         }
+
+        // Risks findings (Formatted safely for Extreme sensitivity & multiple risks)
         if (session.result?.risks && session.result.risks.length > 0) {
-            report += `\n<b>Penemuan Risiko:</b>\n`;
+            report += `\n<b>🔍 PENEMUAN RISIKO & KETIDAKPATUHAN (${session.result.risks.length} Titik):</b>\n`;
             session.result.risks.forEach((risk, rIdx) => {
-                report += `${rIdx + 1}. <b>${escapeHtml(risk.label)}</b> (Keyakinan: ${risk.confidence ? (risk.confidence * 100).toFixed(1) : 90}%)\n`;
-                if (risk.agent) report += `   • Agen: <i>${escapeHtml(risk.agent)}</i>\n`;
-                if (risk.disease) report += `   • Risiko: <i>${escapeHtml(risk.disease)}</i>\n`;
-                report += `   • Tindakan: ${escapeHtml(risk.solution)}\n\n`;
+                const conf = risk.confidence ? (risk.confidence * 100).toFixed(0) : '90';
+                report += `<b>${rIdx + 1}. ${escapeHtml(risk.label)}</b> [${conf}%]\n`;
+                if (risk.agent) report += `   • Agen/Punca: <i>${escapeHtml(risk.agent)}</i>\n`;
+                if (risk.disease) report += `   • Vektor/Penyakit: <i>${escapeHtml(risk.disease)}</i>\n`;
+                if (risk.solution) report += `   • Tindakan: ${escapeHtml(risk.solution)}\n`;
+                report += `\n`;
             });
         } else {
-            report += `<i>Tiada risiko dikesan.</i>\n\n`;
+            report += `\n<i>✅ Tiada risiko kritikal dikesan pada premis ini.</i>\n\n`;
         }
+
+        if (session.result?.legalSection) {
+            report += `⚖️ <b>Peruntukan Undang-Undang:</b> ${escapeHtml(session.result.legalSection)}\n\n`;
+        }
+
         if (index === total - 1) {
+            report += `<b>━━━━━━━━━━━━━━━━━━━━━</b>\n`;
             if (telegraphUrl) {
-                report += `\n\n📄 <b>Laporan Penuh Lengkap (Telegraph):</b>\n<a href="${telegraphUrl}">${telegraphUrl}</a>`;
+                report += `📄 <b>Laporan Penuh Digital (Telegraph):</b>\n<a href="${telegraphUrl}">${telegraphUrl}</a>\n\n`;
             }
             const appUrl = "https://vektorx.vercel.app";
-            report += `\n\n🔍 <b>Jalankan Analisis Anda Sendiri di:</b>\n<a href="${appUrl}">${appUrl}</a>`;
+            report += `🔍 <b>Jalankan Pemeriksaan Seterusnya di:</b>\n<a href="${appUrl}">${appUrl}</a>`;
         }
+
         return report;
     };
 
     const buildTelegraphContent = (uploadedImages: {sessionIndex: number, originalUrl: string, cleanUrl?: string}[]) => {
         const content: any[] = [];
         
-        content.push({ tag: 'h3', children: ['Laporan Pemeriksaan VectorGuard AI'] });
-        content.push({ tag: 'p', children: [`Tarikh Janaan: ${new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' })}`] });
+        content.push({ tag: 'h3', children: ['LAPORAN PEMERIKSAAN & AUDIT PREMIS (VECTORGUARD AI)'] });
+        content.push({ tag: 'p', children: [`Tarikh Janaan: ${new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`] });
         content.push({ tag: 'hr' });
 
         sessions.forEach((session, index) => {
-            content.push({ tag: 'h4', children: [`Sesi Pemeriksaan ${index + 1}`] });
+            const isKkmMode = session.mode === 'KKM_FOOD_STANDARD' || !!session.result?.kkmReport;
+            const kkm = session.result?.kkmReport;
+
+            content.push({ tag: 'h4', children: [`Sesi ${index + 1}: ${session.fileName || 'Pemeriksaan Premis'}`] });
             
             const imgs = uploadedImages.filter(img => img.sessionIndex === index);
-            if (imgs.length > 0) {
+            if (imgs.length > 0 && imgs[0].originalUrl) {
                 content.push({ tag: 'figure', children: [{ tag: 'img', attrs: { src: imgs[0].originalUrl } }, { tag: 'figcaption', children: ['Imej Bukti Asal'] }] });
-                content.push({ tag: 'p', children: [{ tag: 'a', attrs: { href: imgs[0].originalUrl, target: '_blank' }, children: ['(Klik Untuk Lihat Imej Asal)'] }] });
+                content.push({ tag: 'p', children: [{ tag: 'a', attrs: { href: imgs[0].originalUrl, target: '_blank' }, children: ['(Klik Untuk Buka Imej Asal)'] }] });
                 
                 if (imgs[0].cleanUrl) {
                     content.push({ tag: 'figure', children: [{ tag: 'img', attrs: { src: imgs[0].cleanUrl } }, { tag: 'figcaption', children: ['Imej Simulasi Sanitasi'] }] });
-                    content.push({ tag: 'p', children: [{ tag: 'a', attrs: { href: imgs[0].cleanUrl, target: '_blank' }, children: ['(Klik Untuk Lihat Imej Simulasi)'] }] });
+                    content.push({ tag: 'p', children: [{ tag: 'a', attrs: { href: imgs[0].cleanUrl, target: '_blank' }, children: ['(Klik Untuk Buka Imej Simulasi)'] }] });
                 }
             }
 
-            if (session.result?.hygieneLevel !== undefined) {
-                content.push({ tag: 'p', children: [{ tag: 'b', children: [`Skor Kebersihan: ${session.result.hygieneLevel.toFixed(1)}/5.0`] }] });
+            if (isKkmMode && kkm) {
+                const finalScore = typeof kkm.totalScore === 'number' ? kkm.totalScore : Math.max(0, 100 - (kkm.totalDemerit || 0));
+                content.push({ tag: 'p', children: [{ tag: 'b', children: [`🏛️ Gred KKM: Gred ${kkm.grade || 'N/A'} | Skor: ${finalScore}% (Demerit: -${kkm.totalDemerit || 0})`] }] });
+                if (kkm.recommendation) {
+                    content.push({ tag: 'p', children: [{ tag: 'b', children: ['Status Tindakan: '] }, kkm.recommendation] });
+                }
+                if (kkm.summary) {
+                    content.push({ tag: 'p', children: [{ tag: 'i', children: [`"${kkm.summary}"`] }] });
+                }
+
+                const violatedSections = kkm.sections?.filter(s => (s.demeritReceived > 0 || (s.violations && s.violations.length > 0))) || [];
+                if (violatedSections.length > 0) {
+                    content.push({ tag: 'p', children: [{ tag: 'b', children: ['Pelanggaran Elemen Borang KKM:'] }] });
+                    const secUl = { tag: 'ul', children: [] as any[] };
+                    violatedSections.forEach(sec => {
+                        secUl.children.push({
+                            tag: 'li',
+                            children: [
+                                { tag: 'b', children: [`[${sec.code}] ${sec.title}`] },
+                                ` (-${sec.demeritReceived} mata)`,
+                                ...(sec.violations && sec.violations.length > 0 ? [{ tag: 'br' }, { tag: 'i', children: [sec.violations.join('; ')] }] : [])
+                            ]
+                        });
+                    });
+                    content.push(secUl);
+                }
+            } else {
+                if (session.result?.hygieneLevel !== undefined) {
+                    content.push({ tag: 'p', children: [{ tag: 'b', children: [`Skor Kebersihan: ${session.result.hygieneLevel.toFixed(1)}/5.0 | Keselamatan: ${session.result?.safetyLevel?.toFixed(1) || 'N/A'}/5.0`] }] });
+                }
             }
 
             if (session.result?.risks && session.result.risks.length > 0) {
-                content.push({ tag: 'p', children: [{ tag: 'b', children: ['Penemuan Risiko Utama:'] }] });
+                content.push({ tag: 'p', children: [{ tag: 'b', children: [`Penemuan Titik Risiko (${session.result.risks.length} Titik):`] }] });
                 const ul = { tag: 'ul', children: [] as any[] };
                 session.result.risks.forEach((risk) => {
                     ul.children.push({
                         tag: 'li',
                         children: [
-                            { tag: 'b', children: [risk.label] },
+                            { tag: 'b', children: [risk.label || 'Risiko Dikesan'] },
                             { tag: 'br' },
-                            `Agen: ${risk.agent || 'N/A'}`,
+                            `Punca/Agen: ${risk.agent || 'N/A'}`,
                             { tag: 'br' },
-                            `Risiko Penyakit: ${risk.disease || 'N/A'}`,
+                            `Risiko: ${risk.disease || 'N/A'}`,
                             { tag: 'br' },
-                            { tag: 'i', children: [`Tindakan: ${risk.solution}`] }
+                            { tag: 'i', children: [`Tindakan: ${risk.solution || 'Sanitasi segera'}`] }
                         ]
                     });
                 });
                 content.push(ul);
             }
+
+            if (session.result?.legalSection) {
+                content.push({ tag: 'p', children: [{ tag: 'b', children: ['Peruntukan Undang-Undang: '] }, session.result.legalSection] });
+            }
+
             content.push({ tag: 'hr' });
         });
 
         const appUrl = "https://vektorx.vercel.app";
-        content.push({ tag: 'p', children: [{ tag: 'b', children: ['Jalankan Analisis Anda Sendiri di:'] }] });
-        content.push({ tag: 'p', children: [{ tag: 'a', attrs: { href: appUrl, target: '_blank' }, children: [appUrl] }] });
+        content.push({ tag: 'p', children: [{ tag: 'b', children: ['Jalankan Analisis Anda Sendiri di: '] }, { tag: 'a', attrs: { href: appUrl, target: '_blank' }, children: [appUrl] }] });
 
         return content;
     };
 
     const uploadImages = async () => {
-        setStatusText("Memuat naik gambar ke pelayan imej awam untuk Telegram...");
+        setStatusText("Memuat naik gambar ke pelayan imej untuk Telegraph/Telegram...");
         const uploadedImages: {sessionIndex: number, originalUrl: string, cleanUrl?: string}[] = [];
         const allImageUrls: string[] = [];
 
@@ -141,17 +238,17 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
             if (session.imageSrc) {
                 try {
                     originalUrl = await uploadToTelegraph(session.imageSrc);
-                    allImageUrls.push(originalUrl);
-                } catch(e) {
-                    console.error("Gagal muat naik gambar asal sesi", i);
+                    if (originalUrl) allImageUrls.push(originalUrl);
+                } catch(e: any) {
+                    console.warn("Gagal muat naik gambar asal sesi", i, e?.message || e);
                 }
             }
             if (session.simulationImage) {
                 try {
                     cleanUrl = await uploadToTelegraph(session.simulationImage);
-                    allImageUrls.push(cleanUrl);
-                } catch(e) {
-                    console.error("Gagal muat naik gambar simulasi sesi", i);
+                    if (cleanUrl) allImageUrls.push(cleanUrl);
+                } catch(e: any) {
+                    console.warn("Gagal muat naik gambar simulasi sesi", i, e?.message || e);
                 }
             }
             
