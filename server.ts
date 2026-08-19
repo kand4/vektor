@@ -10,7 +10,17 @@ async function startServer() {
 
   // Middleware
   app.use(cors());
+  app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(200);
+    }
+    next();
+  });
   app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
   // API proxy route for Google Gemini
   app.post("/api/gemini", async (req, res) => {
@@ -162,9 +172,10 @@ async function startServer() {
   });
 
   // API proxy route for Telegram
-  app.post("/api/telegram/send", async (req, res) => {
+  app.all(["/api/telegram/send", "/api/telegram/send/"], async (req, res) => {
     try {
-      const { text, mediaUrls, rawImages, clientBotToken, clientChatId } = req.body;
+      const payload = (req.method === 'GET' ? req.query : req.body) || {};
+      const { text, mediaUrls, rawImages, clientBotToken, clientChatId } = payload;
       const botToken = (clientBotToken || process.env.TELEGRAM_BOT_TOKEN || '').toString().trim();
       const chatId = (clientChatId || process.env.TELEGRAM_CHAT_ID || '').toString().trim();
 
@@ -379,9 +390,10 @@ async function startServer() {
   });
 
   // API proxy route for Telegraph Upload with Multi-Provider Fallbacks
-  app.post("/api/telegraph/upload", async (req, res) => {
+  app.all(["/api/telegraph/upload", "/api/telegraph/upload/"], async (req, res) => {
     try {
-      const { image } = req.body;
+      const payload = (req.method === 'GET' ? req.query : req.body) || {};
+      const { image } = payload;
       if (!image) {
         return res.status(400).json({ error: "Tiada imej diberikan." });
       }
@@ -468,9 +480,10 @@ async function startServer() {
   });
 
   // API proxy route for Telegraph createAccount (Bypass CORS)
-  app.post("/api/telegraph/createAccount", async (req, res) => {
+  app.all(["/api/telegraph/createAccount", "/api/telegraph/createAccount/"], async (req, res) => {
     try {
-      const { authorName } = req.body;
+      const payload = (req.method === 'GET' ? req.query : req.body) || {};
+      const { authorName } = payload;
       const rawAuthor = (authorName || 'VectorGuard AI').toString().trim();
       // Telegraph requires short_name to be 1-32 chars alphanumeric/underscore
       const shortName = rawAuthor.replace(/[^a-zA-Z0-9_]/g, '_').substring(0, 30) || 'VectorGuard';
@@ -489,11 +502,14 @@ async function startServer() {
   });
 
   // API proxy route for Telegraph createPage (Bypass CORS)
-  app.post("/api/telegraph/createPage", async (req, res) => {
+  app.all(["/api/telegraph/createPage", "/api/telegraph/createPage/"], async (req, res) => {
     try {
-      const { accessToken, title, authorName, content } = req.body;
+      const payload = (req.method === 'GET' ? req.query : req.body) || {};
+      const { accessToken, title, authorName, content } = payload;
       const safeTitle = (title || 'Laporan Pemeriksaan Vektor & Kebersihan').toString().substring(0, 250);
       const safeAuthor = (authorName || 'VectorGuard AI').toString().substring(0, 120);
+
+      const parsedContent = typeof content === 'string' ? JSON.parse(content) : (content || []);
 
       const response = await fetch('https://api.telegra.ph/createPage', {
         method: 'POST',
@@ -502,7 +518,7 @@ async function startServer() {
             access_token: accessToken,
             title: safeTitle,
             author_name: safeAuthor,
-            content: JSON.stringify(content || []),
+            content: JSON.stringify(parsedContent),
             return_content: false
         })
       });
