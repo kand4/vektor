@@ -52,11 +52,25 @@ export const uploadToTelegraph = async (base64Image: string): Promise<string> =>
     return '';
 };
 
-export const createTelegraphAccount = async (authorName: string): Promise<{ accessToken: string, authUrl: string }> => {
+export const createTelegraphAccount = async (authorName: string, forceNew: boolean = false): Promise<{ accessToken: string, authUrl: string }> => {
+    // Check if we already have a saved Telegraph account token in localStorage
+    if (!forceNew) {
+        try {
+            const savedToken = localStorage.getItem('telegraph_access_token');
+            const savedAuth = localStorage.getItem('telegraph_auth_url');
+            if (savedToken && savedToken.trim().length > 10) {
+                return {
+                    accessToken: savedToken.trim(),
+                    authUrl: savedAuth || 'https://telegra.ph'
+                };
+            }
+        } catch (_) {}
+    }
+
     let response: Response | null = null;
     const cleanAuthor = authorName || 'VectorGuard AI';
     
-    // Attempt 1: POST
+    // Attempt 1: POST to local backend proxy
     try {
         response = await fetch(`/api/telegraph/createAccount`, {
             method: 'POST',
@@ -71,16 +85,25 @@ export const createTelegraphAccount = async (authorName: string): Promise<{ acce
             response = await fetch(`/api/telegraph/createAccount?authorName=${encodeURIComponent(cleanAuthor)}`, {
                 method: 'GET'
             });
-        } catch (e: any) {
-            throw new Error(`Ralat sambungan Telegraph: ${e?.message || 'Gagal menyambung ke pelayan.'}`);
-        }
+        } catch (_) {}
+    }
+
+    if (!response) {
+        throw new Error('Gagal menyambung ke pelayan untuk mencipta akaun Telegraph. Sila pastikan pelayan aktif.');
     }
 
     const data = await safeParseJson(response, 'Gagal mencipta akaun Telegraph.');
-    if (data.ok && data.result) {
+    if (data.ok && data.result?.access_token) {
+        try {
+            localStorage.setItem('telegraph_access_token', data.result.access_token);
+            if (data.result.auth_url) {
+                localStorage.setItem('telegraph_auth_url', data.result.auth_url);
+            }
+        } catch (_) {}
+
         return {
             accessToken: data.result.access_token,
-            authUrl: data.result.auth_url
+            authUrl: data.result.auth_url || ''
         };
     }
     throw new Error(data.error || 'Gagal mencipta akaun Telegraph.');

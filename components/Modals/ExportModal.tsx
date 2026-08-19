@@ -19,6 +19,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
     const [toastMsg, setToastMsg] = useState<{msg: string, type: 'error' | 'success'} | null>(null);
     const [telegraphAuthUrl, setTelegraphAuthUrl] = useState<string | null>(null);
 
+    const [lastCreatedUrl, setLastCreatedUrl] = useState<string | null>(null);
+
     useEffect(() => {
         if (isOpen) {
             setTelegramBotToken(localStorage.getItem('telegram_bot_token') || '');
@@ -26,6 +28,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
             setTelegraphAuthor(localStorage.getItem('telegraph_author_name') || 'VectorGuard AI');
             setTelegraphAuthUrl(localStorage.getItem('telegraph_auth_url'));
             setStatusText('');
+            setLastCreatedUrl(null);
         }
     }, [isOpen]);
 
@@ -33,6 +36,22 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
         localStorage.setItem('telegram_bot_token', telegramBotToken.trim());
         localStorage.setItem('telegram_chat_id', telegramChatId.trim());
         localStorage.setItem('telegraph_author_name', telegraphAuthor.trim());
+    };
+
+    const handleResetTelegraphToken = async () => {
+        try {
+            setIsExporting(true);
+            setStatusText("Mewujudkan akaun Telegraph baru...");
+            const { accessToken, authUrl } = await createTelegraphAccount(telegraphAuthor, true);
+            setTelegraphAuthUrl(authUrl);
+            setStatusText("");
+            setToastMsg({ msg: "Akaun Telegraph berjaya diperbaharui!", type: 'success' });
+        } catch (e: any) {
+            setStatusText("");
+            setToastMsg({ msg: `Ralat: ${e?.message || 'Gagal memperbaharui akaun'}`, type: 'error' });
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     const escapeHtml = (unsafe?: string) => {
@@ -269,19 +288,16 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
             const { uploadedImages } = await uploadImages();
             setStatusText("Menjana Artikel Telegraph...");
             const { accessToken, authUrl } = await createTelegraphAccount(telegraphAuthor);
-            localStorage.setItem('telegraph_auth_url', authUrl);
-            setTelegraphAuthUrl(authUrl);
+            if (authUrl) {
+                localStorage.setItem('telegraph_auth_url', authUrl);
+                setTelegraphAuthUrl(authUrl);
+            }
             const content = buildTelegraphContent(uploadedImages);
             const telegraphUrl = await createTelegraphPage(accessToken, `Laporan Vektor & Sanitasi`, telegraphAuthor, content);
             
             setStatusText("");
-            setToastMsg({ msg: `Berjaya! Pautan: ${telegraphUrl}`, type: 'success' });
-            
-            // Optionally open the URL in a new tab
-            setTimeout(() => {
-                window.open(telegraphUrl, '_blank');
-                onClose();
-            }, 1500);
+            setLastCreatedUrl(telegraphUrl);
+            setToastMsg({ msg: `Artikel Telegraph Berjaya Diterbitkan!`, type: 'success' });
         } catch (error: any) {
             setStatusText("");
             setToastMsg({ msg: `Ralat Telegraph: ${error.message}`, type: 'error' });
@@ -464,27 +480,83 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
                     </div>
 
                     <div className="bg-slate-950 p-4 rounded-lg border border-slate-700">
-                        <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-                            <span>📝 Tetapan Telegraph</span>
-                        </h3>
-                        <div>
-                            <label className="text-[10px] text-slate-400 font-mono block mb-1">NAMA PENGARANG / ORGANISASI</label>
-                            <input
-                                type="text"
-                                className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-blue-500 font-mono text-xs"
-                                placeholder="Contoh: VectorGuard AI"
-                                value={telegraphAuthor}
-                                onChange={(e) => setTelegraphAuthor(e.target.value)}
-                            />
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                                <span>📝 Tetapan Telegraph (telegra.ph)</span>
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={handleResetTelegraphToken}
+                                disabled={isExporting}
+                                className="text-[10px] text-amber-400 hover:text-amber-300 font-mono underline"
+                            >
+                                🔄 Jana Semula Akaun
+                            </button>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mb-3 leading-relaxed font-mono">
+                            <span className="text-emerald-400">Nota:</span> Telegraph tidak memerlukan Telegram Bot Token atau Chat ID. Ia menjana artikel web rasmi Telegram secara automatik.
+                        </p>
+                        <div className="space-y-2">
+                            <div>
+                                <label className="text-[10px] text-slate-400 font-mono block mb-1">NAMA PENGARANG / ORGANISASI</label>
+                                <input
+                                    type="text"
+                                    className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white focus:outline-none focus:border-blue-500 font-mono text-xs"
+                                    placeholder="Contoh: VectorGuard AI"
+                                    value={telegraphAuthor}
+                                    onChange={(e) => setTelegraphAuthor(e.target.value)}
+                                />
+                            </div>
+
                             {telegraphAuthUrl && (
-                                <p className="text-[10px] text-slate-400 mt-2 font-mono">
-                                    <span className="text-yellow-500 font-bold">INFO EDIT: </span>
-                                    Untuk mengedit Telegraph selepas diterbitkan, <a href={telegraphAuthUrl} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">Log Masuk di Sini</a> menggunakan pelayar web ini, kemudian klik 'EDIT' pada artikel anda.
-                                </p>
+                                <div className="mt-3 p-2.5 bg-slate-900/90 border border-slate-700/80 rounded flex items-center justify-between gap-2">
+                                    <div className="text-[10px] text-slate-300 font-mono">
+                                        <span className="text-amber-400 font-bold">✏️ Sesi Pengarang:</span> Log masuk untuk membolehkan butang <b>EDIT</b> pada artikel Telegraph.
+                                    </div>
+                                    <a
+                                        href={telegraphAuthUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded text-[10px] font-bold whitespace-nowrap transition"
+                                    >
+                                        Buka Sesi Edit ↗
+                                    </a>
+                                </div>
                             )}
                         </div>
                     </div>
                 </div>
+
+                {lastCreatedUrl && (
+                    <div className="mt-4 p-3 bg-emerald-950/60 border border-emerald-500/50 rounded-lg animate-fade-in">
+                        <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs mb-1">
+                            <span>✅ Artikel Telegraph Berjaya Diterbitkan!</span>
+                        </div>
+                        <p className="text-[11px] text-slate-300 font-mono break-all mb-3 select-all bg-black/40 p-1.5 rounded">
+                            {lastCreatedUrl}
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <a
+                                href={lastCreatedUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-center text-xs font-bold transition shadow"
+                            >
+                                🌐 Buka Artikel
+                            </a>
+                            {telegraphAuthUrl && (
+                                <a
+                                    href={telegraphAuthUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="py-1.5 px-3 bg-amber-600 hover:bg-amber-500 text-white rounded text-center text-xs font-bold transition shadow"
+                                >
+                                    ✏️ Log Masuk & Edit
+                                </a>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 <div className="mt-6 flex flex-col gap-3">
                     {statusText && (
