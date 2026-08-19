@@ -1135,51 +1135,25 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
 
     if (config.engine === 'GEMINI_IMAGEN') {
         const ai = getAIClient();
-        const optimizedImage = await compressImage(base64Image);
         
-        // 1. Try Gemini Multimodal Image Generation
+        // Try Imagen 3.0 Generate if available
         try {
-            console.log("🎨 Attempting Gemini Flash Image Generation...");
-            const response = await retryWithBackoff(async () => {
-                return await ai.models.generateContent({
-                    model: 'gemini-3.1-flash-lite-image',
-                    contents: {
-                        parts: [
-                            { inlineData: { data: optimizedImage, mimeType: 'image/jpeg' } },
-                            { text: `TASK: Reimagine this scene strictly following these instructions: ${finalPrompt}. CRITICAL: Maintain exact camera perspective, angle, and aspect ratio (${formatLabel}).` }
-                        ]
-                    }
-                });
+            console.log(`🎨 Attempting Google Imagen 3.0 with ${aspectRatio}...`);
+            const imagenResponse = await ai.models.generateImages({
+                model: "imagen-3.0-generate-002",
+                prompt: finalPrompt,
+                config: {
+                    numberOfImages: 1,
+                    aspectRatio: aspectRatio
+                }
             });
-            
-            for (const part of response.candidates?.[0]?.content?.parts || []) {
-                if (part.inlineData) {
-                    return { imageUrl: `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`, finalPrompt };
-                }
-            }
-            throw new Error("No inlineData image from Gemini");
-        } catch (error: any) {
-            console.warn("Gemini Flash Image Generation unavailable, attempting Imagen API:", error?.message || error);
-            
-            // 2. Try Imagen 3.0 Generate
-            try {
-                console.log(`🎨 Attempting Google Imagen 3.0 (imagen-3.0-generate-002) with ${aspectRatio}...`);
-                const imagenResponse = await ai.models.generateImages({
-                    model: "imagen-3.0-generate-002",
-                    prompt: finalPrompt,
-                    config: {
-                        numberOfImages: 1,
-                        aspectRatio: aspectRatio
-                    }
-                });
 
-                const bytes = imagenResponse?.generatedImages?.[0]?.image?.imageBytes;
-                if (bytes) {
-                    return { imageUrl: `data:image/png;base64,${bytes}`, finalPrompt };
-                }
-            } catch (imagenError: any) {
-                console.warn("Google Imagen API unavailable on current API Key, falling back to Pollinations (Flux):", imagenError?.message || imagenError);
+            const bytes = imagenResponse?.generatedImages?.[0]?.image?.imageBytes;
+            if (bytes) {
+                return { imageUrl: `data:image/png;base64,${bytes}`, finalPrompt };
             }
+        } catch (imagenError: any) {
+            console.warn("Google Imagen API unavailable or quota limit reached, seamlessly falling back to Pollinations (Flux):", imagenError?.message || imagenError);
         }
     }
 
@@ -1409,3 +1383,4 @@ TUGAS ANDA:
         return getSimulatedAdultMosquitoResponse();
     }
 };
+

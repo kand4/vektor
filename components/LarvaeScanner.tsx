@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import { useLanguage } from '../contexts/LanguageContext';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { generateLarvaeDiagnosis, deepLarvaeAnalysis } from '../services/geminiService';
 import ImageMagnifier from './ImageMagnifier';
 import GBIFDataPanel from './GBIFDataPanel';
@@ -72,7 +72,7 @@ const LarvaeScanner: React.FC = () => {
                     
                     if (ctx) {
                         ctx.drawImage(img, 0, 0, width, height);
-                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.85);
                         setImagePreview(compressedBase64);
                     } else {
                         setImagePreview(reader.result as string);
@@ -98,7 +98,7 @@ const LarvaeScanner: React.FC = () => {
             const endpointConfig = localStorage.getItem('roboflow_model') || 'aegypti-larvae-detection/1';
             
             if (!apiKey) {
-                throw new Error("Sila tetapkan API Key Roboflow di ruang Tetapan.");
+                throw new Error("Sila tetapkan API Key Roboflow di ruang Tetapan atau gunakan butang Analisa Mendalam (Gemini).");
             }
 
             const base64Data = imagePreview.split(',')[1];
@@ -168,77 +168,104 @@ const LarvaeScanner: React.FC = () => {
     };
 
     return (
-        <div className="w-full flex justify-center py-6">
-            <div className="max-w-6xl w-full bg-slate-900/80 border border-slate-700/50 rounded-xl p-4 sm:p-6 backdrop-blur shadow-2xl relative overflow-hidden">
-                {/* HUD Scanline Effect on the background */}
-                <div className="absolute inset-0 pointer-events-none opacity-10 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.5)_50%)] bg-[length:100%_4px] z-0"></div>
+        <div className="w-full flex justify-center py-4 sm:py-6">
+            <div className="max-w-7xl w-full bg-slate-950 border border-slate-800 rounded-3xl p-4 sm:p-7 backdrop-blur-md shadow-2xl relative overflow-hidden text-slate-200">
+                {/* Futuristic HUD Grid Line & Vignette Effect */}
+                <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-cyan-950/20 via-slate-950/0 to-slate-950 z-0"></div>
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#06b6d408_1px,transparent_1px),linear-gradient(to_bottom,#06b6d408_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none z-0"></div>
 
-                <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+                {/* HUD Header Bar */}
+                <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10 border-b border-cyan-500/20 pb-5">
                     <div>
-                        <div className="flex items-center gap-3">
-                           <div className="w-2 h-8 bg-cyan-500 rounded-sm animate-pulse"></div>
-                           <h2 className="text-xl sm:text-2xl font-sci-fi text-cyan-400 uppercase tracking-widest mb-1 shadow-cyan-500/20 drop-shadow-lg">Pengimbas Larva Nyamuk</h2>
+                        <div className="inline-flex items-center gap-2 bg-cyan-950/60 border border-cyan-500/40 px-3 py-1 rounded-full text-[10px] font-mono font-bold text-cyan-400 mb-2.5 uppercase tracking-widest shadow-md">
+                            <span className="w-2 h-2 bg-cyan-400 rounded-full animate-ping"></span>
+                            MOD DETEKTIF JEJENTIK // FORENSIK MAKRO
                         </div>
-                        <p className="text-xs sm:text-sm text-slate-400 font-mono-sci pl-5">Powered by Universal Roboflow Inference API <span className="text-purple-400 font-bold">& Gemini Vision</span></p>
+                        <h2 className="text-2xl sm:text-4xl font-sci-fi font-black text-white uppercase tracking-wider drop-shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+                            PENGIMBAS <span className="text-cyan-400">LARVA VEKTOR</span>
+                        </h2>
+                        <p className="text-xs sm:text-sm text-slate-400 font-light mt-1">
+                            Pengecaman morfologi sifar sifon, kepala kapsul, pengiraan ketumpatan & analisis saintifik berbantukan AI.
+                        </p>
                     </div>
-                    {predictions !== null && (
-                        <div className={`px-4 py-2 border rounded-lg font-mono-sci tabular-nums text-sm ${
-                            predictions.length > 0 
-                                ? 'bg-emerald-900/30 border-emerald-500/50 text-emerald-400' 
-                                : 'bg-amber-900/30 border-amber-500/50 text-amber-400'
-                        }`}>
-                            DETECTED: <span className="text-white text-lg font-bold">{predictions.length}</span>
-                        </div>
-                    )}
+
+                    <div className="flex flex-wrap items-center gap-3">
+                        {predictions !== null && (
+                            <div className={`px-4 py-2.5 border rounded-2xl font-mono tabular-nums text-xs sm:text-sm shadow-lg flex items-center gap-2.5 ${
+                                predictions.length > 0 
+                                    ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-400 shadow-emerald-950/50' 
+                                    : 'bg-amber-950/60 border-amber-500/50 text-amber-400 shadow-amber-950/50'
+                            }`}>
+                                <span className="text-[10px] uppercase tracking-widest text-slate-400">STATUS:</span>
+                                <span className="text-white text-base font-black">{predictions.length} LARVA DIKESAN</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {error && (
-                    <div className="mb-6 p-4 bg-red-900/30 border border-red-500/50 rounded text-red-300 font-mono text-sm max-w-2xl relative z-10">
-                        <span className="font-bold tracking-widest">SYSTEM_ERROR:</span> {error}
+                    <div className="mb-6 p-4 bg-red-950/40 border border-red-500/50 rounded-2xl text-red-300 font-mono text-xs sm:text-sm shadow-xl flex items-center gap-3 relative z-10">
+                        <span className="text-2xl">⚠️</span>
+                        <div>
+                            <span className="font-bold tracking-widest uppercase block text-red-400">RALAT_SISTEM:</span>
+                            {error}
+                        </div>
                     </div>
                 )}
                 
                 {(predictions !== null && predictions.length === 0) && (
-                    <div className="mb-6 p-4 bg-amber-900/30 border border-amber-500/50 rounded-l-xl border-l-4 text-amber-200 font-mono text-sm max-w-4xl shadow-xl flex flex-col sm:flex-row gap-3 items-start relative z-10">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 shrink-0">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
+                    <div className="mb-6 p-4 bg-amber-950/40 border border-amber-500/50 rounded-2xl text-amber-200 font-mono text-xs sm:text-sm shadow-xl flex flex-col sm:flex-row gap-3 items-start relative z-10">
+                        <span className="text-2xl">💡</span>
                         <div>
-                            <p className="font-bold mb-1">Tiada pengesanan melalui Model Konvensional (Roboflow).</p>
-                            <p className="text-amber-200/80 mb-2 leading-relaxed">Model Roboflow sangat bergantung kepada jenis imej yang dilatih (dataset). Jika gambar anda diambil dari sudut berbeza, beresolusi terlampau tinggi, atau pencahayaannya berbeza dari dataset mereka, ia mungkin gagal mengesan jejentik walaupun jelas kelihatan.</p>
-                            <p className="text-purple-300 bg-purple-900/40 p-2 rounded border border-purple-500/30 inline-block font-sci-fi tracking-wide text-xs">{t('larvae_scanner_tip')}</p>
+                            <p className="font-bold mb-1 uppercase tracking-wider text-amber-300">Tiada pengesanan melalui model konvensional.</p>
+                            <p className="text-amber-200/80 mb-2 leading-relaxed text-xs">Model Roboflow bergantung kepada dataset standard. Sila gunakan <strong>Analisa Mendalam (Gemini 3.7 Flash)</strong> untuk mengekstrak ciri morfologi kompleks dan orientasi melengkung.</p>
+                            <p className="text-cyan-300 bg-cyan-950/60 p-2 rounded-xl border border-cyan-500/30 inline-block font-mono tracking-wide text-xs">{t('larvae_scanner_tip')}</p>
                         </div>
                     </div>
                 )}
                 
-                <div className="flex flex-col lg:flex-row gap-6 relative z-10">
-                    <div className="flex-1 space-y-4">
-                        <div className="relative border border-cyan-900/50 rounded-xl overflow-hidden shadow-[0_0_15px_rgba(34,211,238,0.1)] transition-colors bg-slate-950/80 min-h-[300px] flex items-center justify-center group cursor-pointer">
-                            {/* Scanner Corner Crosshairs */}
-                            <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-cyan-500/70 pointer-events-none"></div>
-                            <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-cyan-500/70 pointer-events-none"></div>
-                            <div className="absolute bottom-2 left-2 w-4 h-4 border-b-2 border-l-2 border-cyan-500/70 pointer-events-none"></div>
-                            <div className="absolute bottom-2 right-2 w-4 h-4 border-b-2 border-r-2 border-cyan-500/70 pointer-events-none"></div>
+                {/* Main Viewport & Controls Grid */}
+                <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 relative z-10 items-start">
+                    
+                    {/* LEFT (8 cols): Interactive Image HUD Viewport */}
+                    <div className="lg:col-span-8 w-full flex flex-col gap-4">
+                        <div className="relative border-2 border-slate-800 rounded-3xl overflow-hidden shadow-2xl bg-slate-950 min-h-[380px] sm:min-h-[460px] flex items-center justify-center group">
                             
+                            {/* HUD Hologram Corner Reticles */}
+                            <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-cyan-400/80 pointer-events-none z-20"></div>
+                            <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-cyan-400/80 pointer-events-none z-20"></div>
+                            <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-cyan-400/80 pointer-events-none z-20"></div>
+                            <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-cyan-400/80 pointer-events-none z-20"></div>
+                            
+                            {/* HUD Top Info Bar inside Viewport */}
+                            <div className="absolute top-3 left-12 right-12 z-20 flex items-center justify-between pointer-events-none opacity-75">
+                                <span className="font-mono text-[9px] font-bold text-cyan-400/80 tracking-widest uppercase">OPTICAL SENSOR // ACTIVE</span>
+                                <span className="font-mono text-[9px] font-bold text-slate-500 tracking-widest uppercase">SCALE: MICROSCOPIC (10x-50x)</span>
+                            </div>
+
                             {!imagePreview && (
                                 <input 
                                     type="file" 
                                     accept="image/*" 
                                     onChange={handleImageUpload} 
-                                    className="absolute inset-0 opacity-0 cursor-pointer z-20"
+                                    className="absolute inset-0 opacity-0 cursor-pointer z-30"
                                 />
                             )}
+
                             {!imagePreview ? (
-                                <div className="text-center p-6 disabled-group-hover">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.2} stroke="currentColor" className="w-16 h-16 mx-auto text-slate-500 mb-3 group-hover:text-cyan-400 transition-colors">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-                                    </svg>
-                                    <p className="text-sm text-slate-300 font-bold mb-1">{t('larvae_scanner_drag')}</p>
-                                    <p className="text-xs text-slate-500 font-mono">{t('larvae_scanner_formats')}</p>
+                                <div className="text-center p-8 flex flex-col items-center justify-center">
+                                    <div className="w-20 h-20 rounded-3xl bg-cyan-950/40 border border-cyan-500/30 flex items-center justify-center text-3xl mb-4 group-hover:scale-110 group-hover:border-cyan-400 transition-all shadow-[0_0_30px_rgba(6,182,212,0.2)]">
+                                        🔬
+                                    </div>
+                                    <h4 className="text-lg font-sci-fi font-bold text-white uppercase tracking-wider mb-1">{t('larvae_scanner_drag')}</h4>
+                                    <p className="text-xs text-slate-400 font-mono max-w-sm mb-4">{t('larvae_scanner_formats')}</p>
+                                    <span className="px-4 py-2 rounded-xl bg-cyan-600 text-black font-mono text-xs font-black uppercase tracking-wider shadow-lg shadow-cyan-500/20 group-hover:bg-cyan-400 transition">
+                                        + PILIH GAMBAR 2D JEJENTIK
+                                    </span>
                                 </div>
                             ) : (
-                                <div className="relative flex items-center justify-center p-2 w-full min-h-[400px]">
-                                    {/* Toolbar overlay inside image container */}
+                                <div className="relative flex items-center justify-center p-2 w-full min-h-[420px]">
+                                    {/* Action buttons inside container */}
                                     <div className="absolute top-4 left-4 right-4 z-30 flex justify-between items-center no-print">
                                         <div className="flex items-center gap-2">
                                             <button
@@ -248,11 +275,11 @@ const LarvaeScanner: React.FC = () => {
                                                     setPredictions(null);
                                                     setDiagnosis(null);
                                                 }}
-                                                className="px-3 py-1.5 rounded-lg bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-400 hover:text-red-300 font-mono text-[10px] font-bold tracking-widest transition-all uppercase flex items-center gap-1 shadow-lg"
+                                                className="px-3 py-1.5 rounded-xl bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-400 hover:text-red-300 font-mono text-[10px] font-bold tracking-widest transition-all uppercase flex items-center gap-1 shadow-lg"
                                             >
                                                 🗑️ {t('clear_btn') || 'PADAM'}
                                             </button>
-                                            <label className="px-3 py-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white font-mono text-[10px] font-bold tracking-widest transition-all uppercase flex items-center gap-1 shadow-lg cursor-pointer">
+                                            <label className="px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white font-mono text-[10px] font-bold tracking-widest transition-all uppercase flex items-center gap-1 shadow-lg cursor-pointer">
                                                 📁 {t('change_btn') || 'TUKAR'}
                                                 <input 
                                                     type="file" 
@@ -266,18 +293,19 @@ const LarvaeScanner: React.FC = () => {
 
                                     <div 
                                         ref={containerRef}
-                                        className={`relative inline-block max-w-full max-h-[60vh] overflow-hidden`}
+                                        className="relative inline-block max-w-full max-h-[60vh] overflow-hidden rounded-2xl"
                                     >
                                         <ImageMagnifier 
                                             src={imagePreview} 
                                             alt="Preview" 
-                                            imageClassName="max-w-full max-h-[60vh] rounded drop-shadow-2xl"
+                                            imageClassName="max-w-full max-h-[60vh] rounded-2xl drop-shadow-2xl object-contain"
                                             imageRef={imageRef}
                                             onLoad={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
                                                 const img = e.target as HTMLImageElement;
                                                 setImageDimensions({ naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight });
                                             }}
                                         />
+                                        
                                         {(predictions && imageDimensions) && (
                                             <>
                                                 {/* SVG Lines Overlay */}
@@ -288,17 +316,14 @@ const LarvaeScanner: React.FC = () => {
                                                         const startX = (p.isRelative ? p.x * 100 : relX * 100);
                                                         const startY = (p.isRelative ? p.y * 100 : relY * 100);
                                                         
-                                                        // Use a default drag position if none exists
                                                         const dragX = dragPositions[i]?.x || 0;
                                                         const dragY = dragPositions[i]?.y || 0;
                                                         
-                                                        // Calculate end position as percentage of container
                                                         const containerWidth = imageRef.current?.offsetWidth || 1;
                                                         const containerHeight = imageRef.current?.offsetHeight || 1;
                                                         
                                                         const endX = startX + (dragX / containerWidth * 100);
-                                                        const endY = startY + (dragY / containerHeight * 100) - 1; // Slight offset so it points to the top of the box
-                                                        
+                                                        const endY = startY + (dragY / containerHeight * 100) - 1;
                                                         const midY = (startY + endY) / 2;
                                                         
                                                         return (
@@ -307,7 +332,7 @@ const LarvaeScanner: React.FC = () => {
                                                                 d={`M ${startX}% ${startY}% C ${startX}% ${midY}%, ${endX}% ${midY}%, ${endX}% ${endY}%`}
                                                                 animate={{
                                                                     d: `M ${startX}% ${startY}% C ${startX}% ${midY}%, ${endX}% ${midY}%, ${endX}% ${endY}%`,
-                                                                    stroke: activeId === i ? "#22d3ee" : "#10b981" // cyan-400 vs emerald-500
+                                                                    stroke: activeId === i ? "#06b6d4" : "#10b981"
                                                                 }}
                                                                 strokeWidth="3"
                                                                 fill="none"
@@ -328,10 +353,10 @@ const LarvaeScanner: React.FC = () => {
                                                     return (
                                                         <motion.div 
                                                             key={`box-${i}`} 
-                                                            className="absolute border-2 pointer-events-none z-20"
+                                                            className="absolute border-2 pointer-events-none z-20 rounded-lg shadow-lg"
                                                             animate={{
-                                                                borderColor: activeId === i ? "#22d3ee" : "#10b981",
-                                                                backgroundColor: activeId === i ? "rgba(34, 211, 238, 0.2)" : "rgba(16, 185, 129, 0.1)"
+                                                                borderColor: activeId === i ? "#06b6d4" : "#10b981",
+                                                                backgroundColor: activeId === i ? "rgba(6, 182, 212, 0.25)" : "rgba(16, 185, 129, 0.15)"
                                                             }}
                                                             style={{
                                                                 left: `${(p.isRelative ? p.x - relW / 2 : relX - relW / 2) * 100}%`,
@@ -368,18 +393,18 @@ const LarvaeScanner: React.FC = () => {
                                                             style={{
                                                                 left: `${initialLeft}%`,
                                                                 top: `${initialTop}%`,
-                                                                translateX: '-50%', // Center horizontally by default
+                                                                translateX: '-50%',
                                                             }}
                                                         >
                                                             <motion.div 
-                                                                className="bg-slate-900 border shadow-lg rounded-md p-2 backdrop-blur-sm bg-slate-900/90 text-left w-max max-w-[140px] sm:max-w-[180px] md:max-w-[220px] pointer-events-auto"
+                                                                className="bg-slate-900/95 border shadow-2xl rounded-xl p-2.5 text-left w-max max-w-[150px] sm:max-w-[200px] md:max-w-[240px] pointer-events-auto backdrop-blur-md"
                                                                 animate={{
-                                                                    borderColor: activeId === i ? "rgba(34, 211, 238, 0.8)" : "rgba(16, 185, 129, 0.5)",
-                                                                    boxShadow: activeId === i ? "0 10px 15px -3px rgba(34, 211, 238, 0.2)" : "0 10px 15px -3px rgba(0, 0, 0, 0.1)"
+                                                                    borderColor: activeId === i ? "rgba(6, 182, 212, 0.9)" : "rgba(16, 185, 129, 0.6)",
+                                                                    boxShadow: activeId === i ? "0 10px 25px rgba(6, 182, 212, 0.4)" : "0 10px 20px rgba(0, 0, 0, 0.3)"
                                                                 }}
                                                             >
-                                                                <div className={`flex items-center gap-1 sm:gap-2 mb-1 border-b pb-1 transition-colors ${activeId === i ? 'border-cyan-900/50' : 'border-emerald-900/50'}`}>
-                                                                    <div className={`font-bold text-[10px] sm:text-xs uppercase tracking-wider overflow-hidden text-ellipsis transition-colors ${activeId === i ? 'text-cyan-400' : 'text-emerald-400'}`}>{p.class}</div>
+                                                                <div className={`flex items-center gap-1.5 mb-1 border-b pb-1 transition-colors ${activeId === i ? 'border-cyan-500/40' : 'border-emerald-500/40'}`}>
+                                                                    <div className={`font-mono font-bold text-[10px] sm:text-xs uppercase tracking-wider overflow-hidden text-ellipsis ${activeId === i ? 'text-cyan-400' : 'text-emerald-400'}`}>{p.class}</div>
                                                                 </div>
                                                                 {p.short_desc && <div className="text-[9px] sm:text-[10px] text-slate-300 leading-tight break-words">{p.short_desc}</div>}
                                                             </motion.div>
@@ -394,83 +419,64 @@ const LarvaeScanner: React.FC = () => {
                             )}
                         </div>
 
-                        <div className="flex justify-center md:justify-start gap-3 flex-wrap animate-fade-in">
-                            <button 
-                                onClick={handleScan}
-                                disabled={!imagePreview || isScanning}
-                                className={`px-4 py-2.5 rounded-lg text-xs md:text-sm font-bold font-sci-fi tracking-wider transition-all shadow-md flex items-center gap-2 ${!imagePreview || isScanning ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-cyan-900/50 hover:shadow-cyan-500/50 hover:scale-[1.01] active:scale-[0.98]'}`}
-                            >
-                                {isScanning && !isGeneratingDiagnosis ? (
-                                    <>
-                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        MENGIMBAS (ROBOFLOW)...
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z" />
-                                          <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75ZM6.75 16.5h.75v.75h-.75v-.75ZM16.5 6.75h.75v.75h-.75v-.75ZM13.5 13.5h.75v.75h-.75v-.75ZM13.5 19.5h.75v.75h-.75v-.75ZM19.5 13.5h.75v.75h-.75v-.75ZM19.5 19.5h.75v.75h-.75v-.75ZM16.5 16.5h.75v.75h-.75v-.75Z" />
-                                        </svg>
-                                        IMBAS (ROBOFLOW)
-                                    </>
-                                )}
-                            </button>
-                            
-                            <button 
-                                onClick={handleDeepScan}
-                                disabled={!imagePreview || isScanning}
-                                className={`px-4 py-2.5 rounded-lg text-xs md:text-sm font-bold font-sci-fi tracking-wider transition-all shadow-lg flex items-center gap-2 ${!imagePreview || isScanning ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-900/50 hover:shadow-purple-500/50 hover:scale-[1.01] active:scale-[0.98] relative overflow-hidden group'}`}
-                            >
-                                {!imagePreview || isScanning ? null : (
-                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
-                                )}
-                                {isGeneratingDiagnosis && isScanning ? (
-                                    <>
-                                        <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        ANALISA MENDALAM...
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                                          <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
-                                        </svg>
-                                        {t('larvae_scanner_btn')}
-                                    </>
-                                )}
-                            </button>
-                            
-                            {(predictions && predictions.length > 0 && !diagnosis) && (
-                                <button
-                                    onClick={handleGenerateDiagnosis}
-                                    disabled={isGeneratingDiagnosis}
-                                    className={`px-4 py-2.5 rounded-lg text-xs md:text-sm font-bold font-sci-fi tracking-wider transition-all shadow-md flex items-center gap-2 ${isGeneratingDiagnosis ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950 hover:shadow-emerald-500/30 font-bold'}`}
+                        {/* Scanner Control Bar */}
+                        <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-900/90 border border-slate-800 rounded-2xl">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <button 
+                                    onClick={handleDeepScan}
+                                    disabled={!imagePreview || isScanning}
+                                    className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold font-mono tracking-wider transition-all shadow-lg flex items-center gap-2 ${
+                                        !imagePreview || isScanning 
+                                            ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700' 
+                                            : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-purple-900/40 hover:scale-[1.02] active:scale-[0.98]'
+                                    }`}
                                 >
-                                    {isGeneratingDiagnosis ? 'MENJANA...' : 'JANA DIAGNOSA AI'}
+                                    {isGeneratingDiagnosis && isScanning ? (
+                                        <>
+                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            ANALISIS GEMINI 3.7...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>✨</span>
+                                            <span>ANALISIS FORENSIK (GEMINI 3.7)</span>
+                                        </>
+                                    )}
                                 </button>
-                            )}
+
+                                <button 
+                                    onClick={handleScan}
+                                    disabled={!imagePreview || isScanning}
+                                    className={`px-3.5 py-2.5 rounded-xl text-xs font-bold font-mono tracking-wider transition-all border ${
+                                        !imagePreview || isScanning 
+                                            ? 'bg-slate-800/40 text-slate-600 border-slate-800 cursor-not-allowed' 
+                                            : 'bg-cyan-950/40 border-cyan-500/40 text-cyan-400 hover:bg-cyan-900/40 hover:border-cyan-400'
+                                    }`}
+                                >
+                                    {isScanning && !isGeneratingDiagnosis ? 'MENGIMBAS ROBOFLOW...' : 'ROBOFLOW YOLOV8'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                     
-                    <div className="w-full lg:w-96 flex flex-col gap-6">
-                        <div className="bg-slate-950/50 border border-slate-700/50 rounded-xl p-4 sm:p-5 relative shadow-[0_0_15px_rgba(0,0,0,0.5)]">
-                            <h3 className="text-white font-bold mb-4 font-sci-fi tracking-wide flex items-center gap-2 text-sm sm:text-base">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-cyan-400">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
-                                </svg>
-                                TETAPAN IMBASAN
+                    {/* RIGHT (4 cols): HUD Diagnosis & Diagnostic Details */}
+                    <div className="lg:col-span-4 w-full flex flex-col gap-4">
+                        
+                        {/* Detection Tuning Settings */}
+                        <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 shadow-xl">
+                            <h3 className="text-white font-bold font-sci-fi tracking-wide flex items-center gap-2 text-xs uppercase mb-4 text-cyan-400">
+                                <span>⚙️</span>
+                                <span>PARAMETRI VISI ROBOTIK</span>
                             </h3>
                             
-                            <div className="space-y-6">
+                            <div className="space-y-4">
                                 <div>
-                                    <div className="flex justify-between items-center mb-2">
-                                        <label className="text-xs text-slate-300 font-bold uppercase tracking-wider">Tahap Keyakinan</label>
-                                        <span className="text-cyan-400 text-xs font-mono">{confidenceThreshold}%</span>
+                                    <div className="flex justify-between items-center mb-1.5">
+                                        <label className="text-[11px] text-slate-400 font-mono uppercase font-bold">Tahap Keyakinan</label>
+                                        <span className="text-cyan-400 text-xs font-mono font-bold">{confidenceThreshold}%</span>
                                     </div>
                                     <input 
                                         type="range" 
@@ -478,15 +484,14 @@ const LarvaeScanner: React.FC = () => {
                                         max="100" 
                                         value={confidenceThreshold}
                                         onChange={(e) => setConfidenceThreshold(parseInt(e.target.value))}
-                                        className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
                                     />
-                                    <p className="text-[10px] text-slate-500 mt-1 leading-tight">Kurangkan untuk kesan lebih banyak (mungkin kurang tepat). Tingkatkan untuk ketepatan.</p>
                                 </div>
                                 
                                 <div>
-                                    <div className="flex justify-between items-center mb-2">
-                                        <label className="text-xs text-slate-300 font-bold uppercase tracking-wider">Tindihan Kotak (IOU)</label>
-                                        <span className="text-cyan-400 text-xs font-mono">{overlapThreshold}%</span>
+                                    <div className="flex justify-between items-center mb-1.5">
+                                        <label className="text-[11px] text-slate-400 font-mono uppercase font-bold">Tindihan Kotak (IOU)</label>
+                                        <span className="text-cyan-400 text-xs font-mono font-bold">{overlapThreshold}%</span>
                                     </div>
                                     <input 
                                         type="range" 
@@ -494,113 +499,96 @@ const LarvaeScanner: React.FC = () => {
                                         max="100" 
                                         value={overlapThreshold}
                                         onChange={(e) => setOverlapThreshold(parseInt(e.target.value))}
-                                        className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
                                     />
-                                    <p className="text-[10px] text-slate-500 mt-1 leading-tight">Had pertindihan bagi objek yang berdekatan.</p>
                                 </div>
                             </div>
                         </div>
 
-                        {diagnosis && (
-                            <div className="bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border border-emerald-500/30 rounded-2xl p-6 shadow-[0_0_30px_rgba(16,185,129,0.15)] relative overflow-hidden group">
-                                {/* Decorative tech accents */}
-                                <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"></div>
-                                <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent"></div>
-                                <div className="absolute top-2 right-2 flex gap-1.5 opacity-40">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/60"></span>
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/30"></span>
-                                </div>
+                        {/* AI Scientific Diagnostic Report */}
+                        {diagnosis ? (
+                            <div className="bg-slate-900 border border-emerald-500/30 rounded-3xl p-5 shadow-[0_0_30px_rgba(16,185,129,0.15)] relative overflow-hidden flex flex-col gap-3">
+                                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-cyan-400 to-indigo-500"></div>
 
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-emerald-500/20 pb-4 mb-5 flex-wrap">
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="relative flex items-center justify-center">
-                                            <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-500/20 animate-ping"></span>
-                                            <div className="w-9 h-9 rounded-xl bg-emerald-950/80 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-md">
-                                                🔬
-                                            </div>
+                                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-xl bg-emerald-950/80 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-sm shadow-md">
+                                            🔬
                                         </div>
                                         <div>
-                                            <h3 className="text-emerald-400 font-bold font-sci-fi tracking-widest text-sm flex items-center gap-2">
-                                                DIAGNOSA SAINTIFIK AI
-                                            </h3>
-                                            <p className="text-[9px] text-emerald-500/70 font-mono tracking-wider uppercase">Laporan Analisis Bio-Molekular Pintar</p>
+                                            <h4 className="text-emerald-400 font-bold font-sci-fi tracking-widest text-xs uppercase">
+                                                LAPORAN SAINTIFIK AI
+                                            </h4>
+                                            <p className="text-[8px] text-slate-500 font-mono uppercase">Enjin Gemini 3.7 Flash</p>
                                         </div>
                                     </div>
 
-                                    {/* Download / Print button */}
                                     <button 
                                         type="button"
                                         onClick={() => window.print()}
-                                        className="self-start sm:self-auto px-2.5 py-1.5 rounded-lg border border-emerald-500/20 hover:border-emerald-500/50 bg-emerald-950/20 text-emerald-400 hover:text-emerald-300 font-mono text-[9px] font-bold tracking-wider uppercase transition-all flex items-center gap-1.5 shadow-md active:scale-95 no-print"
+                                        className="px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:text-white font-mono text-[9px] font-bold uppercase transition"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                                        </svg>
-                                        CETAK LAPORAN
+                                        CETAK
                                     </button>
                                 </div>
 
-                                <div className="bg-slate-950/90 border border-slate-900 p-5 rounded-xl shadow-inner max-h-[500px] overflow-y-auto scrollbar-thin">
-                                    <div className="text-sm text-slate-300 prose prose-invert prose-emerald max-w-none break-words leading-relaxed selection:bg-emerald-500/20 text-left">
-                                        <ReactMarkdown>{diagnosis}</ReactMarkdown>
-                                    </div>
+                                <div className="bg-slate-950/80 border border-slate-800/80 p-4 rounded-2xl max-h-[350px] overflow-y-auto scrollbar-thin text-xs leading-relaxed text-slate-300 prose prose-invert prose-emerald max-w-none">
+                                    <ReactMarkdown>{diagnosis}</ReactMarkdown>
                                 </div>
-                                <div className="mt-4 flex items-center justify-between text-[9px] text-slate-500 font-mono border-t border-slate-900/40 pt-3 flex-wrap gap-2">
-                                    <span>KLASIFIKASI: SEPARA-AUTOMASI</span>
-                                    <span>SISTEM DISOKONG OLEH GEMINI LLM</span>
-                                </div>
+                            </div>
+                        ) : (
+                            <div className="bg-slate-900/40 border border-dashed border-slate-800 rounded-3xl p-6 text-center min-h-[220px] flex flex-col items-center justify-center">
+                                <span className="text-4xl mb-3 opacity-60">🧬</span>
+                                <h4 className="text-xs font-sci-fi font-bold text-slate-400 uppercase tracking-widest mb-1">
+                                    MENUNGGU IMBASAN SPESIMEN
+                                </h4>
+                                <p className="text-[11px] text-slate-500 leading-relaxed max-w-[240px]">
+                                    Muat naik gambar 2D jejentik untuk memulakan analisis anatomi dan pengesyoran tindakan KKM.
+                                </p>
                             </div>
                         )}
 
-                        {/* GBIF DATA PANEL */}
+                        {/* GBIF Biodiversity Panel */}
                         {diagnosis && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.2 }}
-                                className="mt-6"
-                            >
-                                <GBIFDataPanel speciesName={(() => {
-                                    const text = diagnosis.toLowerCase();
-                                    if (text.includes("culex")) return "Culex";
-                                    if (text.includes("anopheles")) return "Anopheles";
-                                    if (text.includes("mansonia")) return "Mansonia";
-                                    if (text.includes("armigeres")) return "Armigeres";
-                                    return "Aedes";
-                                })()} />
-                            </motion.div>
+                            <GBIFDataPanel speciesName={(() => {
+                                const text = diagnosis.toLowerCase();
+                                if (text.includes("culex")) return "Culex";
+                                if (text.includes("anopheles")) return "Anopheles";
+                                if (text.includes("mansonia")) return "Mansonia";
+                                if (text.includes("armigeres")) return "Armigeres";
+                                return "Aedes";
+                            })()} />
                         )}
                     </div>
                 </div>
 
                 {/* ANATOMY POSTER SECTION */}
-                <div className="mt-12 pt-8 border-t border-slate-800 relative z-10">
-                    <div className="flex items-center justify-between mb-6">
+                <div className="mt-10 pt-6 border-t border-slate-800/80 relative z-10">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-cyan-950/50 border border-cyan-500/30 flex items-center justify-center text-xl shadow-[0_0_10px_rgba(34,211,238,0.2)]">
+                            <div className="w-9 h-9 rounded-xl bg-cyan-950/60 border border-cyan-500/30 flex items-center justify-center text-lg shadow-[0_0_10px_rgba(6,182,212,0.2)]">
                                 🔬
                             </div>
                             <div>
-                                <h3 className="text-white font-bold font-sci-fi tracking-widest text-lg uppercase">Carta Referensi Anatomi Larva</h3>
-                                <p className="text-[10px] text-slate-500 font-mono-sci uppercase tracking-widest">Manual Entomologi Lapangan v2.0 (Poster Induk)</p>
+                                <h3 className="text-white font-bold font-sci-fi tracking-widest text-sm uppercase">CARTA REFERENSI ANATOMI LARVA KKM</h3>
+                                <p className="text-[9px] text-slate-500 font-mono uppercase tracking-widest">Manual Entomologi Lapangan v2.0</p>
                             </div>
                         </div>
                         <a 
                             href={LARVAE_POSTER_URL} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="text-[10px] bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 px-3 py-1.5 rounded font-mono-sci uppercase tracking-widest transition-colors flex items-center gap-2"
+                            className="text-[10px] bg-slate-900 hover:bg-slate-800 text-cyan-400 border border-slate-700 px-3 py-1.5 rounded-xl font-mono uppercase tracking-widest transition-colors flex items-center gap-2 self-start sm:self-auto"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3 h-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                             </svg>
                             BUKA SAIZ ASAL
                         </a>
                     </div>
 
-                    <div className="bg-slate-950/40 border border-slate-800 rounded-2xl overflow-hidden p-2 group">
-                        <div className="relative aspect-[16/10] sm:aspect-[16/9] bg-slate-900 rounded-xl overflow-hidden cursor-zoom-in">
+                    <div className="bg-slate-950 border border-slate-800 rounded-3xl overflow-hidden p-2 group">
+                        <div className="relative aspect-[16/10] sm:aspect-[16/9] bg-slate-900 rounded-2xl overflow-hidden cursor-zoom-in">
                             <ImageMagnifier 
                                 src={LARVAE_POSTER_URL} 
                                 alt="Poster Anatomi Larva"
@@ -608,27 +596,19 @@ const LarvaeScanner: React.FC = () => {
                                 imageClassName="w-full h-full object-contain opacity-90 group-hover:opacity-100 transition-opacity duration-300"
                                 className="w-full h-full flex items-center justify-center"
                             />
-                            {/* Overlay info */}
-                            <div className="absolute bottom-4 left-4 bg-slate-900/60 backdrop-blur-md border border-slate-700/50 p-3 rounded-lg max-w-sm hidden md:block">
+                            <div className="absolute bottom-4 left-4 bg-slate-900/80 backdrop-blur-md border border-slate-700/50 p-3 rounded-2xl max-w-sm hidden md:block">
                                 <p className="text-xs text-slate-300 leading-relaxed font-sans">
-                                    <strong className="text-cyan-400 uppercase tracking-tighter">Nota Lapangan:</strong> Sila rujuk ciri-ciri Sifon, Gigi Pecten dan rambut toraks dalam poster ini untuk mengesahkan pengimbasan AI.
+                                    <strong className="text-cyan-400 uppercase tracking-tighter">Nota Lapangan:</strong> Rujuk ciri Sifon, Gigi Pecten, dan rambut toraks untuk pengesahan spesis Aedes vs Culex.
                                 </p>
                             </div>
                         </div>
                     </div>
-                    
-                    <div className="mt-6 p-4 bg-cyan-950/20 border border-cyan-900/30 rounded-lg flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400 shrink-0">
-                            💡
-                        </div>
-                        <p className="text-[10px] text-slate-400 font-sans italic leading-relaxed">
-                            <strong className="text-cyan-400">INFO:</strong> Jika poster tidak dipaparkan, pastikan URL hotlink GitHub anda adalah sah dan 'Public'.
-                        </p>
-                    </div>
                 </div>
+
             </div>
         </div>
     );
 };
 
 export default LarvaeScanner;
+

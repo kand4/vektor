@@ -87,6 +87,9 @@ async function startServer() {
         
         // Safe and approved fallback models list in order of preference (prioritizing active supported models)
         const safeFallbacks = [
+          "gemini-2.5-flash",
+          "gemini-2.5-flash-lite",
+          "gemini-2.5-pro",
           "gemini-3.7-flash",
           "gemini-flash-latest",
           "gemini-3.1-flash-lite",
