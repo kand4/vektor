@@ -306,11 +306,22 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
     };
 
     const handleExportTelegram = async () => {
-        if (!sessions || sessions.length === 0) return setToastMsg({ msg: "Tiada data analisis.", type: 'error' });
+        if (!sessions || sessions.length === 0) return setToastMsg({ msg: "Tiada data analisis untuk dieksport.", type: 'error' });
         
+        const token = telegramBotToken.trim();
+        const rawChatId = telegramChatId.trim();
+
+        if (!token || !rawChatId) {
+            setToastMsg({ 
+                msg: "Sila masukkan Telegram Bot Token dan Chat ID anda dalam tetapan di bawah.", 
+                type: 'error' 
+            });
+            return;
+        }
+
         setIsExporting(true);
         handleSaveSettings();
-        const cleanedChatId = cleanTelegramChatId(telegramChatId);
+        const cleanedChatId = cleanTelegramChatId(rawChatId);
         
         try {
             const { uploadedImages } = await uploadImages();
@@ -321,17 +332,22 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
                 const session = sessions[i];
                 const textReport = buildMarkdownForSession(session, i, sessions.length);
                 const sessionImages = uploadedImages.filter(img => img.sessionIndex === i);
-                const urlsForSession = [];
+                const urlsForSession: string[] = [];
                 if (sessionImages.length > 0) {
                     urlsForSession.push(sessionImages[0].originalUrl);
                     if (sessionImages[0].cleanUrl) urlsForSession.push(sessionImages[0].cleanUrl);
                 }
+
+                // Also collect raw images as reliable fallback
+                const rawImagesForSession: string[] = [];
+                if (session.imageSrc) rawImagesForSession.push(session.imageSrc);
+                if (session.simulationImage) rawImagesForSession.push(session.simulationImage);
                 
-                await sendTelegramMessage(telegramBotToken, cleanedChatId, textReport, urlsForSession);
+                await sendTelegramMessage(token, cleanedChatId, textReport, urlsForSession, rawImagesForSession);
             }
 
             setStatusText("");
-            setToastMsg({ msg: "Berjaya dihantar ke Telegram!", type: 'success' });
+            setToastMsg({ msg: "Laporan berjaya dihantar ke Telegram!", type: 'success' });
             setTimeout(() => onClose(), 2000);
         } catch (error: any) {
             setStatusText("");
@@ -342,10 +358,22 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
     };
 
     const handleExportBoth = async () => {
-        if (!sessions || sessions.length === 0) return setToastMsg({ msg: "Tiada data analisis.", type: 'error' });
+        if (!sessions || sessions.length === 0) return setToastMsg({ msg: "Tiada data analisis untuk dieksport.", type: 'error' });
+        
+        const token = telegramBotToken.trim();
+        const rawChatId = telegramChatId.trim();
+
+        if (!token || !rawChatId) {
+            setToastMsg({ 
+                msg: "Sila masukkan Telegram Bot Token dan Chat ID anda dalam tetapan di bawah.", 
+                type: 'error' 
+            });
+            return;
+        }
+
         setIsExporting(true);
         handleSaveSettings();
-        const cleanedChatId = cleanTelegramChatId(telegramChatId);
+        const cleanedChatId = cleanTelegramChatId(rawChatId);
         
         try {
             const { uploadedImages } = await uploadImages();
@@ -366,13 +394,17 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
                 const session = sessions[i];
                 const textReport = buildMarkdownForSession(session, i, sessions.length, telegraphUrl);
                 const sessionImages = uploadedImages.filter(img => img.sessionIndex === i);
-                const urlsForSession = [];
+                const urlsForSession: string[] = [];
                 if (sessionImages.length > 0) {
                     urlsForSession.push(sessionImages[0].originalUrl);
                     if (sessionImages[0].cleanUrl) urlsForSession.push(sessionImages[0].cleanUrl);
                 }
+
+                const rawImagesForSession: string[] = [];
+                if (session.imageSrc) rawImagesForSession.push(session.imageSrc);
+                if (session.simulationImage) rawImagesForSession.push(session.simulationImage);
                 
-                await sendTelegramMessage(telegramBotToken, cleanedChatId, textReport, urlsForSession);
+                await sendTelegramMessage(token, cleanedChatId, textReport, urlsForSession, rawImagesForSession);
             }
 
             setStatusText("");

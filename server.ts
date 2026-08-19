@@ -164,7 +164,7 @@ async function startServer() {
   // API proxy route for Telegram
   app.post("/api/telegram/send", async (req, res) => {
     try {
-      const { text, mediaUrls, clientBotToken, clientChatId } = req.body;
+      const { text, mediaUrls, rawImages, clientBotToken, clientChatId } = req.body;
       const botToken = (clientBotToken || process.env.TELEGRAM_BOT_TOKEN || '').toString().trim();
       const chatId = (clientChatId || process.env.TELEGRAM_CHAT_ID || '').toString().trim();
 
@@ -288,7 +288,7 @@ async function startServer() {
                       if (finalErr.includes("chat not found")) {
                           finalErr += " (Petunjuk: Jika ID Kumpulan/Saluran, pastikan ia bermula dengan tanda '-' seperti -100xxxx. Pastikan Bot telah dimasukkan ke dalam kumpulan/saluran tersebut sebagai Admin).";
                       } else if (finalErr.includes("Unauthorized") || finalErr.includes("Not Found")) {
-                          finalErr += " (Petunjuk: Sila periksa semula Telegram Bot Token anda).";
+                          finalErr += " (Petunjuk: Sila periksa semula Telegram Bot Token anda dari @BotFather).";
                       }
                       throw new Error(`Telegram Text Error: ${finalErr}`);
                   }
@@ -296,8 +296,43 @@ async function startServer() {
           }
       }
 
-      // 2. Send media groups if provided
-      if (mediaUrls && Array.isArray(mediaUrls) && mediaUrls.length > 0) {
+      // 2. Send media photos directly via multipart upload if raw base64 images provided
+      if (rawImages && Array.isArray(rawImages) && rawImages.length > 0) {
+          const validBase64List = rawImages.filter(img => typeof img === 'string' && img.length > 50);
+          if (validBase64List.length > 0) {
+              try {
+                  const fd = new FormData();
+                  fd.append("chat_id", chatId);
+                  const mediaMeta = validBase64List.map((_, idx) => ({
+                      type: 'photo',
+                      media: `attach://photo_${idx}`
+                  }));
+                  fd.append("media", JSON.stringify(mediaMeta));
+
+                  validBase64List.forEach((base64Str, idx) => {
+                      const matches = base64Str.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+                      const type = matches ? matches[1] : 'image/jpeg';
+                      const dataPart = matches ? matches[2] : base64Str;
+                      const buffer = Buffer.from(dataPart, 'base64');
+                      const ext = type.includes('png') ? 'png' : 'jpg';
+                      fd.append(`photo_${idx}`, new Blob([buffer], { type }), `specimen_${idx}.${ext}`);
+                  });
+
+                  const mediaResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendMediaGroup`, {
+                      method: 'POST',
+                      body: fd
+                  });
+
+                  if (!mediaResponse.ok) {
+                      const errData = await mediaResponse.json().catch(() => ({}));
+                      console.warn("⚠️ Direct raw images sendMediaGroup warning:", errData?.description || mediaResponse.statusText);
+                  }
+              } catch (rawMediaErr: any) {
+                  console.warn("⚠️ Failed to send raw media group to Telegram:", rawMediaErr?.message || rawMediaErr);
+              }
+          }
+      } else if (mediaUrls && Array.isArray(mediaUrls) && mediaUrls.length > 0) {
+          // 3. Fallback: Send media groups by public URLs if provided
           const validUrls = mediaUrls.filter(u => typeof u === 'string' && u.startsWith('http'));
           const chunks = [];
           for (let i = 0; i < validUrls.length; i += 10) {
@@ -343,7 +378,7 @@ async function startServer() {
     }
   });
 
-  // API proxy route for Telegraph Upload (Bypass CORS via Freeimage.host because Telegraph blocks IP)
+  // API proxy route for Telegraph Upload with Multi-Provider Fallbacks
   app.post("/api/telegraph/upload", async (req, res) => {
     try {
       const { image } = req.body;
@@ -352,43 +387,80 @@ async function startServer() {
       }
 
       const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-      if (!matches || matches.length !== 3) {
-        return res.status(400).json({ error: "Rentetan base64 tidak sah." });
-      }
-
-      const type = matches[1];
-      const base64Data = matches[2];
+      const type = matches ? matches[1] : 'image/jpeg';
+      const base64Data = matches ? matches[2] : image;
       const buffer = Buffer.from(base64Data, 'base64');
-      const blob = new Blob([buffer], { type });
+      const ext = type.includes('png') ? 'png' : 'jpg';
 
-      const formData = new FormData();
-      formData.append('source', blob, 'image.jpg');
-      formData.append('type', 'file');
-      formData.append('action', 'upload');
-      formData.append('format', 'json');
-      // Public API key for freeimage.host
-      formData.append('key', '6d207e02198a847aa98d0a2a901485a5');
+      // 1. Primary: Litterbox (Catbox) - High speed, 72h retention, reliable for Telegraph embedding
+      try {
+        const fd = new FormData();
+        fd.append("reqtype", "fileupload");
+        fd.append("time", "72h");
+        fd.append("fileToUpload", new Blob([buffer], { type }), `vectorguard_${Date.now()}.${ext}`);
+        
+        const catboxRes = await fetch("https://litterbox.catbox.moe/resources/internals/api.php", {
+          method: "POST",
+          body: fd,
+          signal: AbortSignal.timeout(12000)
+        });
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
-
-      const response = await fetch('https://freeimage.host/api/1/upload', {
-        method: 'POST',
-        body: formData,
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`Ralat muat naik imej: ${response.status} ${response.statusText}`);
+        if (catboxRes.ok) {
+          const directUrl = (await catboxRes.text()).trim();
+          if (directUrl.startsWith("http")) {
+            return res.json({ url: directUrl });
+          }
+        }
+      } catch (catboxErr: any) {
+        console.warn("⚠️ Litterbox upload failed, trying Tmpfiles:", catboxErr?.message || catboxErr);
       }
 
-      const data = await response.json();
-      if (data && data.image && data.image.url) {
-        return res.json({ url: data.image.url });
+      // 2. Secondary: Tmpfiles.org
+      try {
+        const fdTmp = new FormData();
+        fdTmp.append("file", new Blob([buffer], { type }), `vectorguard_${Date.now()}.${ext}`);
+        
+        const tmpRes = await fetch("https://tmpfiles.org/api/v1/upload", {
+          method: "POST",
+          body: fdTmp,
+          signal: AbortSignal.timeout(12000)
+        });
+
+        if (tmpRes.ok) {
+          const tmpData = await tmpRes.json();
+          if (tmpData && tmpData.data && tmpData.data.url) {
+            const directUrl = tmpData.data.url.replace("tmpfiles.org/", "tmpfiles.org/dl/");
+            return res.json({ url: directUrl });
+          }
+        }
+      } catch (tmpErr: any) {
+        console.warn("⚠️ Tmpfiles upload failed, trying Freeimage:", tmpErr?.message || tmpErr);
       }
-      
-      throw new Error("Respons tidak sah dari pelayan imej.");
+
+      // 3. Tertiary: Freeimage.host with direct timeout guard
+      try {
+        const fdFree = new FormData();
+        fdFree.append('source', new Blob([buffer], { type }), `image.${ext}`);
+        fdFree.append('type', 'file');
+        fdFree.append('action', 'upload');
+        fdFree.append('format', 'json');
+        fdFree.append('key', '6d207e02198a847aa98d0a2a901485a5');
+
+        const freeRes = await fetch('https://freeimage.host/api/1/upload', {
+          method: 'POST',
+          body: fdFree,
+          signal: AbortSignal.timeout(8000)
+        });
+
+        if (freeRes.ok) {
+          const freeData = await freeRes.json();
+          if (freeData?.image?.url) {
+            return res.json({ url: freeData.image.url });
+          }
+        }
+      } catch (freeErr) {}
+
+      throw new Error("Semua pelayan hos imej sementara gagal. Sila cuba sebentar lagi.");
     } catch (error: any) {
       console.error("Image upload proxy error:", error);
       res.status(500).json({ error: error?.message || String(error) });
