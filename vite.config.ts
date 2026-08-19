@@ -14,7 +14,13 @@ export default defineConfig({
         runtimeCaching: [
           {
             urlPattern: /^\/api\/.*/i,
-            handler: 'NetworkOnly'
+            handler: 'NetworkOnly',
+            method: 'GET'
+          },
+          {
+            urlPattern: /^\/api\/.*/i,
+            handler: 'NetworkOnly',
+            method: 'POST'
           }
         ]
       },
