@@ -22,6 +22,11 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
+  // Health check endpoint
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", defaultModel: "gemini-3.8-flash" });
+  });
+
   // API proxy route for Google Gemini
   app.post("/api/gemini", async (req, res) => {
     try {
@@ -97,11 +102,12 @@ async function startServer() {
         
         // Safe and approved fallback models list in order of preference (prioritizing active supported models)
         const safeFallbacks = [
+          "gemini-3.8-flash",
+          "gemini-flash-latest",
+          "gemini-3.7-flash",
           "gemini-2.5-flash",
           "gemini-2.5-flash-lite",
           "gemini-2.5-pro",
-          "gemini-3.7-flash",
-          "gemini-flash-latest",
           "gemini-3.1-flash-lite",
           "gemini-3.1-pro-preview"
         ];

@@ -43,7 +43,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const { method, model, contents, prompt, config } = req.body;
-    const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
+    const ai = new GoogleGenAI({
+      apiKey: apiKey.trim(),
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
 
     if (method === "generateImages") {
       if (!model || !prompt) {
@@ -66,9 +73,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       // Safe and approved fallback models list in order of preference (excluding deprecated models like 1.5 and 2.0)
       const safeFallbacks = [
-        "gemini-3.5-flash",
-        "gemini-2.5-flash",
+        "gemini-3.8-flash",
         "gemini-flash-latest",
+        "gemini-3.7-flash",
+        "gemini-2.5-flash",
+        "gemini-2.5-flash-lite",
         "gemini-3.1-flash-lite"
       ];
 
