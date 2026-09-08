@@ -117,6 +117,7 @@ export interface AnalysisSession {
   error?: string;
   simulationImage?: string;
   mode?: AnalysisMode;
+  createdAt?: number;
 }
 
 export interface ChatMessage {

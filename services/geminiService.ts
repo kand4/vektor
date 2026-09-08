@@ -19,11 +19,11 @@ export const getSimulatedLandscapeResponse = (analysisMode: AnalysisMode, sensit
     safetyLevel: 3,
     generalAdvice: isKKM 
       ? "Sistem mengesan beberapa perlanggaran kritikal kebersihan di kawasan penyediaan makanan termasuk sisa makanan terdedah, timbunan kayu/papan tempat sarang lipas, dan mendapan grease tebal. Tindakan pembetulan wajib dilaksanakan segera."
-      : "Sistem mengesan takungan air berisiko tinggi serta timbunan kayu & sampah sisa tempat pembiakan lipas dan lalat di persekitaran. Langkah segera penyemburan, pembersihan kayu/sampah, serta pembersihan mekanikal harus dijalankan.",
+      : "Sistem mengesan takungan air berisiko tinggi serta timbunan palet kayu & papan yang menjadi sarang perlindungan utama tikus dan lipas. Langkah pembersihan mekanikal, penyusunan palet 30cm dari lantai (pallet racking), serta kawalan umpan racun harus dijalankan.",
     savageCommentary: isKKM
       ? "Kawasan penyediaan makanan ini kelihatan seperti pesta kuman dan habitat terbuka berbanding dapur yang waras. Lalat dan lipas sudah mula menandatangani surat perjanjian sewa di atas meja anda!"
-      : "Siri takungan air dibiarkan tanpa penutup bersanding dengan timbunan kayu dan sampah buangan, mengundang koloni lipas, lalat hijau, dan generasi nyamuk Aedes untuk menyewa hartanah percuma ini. Adakah anda sedang menternak bio-senjata?",
-    detected_keywords: ["stagnant water", "clutter", "plastic container", "exposed waste", "wood pile", "cockroach harborage"],
+      : "Siri takungan air serta timbunan palet kayu terbiar di sudut premis. Palet kayu bukan tempat takung air nyamuk, sebaliknya ia dijadikan kondominium mewah 5-bintang untuk tikus kencing merata dan lipas membiak!",
+    detected_keywords: ["stagnant water", "clutter", "plastic container", "exposed waste", "wood pile", "wooden pallets", "rodent nest", "cockroach harborage", "tikus", "lipas"],
     risks: [
       {
         id: "sim-risk-1",
@@ -35,7 +35,7 @@ export const getSimulatedLandscapeResponse = (analysisMode: AnalysisMode, sensit
         statistics: isKKM ? "Kes keracunan makanan di premis tidak bersih meningkat 22% tahunan." : "Denggi mendatangkan 100k+ kes berdaftar tahunan di Malaysia.",
         description: isKKM 
           ? "Sisa buangan organik makanan dibiarkan terdedah tanpa penutup tegar, menarik perhatian lalat, lipas, dan tikus dengan kadar segera."
-          : "Takungan air bertakung jernih yang merupakan incubator paling ideal dan premium untuk pembiakan larva Aedes.",
+          : "Takungan air bertakung jernih dalam bekas kalis air yang merupakan inkubator paling ideal untuk pembiakan larva Aedes.",
         solution: isKKM
           ? "Sediakan tong sisa bertutup rapat dengan pedal kaki, lakukan disinfeksi permukaan meja kerja, dan segerakan pembersihan wadah sisa harian."
           : "Buang air bertakung dengan segera, sental dinding bekas secara mekanikal untuk menghapuskan baki telur, dan simpan bekas di tempat kering terlindung.",
@@ -51,18 +51,18 @@ export const getSimulatedLandscapeResponse = (analysisMode: AnalysisMode, sensit
         category: isKKM ? "HYGIENE" : "HYGIENE",
         label: isKKM ? "Perangkap Minyak Kotor (Dirty Grease Trap)" : "Timbunan Sampah Sisa (Clutter Accumulation)",
         agent: isKKM ? "Pest Attraction / Lipids build-up" : "Musca domestica / Rattus rattus",
-        microbiology: isKKM ? "Fecal Coliforms" : "Salmonella / Leptospirosa",
+        microbiology: isKKM ? "Fecal Coliforms" : "Salmonella / Leptospira interrogans",
         disease: isKKM ? "Premise Contamination" : "Food Poisoning / Leptospirosis",
-        statistics: isKKM ? "Sistem saliran tersumbat menyumbang 40% penutupan premis oleh KKM." : "Kes kencing tikus mencatatkan morbiditi tinggi di kawasan perparitan tidak diselenggara.",
+        statistics: isKKM ? "Sistem saliran tersumbat menyumbang 40% penutupan premis oleh KKM." : "Kes kencing tikus mencatatkan morbiditi tinggi di kawasan perparitan dan timbunan sisa yang tidak diselenggara.",
         description: isKKM
           ? "Perangkap minyak (grease trap) tidak diselenggara secara berkala menyebabkan mendapan sisa lemak tebal, bau busuk, dan tarikan utama lalat & lipas Jerman."
-          : "Timbunan barangan lusuh, kayu, botol kosong serta plastik bertaburan yang mendedahkan risiko pengumpulan air hujan dan habitat lipas.",
+          : "Timbunan sisa domestik, plastik, dan bahan buangan bertaburan yang menarik perhatian lalat rumah serta menjadi laluan perayauan tikus.",
         solution: isKKM
           ? "Keluarkan mendapan pepejal minyak setiap hujung minggu, gunakan bakteria pengurai lipid khusus, dan pastikan saliran mengalir sempurna."
-          : "Lakukan gotong-royong pembersihan, kitar semula botol kosong, kosongkan kawasan daripada barangan lusuh.",
+          : "Lakukan gotong-royong pembersihan, kitar semula botol kosong, dan kosongkan kawasan daripada longgokan sampah sisa.",
         savageCommentary: isKKM
           ? "Minyak tersumbat tebal itu sudah boleh diguna untuk menggoreng semula! Sila cuci sebelum KKM datang menyita seluruh kedai!"
-          : "Kawasan ini kelihatan seperti tapak pelupusan haram berbanding premis kediaman yang waras. Lipas dan tikus sudah mula menandatangani surat perjanjian sewa.",
+          : "Kawasan ini kelihatan seperti tapak pelupusan haram berbanding premis yang waras. Lipas dan tikus sudah mula menandatangani surat perjanjian sewa.",
         confidence: 0.92,
         box_2d: { ymin: 200, xmin: 650, ymax: 500, xmax: 900 },
         citations: []
@@ -70,15 +70,15 @@ export const getSimulatedLandscapeResponse = (analysisMode: AnalysisMode, sensit
       {
         id: "sim-risk-3",
         category: "VECTOR",
-        label: "Timbunan Kayu & Papan Lusuh (Wood Pile & Timber Harborage)",
-        agent: "Periplaneta americana / Blattella germanica",
-        microbiology: "Shigella dysenteriae / Salmonella enterica",
-        disease: "Dysentery / Allergic Asthma / Food Contamination",
-        statistics: "Timbunan kayu dan papan terdedah menjadi punca 65% infestasi lipas rumah dan perosak struktur di Malaysia.",
-        description: "Timbunan kayu, papan lusuh, dan kotak kadbod basah yang terbiar di sudut premis. Tempat ini menyediakan kelembapan selulosa, ruang gelap, dan suhu ideal untuk sarang koloni lipas serta lalat bertelur.",
-        solution: "Alihkan timbunan kayu sekurang-kurangnya 30cm dari tanah & dinding, lupuskan kayu reput, dan sembur racun umpan gel lipas (Fipronil/Hydramethylnon) di celahan kayu.",
-        savageCommentary: "Timbunan kayu dan papan reput ini bukannya hiasan kotej, ini resort percutian 5-bintang untuk koloni lipas berparti dan membiak secara besar-besaran!",
-        confidence: 0.94,
+        label: "Timbunan Palet Kayu & Papan (Sarang Tikus & Lipas)",
+        agent: "Rattus norvegicus / Periplaneta americana",
+        microbiology: "Leptospira interrogans / Salmonella enterica",
+        disease: "Leptospirosis (Kencing Tikus) & Keracunan Makanan / Asma",
+        statistics: "Rongga timbunan palet kayu menyumbang kepada lebih 70% tapak sarang tikus bandar dan koloni lipas di premis perumahan dan komersial.",
+        description: "Timbunan palet kayu dan kayu terpakai membentuk rongga gelap terlindung (harborage voids). Struktur kayu berliang ini TIDAK menakung air, tetapi menjadi habitat perlindungan utama bagi tikus (vektor kencing tikus / Leptospirosis) dan koloni lipas.",
+        solution: "Tinggikan palet kayu sekurang-kurangnya 30cm dari lantai menggunakan rak besi (pallet racks) dan 45cm dari dinding. Pasang stesen umpan tikus bertutup (rodent bait station) dan letakkan gel racun lipas di rongga celahan kayu.",
+        savageCommentary: "Menyangka palet kayu ini tempat takung air nyamuk adalah silap besar—ini sebenarnya kondominium mewah untuk koloni tikus kencing merata dan lipas membiak di celah-celah papan!",
+        confidence: 0.96,
         box_2d: { ymin: 600, xmin: 100, ymax: 900, xmax: 450 },
         citations: []
       }
@@ -204,6 +204,21 @@ Sampel imej ini mempamerkan penanda taksonomi visual yang sepadan dengan spesime
 export const getSimulatedChatResponse = (risk: RiskDetection, question: string, language: string = 'ms'): string => {
   const qStr = question.toLowerCase();
   if (language === 'ms') {
+    if (qStr.includes('kayu') || qStr.includes('palet') || qStr.includes('pallet') || qStr.includes('papan') || qStr.includes('tikus') || qStr.includes('lipas')) {
+      return `Berdasarkan piawaian Kesihatan Awam & Entomologi Vektor KKM:
+
+1. **Kenapa Timbunan Kayu / Palet Bukan Kawasan Air Bertakung?**
+   - Struktur kayu dan palet adalah berliang (porous) dan tidak menakung air secara semula jadi. Mengklasifikasikannya sebagai pembiakan nyamuk adalah tanggapan silap melainkan terdapat bekas buatan manusia (plastik/tin) di atasnya.
+
+2. **Ancaman Vektor Sebenar Pada Timbunan Kayu & Palet:**
+   - **Tikus (*Rattus norvegicus* / *Rattus rattus*)**: Celah dan rongga gelap antara susunan kayu menjadi sarang utama (*harborage*) dan laluan terlindung. Ancaman utama ialah **Leptospirosis (Penyakit Kencing Tikus)** daripada bakteria *Leptospira interrogans* dalam air kencing tikus serta *Murine Typhus*.
+   - **Lipas (*Periplaneta americana* / *Blattella germanica*)**: Ruang sempit gelap dengan kelembapan mikroklimat selulosa merupakan habitat pembiakan koloni lipas dan kapsul telur (*ootheca*). Lipas membawa patogen enterik seperti *Salmonella enterica* dan mencetuskan asma teruk.
+
+3. **Langkah Pengawalan & Pencegahan KKM:**
+   - Susun palet pada rak bertingkat sekurang-kurangnya **30cm dari lantai** dan **45cm dari dinding** mengikut standard KKM (*good storage practices*).
+   - Elakkan timbunan kayu lusuh di luar premis atau berdekatan pintu masuk dapur.
+   - Pasangkan stesen umpan tikus bertutup (*tamper-resistant rodent bait station*) dan gel umpan lipas di celahan papan.`;
+    }
     if (qStr.includes('bunuh') || qStr.includes('mati') || qStr.includes('racun') || qStr.includes('hancur') || qStr.includes('kawal') || qStr.includes('hapus')) {
       return `Bagi mengawal dan menghapuskan ejen vektor & perosak **${risk.agent || 'vektor'}**, anda dicadangkan mengambil pendekatan bertingkat mengikut spesis:
       
@@ -547,8 +562,9 @@ const CLUTTER_KEYWORDS = [
   'trash', 'rubbish', 'garbage', 'sampah', 'sisa', 'mess', 'clutter', 'pile', 
   'plastic bag', 'bottle', 'can', 'food', 'sisa makanan', 'kotor', 'dirty', 
   'stain', 'habuk', 'dust', 'web', 'sarang labah', 'kayu', 'wood', 'papan', 
-  'timbunan kayu', 'lumber', 'timber', 'cardboard', 'kotak', 'lipas', 
-  'cockroach', 'lalat', 'fly', 'maggot', 'decay', 'organic waste', 'junk'
+  'timbunan kayu', 'lumber', 'timber', 'palet', 'pallet', 'kayu pallet', 'papan lapis', 
+  'cardboard', 'kotak', 'lipas', 'cockroach', 'lalat', 'fly', 'maggot', 'decay', 
+  'organic waste', 'junk', 'tikus', 'rat', 'rodent'
 ];
 
 export const analyzeLandscape = async (base64Image: string, mimeType: string, mode: 'FAST' | 'DETAILED' = 'DETAILED', language: string = 'ms', sensitivity: SensitivityLevel = 'STANDARD', analysisMode: AnalysisMode = 'VECTOR_CONTROL'): Promise<AnalysisResponse> => {
@@ -593,9 +609,11 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
         PROTOCOL: OFFICIAL KKM FOOD PREMISE INSPECTION (BORANG K-PPKM-01/03) & VECTOR HARBORAGE SCAN.
         REFERENCE: FOOD HYGIENE REGULATIONS 2009 & FOOD ACT 1983.
         MANDATORY PEST & VECTOR FOCUS:
-        1. COCKROACHES (Blattella germanica / Periplaneta americana): Scan for active roaches, egg cases (ootheca), dark crevices, timber/wood piles (timbunan kayu/papan), cardboard clutter, and uncleaned grease traps.
+        1. COCKROACHES (Blattella germanica / Periplaneta americana) & RODENTS (Rattus norvegicus / Rattus rattus):
+           - Scan for active roaches, egg cases (ootheca), dark crevices, uncleaned grease traps, and timber/wood piles (timbunan kayu/papan/palet kayu).
+           - CRITICAL DOMAIN LOGIC: Wooden pallets and timber stacks on kitchen or premise floors harbor roaches and rats (Leptospirosis & Salmonella risks), NOT mosquito water! Evaluate under Element 6 (Penstoran Bahan) and Element 11 (Kawalan Lalat, Lipas & Tikus).
         2. FLIES (Musca domestica / Chrysomya megacephala): Scan for flies on exposed food, open trash bins, organic decay, and moist food residues.
-        3. RODENTS & MOSQUITOES: Scan for rodent droppings/burrows and stagnant water vectors.
+        3. WATER VECTORS: Strictly for actual liquid receptacles or clogged drains, NEVER for dry wood piles or wooden pallets.
         TASK:
         1. Evaluate the premise based on the 16 standard KKM elements.
         2. Calculate Demerit Points based on visual evidence.
@@ -673,12 +691,29 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
   } else {
       // === VECTOR / SPATIAL ENGINEERING MODE (DEFAULT) ===
       scanProtocol = `
-        PROTOCOL: COMPREHENSIVE MULTI-VECTOR & HARBORAGE DETECTOR.
-        YOU MUST IDENTIFY ALL TYPES OF VECTOR HAZARDS AND PEST BREEDING/HARBORAGE SITES IN THE IMAGE:
-        1. MOSQUITO BREEDING (Aedes aegypti / Aedes albopictus / Culex): Stagnant water vessels, flower pots, tires, clogged gutters.
-        2. COCKROACH HARBORAGE (Blattella germanica / Periplaneta americana): Timbunan kayu/papan (wood piles / timber stacks), cardboard box clutter, dark moist crevices, unwashed food trays, grease traps. Highlight how wood/timber piles provide ideal cellulose humidity & shelter for roach colonies!
-        3. FLY BREEDING (Musca domestica / Chrysomya megacephala): Timbunan sampah (trash piles), exposed food waste, decomposing organic matter, leachate.
-        4. RODENT NESTS (Rattus rattus / Rattus norvegicus): Clutter, wood piles, broken drainage.
+        PROTOCOL: ADVANCED MULTI-VECTOR, HARBORAGE & PEST INFESTATION EPIDEMIOLOGICAL DETECTOR.
+        YOU MUST RIGOROUSLY DISTINGUISH BETWEEN (A) AQUATIC BREEDING SITES AND (B) DRY HARBORAGE & STRUCTURAL VOIDS:
+
+        >>> STRICT SCIENTIFIC RULE ON WOOD PILES & WOODEN PALLETS (TIMBUNAN KAYU / PALET KAYU) <<<
+        1. **NO STAGNANT WATER IN WOOD / PALLETS**: Piles of wood, timber planks, wooden pallets (palet kayu), lumber, dry plywood, construction timber, and stacked boards are porous, solid, permeable organic structures. THEY DO NOT NATURALLY HOLD STANDING WATER ("TIDAK MENYIMPAN AIR BERTAKUNG").
+        2. **NEVER CLASSIFY WOOD / PALLETS AS MOSQUITO BREEDING SITES**: Unless an explicit, distinct, impermeable water receptacle (e.g., discarded plastic cup, open tin can, bucket, used car tire) is visibly situated on top of the wood holding liquid, YOU ARE STRICTLY FORBIDDEN from labeling a wood pile or pallet stack as "Air Bertakung", "Takungan Air", or "Pembiakan Nyamuk Aedes/Culex". Doing so is a critical diagnostic hallucination.
+        3. **THE RELEVANT VECTOR THREATS FOR WOOD PILES & WOODEN PALLETS ARE TIKUS (RODENTS) & LIPAS (COCKROACHES)**:
+           a. **RODENTS / TIKUS (Rattus norvegicus / Rattus rattus)**:
+              - The labyrinth of dark, protected voids and crevices between stacked timber planks/pallets creates the quintessential nesting burrow, harborage, and breeding runway for urban rats.
+              - Primary Biological Threat: **Leptospirosis (Penyakit Kencing Tikus)** caused by *Leptospira interrogans* shed in rodent urine, Murine Typhus (*Rickettsia typhi* via flea *Xenopsylla cheopis*), and rat-bite fever (*Streptobacillus moniliformis*).
+           b. **COCKROACHES / LIPAS (Periplaneta americana / Blattella germanica)**:
+              - High-humidity cellulose microclimates and dark tight spaces provide shelter for roach colonies, nymph clusters, and egg capsules (*ootheca*).
+              - Primary Biological Threat: Mechanical vector of enteric pathogens (*Salmonella enterica*, *Escherichia coli*, *Shigella*), food contamination, and airborne allergen exposure causing severe asthma.
+           c. **SECONDARY HARBORAGE**:
+              - Termites (*Coptotermes* spp.), venomous centipedes (*Scolopendra*), and dangerous reptiles taking refuge in undisturbed wood stacks.
+
+        >>> PROTOCOL FOR OTHER VECTOR CATEGORIES <<<
+        4. **MOSQUITO BREEDING SITES (Aedes aegypti / Aedes albopictus / Culex quinquefasciatus)**:
+           - ONLY identify actual impermeable liquid-holding vessels: plastic containers, discarded bottles, rubber tires, flowerpot plates, clogged gutters, open tanks, or sagging tarp sheets.
+        5. **FLY BREEDING (Musca domestica / Chrysomya megacephala)**:
+           - Exposed organic food waste, decomposing domestic trash piles, animal feces, slaughter residues, rotten produce.
+        6. **INDOOR & KITCHEN HARBORAGES**:
+           - Uncleaned grease traps, grease buildup, unwashed cooking trays, open food pantry storage.
       `;
       
       schemaDescription = `
@@ -692,10 +727,10 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
                - EXAMPLE: [0, 0, 500, 500].
                - **CRITICAL:** YOU MUST DRAW A BOX AROUND THE HAZARD. DO NOT RETURN NULL.
             2. category: "VECTOR" | "HYGIENE" | "SAFETY"
-            3. label: string (Name in ${targetLang} e.g., "Bekas Air Bertakung")
-            4. agent: string (**STRICTLY ENGLISH/SCIENTIFIC NAME** e.g., "Aedes aegypti", "Musca domestica".)
-            5. microbiology: string (**STRICTLY ENGLISH/SCIENTIFIC NAME** e.g., "Dengue Virus", "Salmonella".)
-            6. disease: string (**STRICTLY ENGLISH/MEDICAL TERM** e.g., "Dengue Fever".)
+            3. label: string (Name in ${targetLang} e.g., "Timbunan Palet Kayu (Sarang Tikus & Lipas)" or "Bekas Air Bertakung")
+            4. agent: string (**STRICTLY ENGLISH/SCIENTIFIC NAME** e.g., "Rattus norvegicus / Periplaneta americana", "Aedes aegypti", "Musca domestica".)
+            5. microbiology: string (**STRICTLY ENGLISH/SCIENTIFIC NAME** e.g., "Leptospira interrogans / Salmonella enterica", "Dengue Virus".)
+            6. disease: string (**STRICTLY ENGLISH/MEDICAL TERM** e.g., "Leptospirosis / Salmonellosis", "Dengue Fever".)
             7. description: string (Forensic Observation in ${targetLang})
             8. solution: string (Engineering/Medical Intervention in ${targetLang})
             9. savageCommentary: string (Highly sarcastic, direct, brutal, varied roast/critique of this specific hazard/breeding site in ${targetLang}. Show extreme frustration at this risk.)
@@ -806,11 +841,55 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
           b.ymax = Math.min(1000, b.ymax);
           b.xmax = Math.min(1000, b.xmax);
 
+          // --- INTELLIGENCE SANITIZER: WOOD & PALLET LOGIC CORRECTION ---
+          // Wood piles, timber stacks, and wooden pallets are porous/permeable structures.
+          // They harbor Rodents (Tikus - Leptospirosis) and Cockroaches (Lipas - Salmonella/allergies), NOT Aedes/stagnant water!
+          const labelLowerRaw = (r.label || '').toLowerCase();
+          const descLowerRaw = (r.description || '').toLowerCase();
+          const agentLowerRaw = (r.agent || '').toLowerCase();
+          const isWoodOrPallet = ['palet', 'pallet', 'kayu', 'wood', 'timber', 'lumber', 'papan'].some(k => 
+              labelLowerRaw.includes(k) || descLowerRaw.includes(k)
+          );
+          const hasExplicitWaterContainer = ['tayar', 'tire', 'botol', 'bottle', 'baldi', 'bucket', 'tin ', 'tin/', 'can ', 'mangkuk', 'bowl', 'pasu', 'pot'].some(k =>
+              labelLowerRaw.includes(k) || descLowerRaw.includes(k)
+          );
+
+          if (isWoodOrPallet && !hasExplicitWaterContainer) {
+              const falselyTaggingMosquito = ['aedes', 'nyamuk', 'mosquito', 'dengue', 'denggi', 'takung', 'stagnant', 'jentik', 'larva'].some(k =>
+                  labelLowerRaw.includes(k) || descLowerRaw.includes(k) || agentLowerRaw.includes(k)
+              );
+
+              if (falselyTaggingMosquito) {
+                  console.info("🔬 [VectorGuard AI Sanitizer] Correcting false stagnant water classification on wood/pallet to Rodent & Cockroach Harborage:", r.label);
+                  r.category = 'VECTOR';
+                  r.label = targetLang === 'English' 
+                      ? 'Wood Pallet / Timber Stack (Rodent & Cockroach Harborage)' 
+                      : 'Timbunan Palet Kayu / Papan (Sarang Tikus & Lipas)';
+                  r.agent = 'Rattus norvegicus / Periplaneta americana';
+                  r.microbiology = 'Leptospira interrogans / Salmonella enterica';
+                  r.disease = targetLang === 'English'
+                      ? 'Leptospirosis (Rat Urine Disease) & Salmonellosis'
+                      : 'Leptospirosis (Kencing Tikus) & Keracunan Makanan';
+                  r.description = targetLang === 'English'
+                      ? 'Timber stacks and wooden pallets are porous, solid structures that do not naturally retain stagnant water. Instead, the dark, unventilated cavities and cellulose voids between planks provide a prime harborage and nesting ground for rodents (rats) and cockroach colonies.'
+                      : 'Timbunan kayu dan palet kayu merupakan struktur pejal berliang yang tidak menakung air secara semula jadi. Sebaliknya, celahan dan rongga gelap antara susunan kayu ini menjadi tempat perlindungan (harborage voids) dan sarang utama bagi pembiakan tikus serta koloni lipas.';
+                  r.solution = targetLang === 'English'
+                      ? 'Re-stack pallets elevated at least 30cm above floor level on metal racks, keep 45cm distance from walls, eliminate nesting voids, deploy tamper-resistant rodent bait stations, and apply cockroach gel bait (Fipronil) in crevices.'
+                      : 'Susun semula palet kayu pada ketinggian minimum 30cm dari lantai (pallet racking) dan sekurang-kurangnya 45cm dari dinding. Bersihkan sisa selulosa, pasang stesen perangkap/umpan tikus bertutup, dan sapukan gel umpan lipas di celahan papan.';
+                  r.savageCommentary = targetLang === 'English'
+                      ? 'Thinking a dry wooden pallet stack holds stagnant mosquito water is pure delusion—this is actually a 5-star underground luxury resort for rat colonies and disease-carrying cockroaches to multiply!'
+                      : 'Menyangka timbunan palet kayu ini tempat takung air nyamuk adalah tanggapan silap—ini sebenarnya kondominium mewah 5-bintang untuk tikus kencing merata dan lipas berpesta di celah-celah papan!';
+              } else if (r.category !== 'VECTOR' && ['palet', 'pallet', 'timbunan kayu'].some(k => labelLowerRaw.includes(k))) {
+                  // Ensure wood/pallet harboring pests is categorized as VECTOR hazard
+                  r.category = 'VECTOR';
+              }
+          }
+
           if (!r.category) {
               const labelLower = r.label.toLowerCase();
               if (['wire', 'trip', 'hazard', 'sharp', 'crack', 'chemical', 'fire', 'electric'].some(k => labelLower.includes(k))) {
                   r.category = 'SAFETY';
-              } else if (['mosquito', 'aedes', 'larvae', 'rat', 'fly', 'cockroach', 'pest'].some(k => labelLower.includes(k))) {
+              } else if (['mosquito', 'aedes', 'larvae', 'rat', 'fly', 'cockroach', 'pest', 'tikus', 'lipas', 'palet', 'pallet'].some(k => labelLower.includes(k))) {
                   r.category = 'VECTOR';
               } else {
                   r.category = 'HYGIENE';
@@ -936,6 +1015,12 @@ export const analyzeManualRegion = async (base64Image: string, mimeType: string,
     CONTEXT provided by user: "${userContext}". 
     TASK: IDENTIFY PATHOGEN, VECTOR AGENT, OR SAFETY HAZARD specifically at this location.
     SENSITIVITY MODE: ${sensitivity} (Adjust strictness of analysis accordingly: LOW=obvious risks only, HIGH=detailed risks, EXTREME=microscopic/theoretical risks).
+
+    CRITICAL SCIENTIFIC DIRECTIVE: If the visual content inside this bounding box consists of wood piles, timber planks, wooden pallets (palet kayu), or stacked lumber:
+    1. Wood and pallets are porous, solid structures that DO NOT retain stagnant water ("TIDAK MENAKUNG AIR").
+    2. DO NOT classify dry wood piles or pallets as mosquito breeding sites (Aedes/Culex/Dengue) unless an explicit waterproof container holding liquid is visibly present!
+    3. The primary, scientifically verified vector threats in wood piles and pallets are TIKUS (Rodents - Rattus norvegicus / Rattus rattus, Leptospirosis) and LIPAS (Cockroaches - Periplaneta americana / Blattella germanica, Salmonella / enteric pathogens) harboring in dark voids and crevices.
+
     RETURN 'agent', 'microbiology', and 'disease' IN ENGLISH/SCIENTIFIC LATIN.
     IMPORTANT: Provide a detailed 'solution' and 'description' in ${language === 'ms' ? 'Malay' : 'English'}. The 'solution' MUST include practical recommendations and mitigation strategies for the identified risk.
     You MUST output valid JSON conforming strictly to this format:
@@ -964,6 +1049,36 @@ export const analyzeManualRegion = async (base64Image: string, mimeType: string,
         });
         result.id = `manual-${Date.now()}`;
         result.box_2d = box; 
+
+        // Sanitizer check for wood/pallet ROI
+        const labelLower = (result.label || '').toLowerCase();
+        const descLower = (result.description || '').toLowerCase();
+        const agentLower = (result.agent || '').toLowerCase();
+        const isWoodOrPallet = ['palet', 'pallet', 'kayu', 'wood', 'timber', 'lumber', 'papan'].some(k => 
+            labelLower.includes(k) || descLower.includes(k) || userContext.toLowerCase().includes(k)
+        );
+        const hasExplicitContainer = ['tayar', 'tire', 'botol', 'bottle', 'baldi', 'bucket', 'tin ', 'can ', 'mangkuk', 'pasu'].some(k => 
+            labelLower.includes(k) || descLower.includes(k)
+        );
+
+        if (isWoodOrPallet && !hasExplicitContainer) {
+            const falselyTaggingMosquito = ['aedes', 'nyamuk', 'mosquito', 'dengue', 'denggi', 'takung', 'stagnant', 'jentik', 'larva'].some(k =>
+                labelLower.includes(k) || descLower.includes(k) || agentLower.includes(k)
+            );
+            if (falselyTaggingMosquito) {
+                result.category = 'VECTOR';
+                result.label = language === 'ms' ? 'Timbunan Palet Kayu / Papan (Sarang Tikus & Lipas)' : 'Wood Pallet Stack (Rodent & Cockroach Harborage)';
+                result.agent = 'Rattus norvegicus / Periplaneta americana';
+                result.microbiology = 'Leptospira interrogans / Salmonella enterica';
+                result.disease = language === 'ms' ? 'Leptospirosis (Kencing Tikus) & Keracunan Makanan' : 'Leptospirosis & Salmonellosis';
+                result.description = language === 'ms' 
+                    ? 'Struktur palet kayu berliang tidak menakung air secara semula jadi. Sebaliknya, celahan sempit dan rongga gelap di dalam timbunan kayu ini membentuk sarang pembiakan ideal bagi tikus dan koloni lipas.'
+                    : 'Porous wooden pallets do not hold standing water. Instead, the dark, unventilated crevices between timber boards form ideal harborage and nesting grounds for rodents and cockroaches.';
+                result.solution = language === 'ms'
+                    ? 'Susun semula palet pada rak bertingkat sekurang-kurangnya 30cm dari lantai dan 45cm dari dinding, bersihkan sisa selulosa, dan letakkan stesen umpan tikus serta gel umpan lipas.'
+                    : 'Elevate pallets on racks at least 30cm above floor level and 45cm away from walls. Eliminate voids and deploy rodent bait stations with cockroach gel baits.';
+            }
+        }
         
         if (!result.category) result.category = 'HYGIENE';
         if (!result.microbiology) result.microbiology = "Targeted Analysis";

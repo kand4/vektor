@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface MobileBottomNavProps {
-  currentView: 'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION' | 'MANUAL_SIMULATION' | 'GAME';
+  currentView: 'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION' | 'MANUAL_SIMULATION' | 'GAME' | 'SIMULATION_ARCHIVE';
   currentHomeSubView: 'MENU' | 'FORENSIC' | 'ANALYTICS';
-  onSelectView: (view: 'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION' | 'MANUAL_SIMULATION' | 'GAME', subView?: 'MENU' | 'FORENSIC' | 'ANALYTICS') => void;
+  onSelectView: (view: 'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION' | 'MANUAL_SIMULATION' | 'GAME' | 'SIMULATION_ARCHIVE', subView?: 'MENU' | 'FORENSIC' | 'ANALYTICS') => void;
   onOpenHeatmap?: () => void;
   onOpenSimulation?: () => void;
   sessionsCount?: number;
@@ -104,6 +104,24 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 </div>
               </button>
             )}
+
+            <button
+              onClick={() => {
+                setShowSubMenu(false);
+                onSelectView('SIMULATION_ARCHIVE');
+              }}
+              className="flex items-center gap-3 p-2.5 rounded-xl border border-cyan-500/30 bg-cyan-950/40 text-cyan-300 hover:bg-cyan-900/50 text-left transition"
+            >
+              <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center text-lg shrink-0">🗂️</div>
+              <div>
+                <span className="block text-xs font-bold font-sci-fi text-white">
+                  {isMalay ? 'ARKIB SIMULASI & ANALISIS (TARIKH)' : 'DATE-BASED SIMULATION ARCHIVE'}
+                </span>
+                <span className="text-[10px] text-slate-400 leading-tight block">
+                  {isMalay ? 'Slider sebelum & selepas, langkah KKM, kawalan pemilik' : 'Before/after slider, KKM steps, owner lock'}
+                </span>
+              </div>
+            </button>
           </div>
         </>
       )}

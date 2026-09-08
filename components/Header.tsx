@@ -11,10 +11,22 @@ interface HeaderProps {
   onGoLarvae?: () => void;
   onGoAdult?: () => void;
   onGoGame?: () => void;
-  currentView?: 'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION' | 'MANUAL_SIMULATION' | 'GAME';
+  onGoArchive?: () => void;
+  archiveCount?: number;
+  currentView?: 'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION' | 'MANUAL_SIMULATION' | 'GAME' | 'SIMULATION_ARCHIVE';
 }
 
-const Header: React.FC<HeaderProps> = ({ onOpenAbout, onOpenSettings, onGoHome, onGoLarvae, onGoAdult, onGoGame, currentView = 'HOME' }) => {
+const Header: React.FC<HeaderProps> = ({ 
+  onOpenAbout, 
+  onOpenSettings, 
+  onGoHome, 
+  onGoLarvae, 
+  onGoAdult, 
+  onGoGame, 
+  onGoArchive,
+  archiveCount = 0,
+  currentView = 'HOME' 
+}) => {
   const { language, setLanguage, t } = useLanguage();
   const { isMobile, isDesktop } = useDeviceDetect();
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
@@ -97,6 +109,29 @@ const Header: React.FC<HeaderProps> = ({ onOpenAbout, onOpenSettings, onGoHome, 
 
         {/* Right Controls */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-4 shrink-0">
+           {/* Arkib & Simulasi Navigation Button */}
+           {onGoArchive && (
+             <button
+               onClick={onGoArchive}
+               title="Pangkalan Arkib Analisis & Simulasi Mengikut Tarikh"
+               className={`flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg border font-mono-sci text-xs font-bold transition-all min-h-[36px] sm:min-h-[40px] ${
+                 currentView === 'SIMULATION_ARCHIVE'
+                   ? 'bg-cyan-500 text-slate-950 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)]'
+                   : 'bg-slate-900/90 border-slate-700 text-slate-300 hover:text-cyan-400 hover:border-cyan-500/50'
+               }`}
+             >
+               <span className="text-sm">🗂️</span>
+               <span className="hidden sm:inline">ARKIB TARIKH</span>
+               {archiveCount > 0 && (
+                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                   currentView === 'SIMULATION_ARCHIVE' ? 'bg-slate-950 text-cyan-300' : 'bg-cyan-950 text-cyan-400 border border-cyan-500/30'
+                 }`}>
+                   {archiveCount}
+                 </span>
+               )}
+             </button>
+           )}
+
            {/* Mobile Device Smart Indicator */}
            <span className="text-[8px] font-mono-sci font-bold px-1 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-400 sm:hidden">
               {isMobile ? '📱 MOBIL' : '💻 PC'}

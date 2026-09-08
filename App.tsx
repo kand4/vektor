@@ -26,6 +26,7 @@ import { ManualJsonBypassPanel } from './components/ManualJsonBypassPanel';
 import { AedesHuntGame } from './components/AedesHuntGame';
 import { useDeviceDetect } from './utils/deviceDetect';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { SimulationArchivePage } from './components/ArchivePage/SimulationArchivePage';
 
 const MANUAL_SIMULATION_DEFAULT_PROMPT = `Sila gunakan tool penjana imej (Imagen / Image FX) untuk mengubah imej ini dengan MEMATUHI ARAHAN STRICT PERSPEKTIF BERIKUT:
 
@@ -46,7 +47,7 @@ const App: React.FC = () => {
       localStorage.removeItem('gemini_model_preference');
     }
   }, []);
-  const [currentView, setCurrentView] = useState<'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION' | 'MANUAL_SIMULATION' | 'GAME'>('HOME');
+  const [currentView, setCurrentView] = useState<'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION' | 'MANUAL_SIMULATION' | 'GAME' | 'SIMULATION_ARCHIVE'>('HOME');
   const [currentHomeSubView, setCurrentHomeSubView] = useState<'MENU' | 'FORENSIC' | 'ANALYTICS'>('MENU');
   const [sessions, setSessions] = useState<AnalysisSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -182,7 +183,8 @@ const App: React.FC = () => {
             imageSrc: preview,
             mimeType: mimeType,
             status: 'PENDING' as const,
-            mode: analysisMode
+            mode: analysisMode,
+            createdAt: Date.now()
           };
         } catch (err) {
           console.error("Error reading file:", file.name, err);
@@ -294,7 +296,8 @@ const App: React.FC = () => {
         mimeType: 'image/jpeg',
         status: 'SUCCESS',
         result: parsedResult,
-        mode: analysisMode
+        mode: analysisMode,
+        createdAt: Date.now()
       };
       setSessions(prev => [newSession, ...prev]);
       setActiveSessionId(newSessionId);
@@ -316,7 +319,7 @@ const App: React.FC = () => {
 
   const handleLiveAnalysisCapture = (capturedResult: AnalysisResponse, capturedImageSrc: string) => {
     setIsLiveMode(false);
-    const newSession: AnalysisSession = { id: `live-${Date.now()}`, fileName: 'AR_CAPTURE.jpg', imageSrc: capturedImageSrc, mimeType: 'image/jpeg', status: 'SUCCESS', result: capturedResult, mode: 'VECTOR_CONTROL' };
+    const newSession: AnalysisSession = { id: `live-${Date.now()}`, fileName: 'AR_CAPTURE.jpg', imageSrc: capturedImageSrc, mimeType: 'image/jpeg', status: 'SUCCESS', result: capturedResult, mode: 'VECTOR_CONTROL', createdAt: Date.now() };
     setSessions(prev => [newSession, ...prev]);
     setActiveSessionId(newSession.id);
     setIsGalleryExpanded(true);
@@ -339,6 +342,7 @@ const App: React.FC = () => {
       status: 'SUCCESS',
       simulationImage: simulatedImageBase64,
       mode: 'VECTOR_CONTROL',
+      createdAt: Date.now(),
       result: {
         risks: [],
         generalAdvice: "Simulasi Kebersihan Manual Berjaya Diselamatkan! Sila guna tab simulasi lepas/sejarah simulasi untuk banding semula data.",
@@ -372,7 +376,7 @@ const App: React.FC = () => {
   };
 
   const handleSelectMobileNav = (
-    view: 'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION' | 'MANUAL_SIMULATION' | 'GAME',
+    view: 'HOME' | 'LARVAE_DETECTION' | 'ADULT_MOSQUITO_DETECTION' | 'MANUAL_SIMULATION' | 'GAME' | 'SIMULATION_ARCHIVE',
     subView?: 'MENU' | 'FORENSIC' | 'ANALYTICS'
   ) => {
     setIsLiveMode(false);
@@ -445,6 +449,11 @@ const App: React.FC = () => {
          onGoLarvae={() => setCurrentView('LARVAE_DETECTION')}
          onGoAdult={() => setCurrentView('ADULT_MOSQUITO_DETECTION')}
          onGoGame={() => setCurrentView('GAME')}
+         onGoArchive={() => {
+            setCurrentView('SIMULATION_ARCHIVE');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+         }}
+         archiveCount={sessions.length}
          currentView={currentView}
       />
 
@@ -474,6 +483,23 @@ const App: React.FC = () => {
             <ManualSimulationPage 
                 onBack={() => setCurrentView('HOME')} 
                 onSaveSimulation={handleSaveManualSimulation} 
+            />
+        ) : currentView === 'SIMULATION_ARCHIVE' ? (
+            <SimulationArchivePage 
+                sessions={sessions}
+                language={language}
+                onBackToHome={() => {
+                    setCurrentView('HOME');
+                    handleGoHome();
+                }}
+                onDeleteSession={handleDeleteSession}
+                onDeleteSimulationOnly={(sessionId) => {
+                    setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, simulationImage: undefined } : s));
+                }}
+                onUpdateSession={(updatedSession) => {
+                    setSessions(prev => prev.map(s => s.id === updatedSession.id ? updatedSession : s));
+                }}
+                onClearAllSessions={resetApp}
             />
         ) : (
             <>
@@ -611,6 +637,40 @@ const App: React.FC = () => {
                                             <span>→</span>
                                         </div>
                                     </button>
+
+                                    {/* Card 7: Pangkalan Arkib Analisis & Simulasi Mengikut Tarikh */}
+                                    <button 
+                                        onClick={() => {
+                                            setCurrentView('SIMULATION_ARCHIVE');
+                                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                                        }}
+                                        className="group relative cursor-pointer text-left bg-gradient-to-r from-slate-900/90 via-slate-900/70 to-cyan-950/40 hover:border-cyan-500/60 border border-slate-800 p-6 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(6,182,212,0.2)] flex flex-col justify-between md:col-span-2 lg:col-span-3"
+                                    >
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                            <div className="flex items-start md:items-center gap-4">
+                                                <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-3xl shrink-0 group-hover:scale-110 group-hover:bg-cyan-500/20 transition-all shadow-lg shadow-cyan-950/40">
+                                                    🗂️
+                                                </div>
+                                                <div>
+                                                    <div className="inline-block bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[9px] font-bold px-2.5 py-0.5 rounded-full mb-1.5 tracking-wide uppercase font-mono-sci">
+                                                        PANGKALAN REKOD & SLIDER SEBELUM/SELEPAS
+                                                    </div>
+                                                    <h3 className="text-lg md:text-xl font-bold text-white group-hover:text-cyan-400 transition-colors font-sci-fi tracking-wide mb-1">
+                                                        ARKIB HASIL SIMULASI & ANALISIS (MENGIKUT TARIKH)
+                                                    </h3>
+                                                    <p className="text-xs text-slate-400 leading-relaxed max-w-2xl">
+                                                        Kompilasi lengkap semua rekod imbasan dan simulasi landskap mengikut tarikh. Dilengkapi slider interaktif sebelum & selepas, langkah mitigasi KKM, pecahan ancaman vektor & keselamatan, serta sistem kunci padam pemilik sah.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 self-start md:self-center shrink-0">
+                                                <span className="text-xs font-mono-sci font-bold text-cyan-400 group-hover:translate-x-1 transition-transform flex items-center gap-2 bg-cyan-950/80 border border-cyan-500/40 px-4 py-2.5 rounded-xl shadow-sm">
+                                                    <span>Buka Arkib Tarikh ({sessions.length})</span>
+                                                    <span>→</span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </button>
                                 </div>
                                 <div className="hidden md:block"><HUDOverlay /></div>
                             </div>
@@ -694,13 +754,10 @@ const App: React.FC = () => {
 
                                             {/* Previous Simulations and Scans buttons */}
                                             <button onClick={() => {
-                                                if (sessions.filter(s => s.simulationImage).length === 0) {
-                                                    setEmptyAlertType('simulasi');
-                                                    return;
-                                                }
-                                                setShowSimulationGallery(true);
+                                                setCurrentView('SIMULATION_ARCHIVE');
+                                                window.scrollTo({ top: 0, behavior: 'smooth' });
                                             }} className="bg-slate-800/80 border border-cyan-500/30 text-cyan-400 px-4 py-2.5 rounded-lg text-xs font-mono-sci font-bold hover:bg-cyan-900/40 hover:border-cyan-400 transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(6,182,212,0.15)]">
-                                                <span>✨</span> SEJARAH SIMULASI
+                                                <span>🗂️</span> ARKIB SIMULASI & TARIKH
                                             </button>
 
                                             <button onClick={() => {
@@ -713,7 +770,7 @@ const App: React.FC = () => {
                                                     document.getElementById('evidence-board')?.scrollIntoView({ behavior: 'smooth' });
                                                 }, 100);
                                             }} className="bg-slate-800/80 border border-indigo-500/30 text-indigo-400 px-4 py-2.5 rounded-lg text-xs font-mono-sci font-bold hover:bg-indigo-900/40 hover:border-indigo-400 transition-all flex items-center justify-center gap-2 shadow-[0_0_10px_rgba(99,102,241,0.15)]">
-                                                <span>🗂️</span> SEJARAH IMBASAN
+                                                <span>📸</span> SEJARAH IMBASAN
                                             </button>
                                         </div>
                                     </div>
