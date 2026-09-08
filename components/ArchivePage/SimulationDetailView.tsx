@@ -207,7 +207,16 @@ export const SimulationDetailView: React.FC<SimulationDetailViewProps> = ({
         ) : (
           <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 md:p-8 text-center flex flex-col items-center">
             <div className="relative w-full max-w-2xl h-80 rounded-2xl overflow-hidden border border-slate-700 mb-6 bg-slate-950">
-              <img src={session.imageSrc} alt="Imej Asal" className="w-full h-full object-contain" />
+              <img 
+                src={session.imageSrc} 
+                alt="Imej Asal" 
+                className="w-full h-full object-contain" 
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  target.onerror = null;
+                  target.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400' style='background:%230f172a'><rect width='600' height='400' fill='%230f172a'/><text x='50%25' y='50%25' fill='%2338bdf8' font-size='18' font-family='monospace' font-weight='bold' text-anchor='middle'>IMEJ PEMERIKSAAN KKM</text></svg>";
+                }}
+              />
               <div className="absolute top-3 left-3 bg-black/70 backdrop-blur border border-slate-600 text-slate-300 text-[10px] font-mono px-3 py-1 rounded-lg uppercase">
                 IMEJ ASAL (BELUM DISIMULASIKAN)
               </div>

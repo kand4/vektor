@@ -63,11 +63,25 @@ const App: React.FC = () => {
         const cachedSessions = await dbGet<AnalysisSession[]>('sessions');
         const cachedActiveId = await dbGet<string | null>('activeSessionId');
         if (cachedSessions && cachedSessions.length > 0) {
-          // Normalize any sessions to guarantee valid timestamps exist
-          const normalized = cachedSessions.map(s => ({
-            ...s,
-            createdAt: s.createdAt || getSessionTimestamp(s)
-          }));
+          // Normalize sessions and auto-repair any stale or broken svg URIs from earlier caches
+          const defaultRef = getDefaultArchiveSessions();
+          const normalized = cachedSessions.map(s => {
+            let imageSrc = s.imageSrc;
+            let simulationImage = s.simulationImage;
+            if (imageSrc && imageSrc.includes('data:image/svg+xml;utf8')) {
+              const matched = defaultRef.find(d => d.id === s.id || d.fileName === s.fileName);
+              if (matched) {
+                imageSrc = matched.imageSrc;
+                simulationImage = matched.simulationImage || simulationImage;
+              }
+            }
+            return {
+              ...s,
+              imageSrc,
+              simulationImage,
+              createdAt: s.createdAt || getSessionTimestamp(s)
+            };
+          });
           setSessions(normalized);
           if (cachedActiveId && normalized.some(s => s.id === cachedActiveId)) {
             setActiveSessionId(cachedActiveId);

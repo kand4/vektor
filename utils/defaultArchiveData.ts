@@ -57,7 +57,22 @@ const createPremiseSvg = (
 </svg>
   `.trim();
 
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  // Convert SVG string to standard base64 data URI for universal browser & Vercel support
+  let base64 = '';
+  try {
+    if (typeof window !== 'undefined' && typeof window.btoa === 'function') {
+      base64 = window.btoa(unescape(encodeURIComponent(svg)));
+    } else if (typeof Buffer !== 'undefined') {
+      base64 = Buffer.from(svg, 'utf-8').toString('base64');
+    }
+  } catch (err) {
+    console.error("Base64 conversion fallback", err);
+  }
+
+  if (base64) {
+    return `data:image/svg+xml;base64,${base64}`;
+  }
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 };
 
 /**

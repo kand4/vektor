@@ -1,6 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI } from "@google/genai";
 
+// OpSec sanitizer: redact any API keys or tokens from outgoing error messages
+function sanitizeErrorMessage(msg: string): string {
+  if (!msg) return msg;
+  return msg
+    .replace(/AIza[0-9A-Za-z_-]{35}/g, '[REDACTED_API_KEY]')
+    .replace(/([?&]key=)[^&\s]+/gi, '$1[REDACTED]')
+    .replace(/Bearer\s+[A-Za-z0-9_-]+/gi, 'Bearer [REDACTED]');
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS Headers support
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -136,9 +145,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error: any) {
     console.error("[Vercel API] Gemini server proxy error:", error);
     const statusCode = error?.status || 500;
+    const rawMessage = error?.message || String(error);
     return res.status(statusCode).json({
       error: {
-        message: error?.message || String(error),
+        message: sanitizeErrorMessage(rawMessage),
         status: error?.status,
         code: error?.code || statusCode
       }

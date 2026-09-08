@@ -24,10 +24,8 @@ export const verifyOwnerPasskey = (input: string): boolean => {
   
   if (customPin && input.trim() === customPin.trim()) return true;
 
-  // Recognized default owner credentials
+  // Recognized default owner credentials (anonymized for OpSec)
   const validKeys = [
-    'legasiuka',
-    'legasiuka@gmail.com',
     '2026',
     'admin2026',
     'vectorguard'

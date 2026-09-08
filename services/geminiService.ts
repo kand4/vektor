@@ -277,9 +277,8 @@ let activeKeyIndex = 0;
 
 export const getAvailableApiKeys = (): string[] => {
   const keys: string[] = [];
-  if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
-    keys.push(process.env.GEMINI_API_KEY.trim());
-  }
+  // Client-side only reads user-provided BYOK keys from local storage (if any).
+  // The server-side master API key remains strictly on the server and is never accessible to the client.
   if (typeof window !== 'undefined') {
     const key1 = localStorage.getItem('gemini_api_key');
     const key2 = localStorage.getItem('gemini_api_key_2');

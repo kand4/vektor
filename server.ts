@@ -4,6 +4,19 @@ import { createServer as createViteServer } from "vite";
 import cors from "cors";
 import { GoogleGenAI } from "@google/genai";
 
+// OpSec sanitizer: redact any sensitive API keys, tokens, or bearer headers from errors
+function sanitizeOpSecError(error: any): string {
+  let msg = error?.message || String(error);
+  // Redact Google AI API keys
+  msg = msg.replace(/AIza[0-9A-Za-z_-]{35}/g, '[REDACTED_API_KEY]');
+  msg = msg.replace(/([?&]key=)[^&\s]+/gi, '$1[REDACTED]');
+  // Redact Telegram bot tokens
+  msg = msg.replace(/bot[0-9]{8,10}:[a-zA-Z0-9_-]{35}/gi, 'bot[REDACTED_TOKEN]');
+  // Redact Authorization headers
+  msg = msg.replace(/Bearer\s+[A-Za-z0-9_-]+/gi, 'Bearer [REDACTED]');
+  return msg;
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -169,7 +182,7 @@ async function startServer() {
       const statusCode = error?.status || 500;
       res.status(statusCode).json({
         error: {
-          message: error?.message || String(error),
+          message: sanitizeOpSecError(error),
           status: error?.status,
           code: error?.code || statusCode
         }
@@ -390,7 +403,7 @@ async function startServer() {
     } catch (error: any) {
       console.error("Telegram proxy error:", error);
       res.status(500).json({
-        error: { message: error?.message || String(error) }
+        error: { message: sanitizeOpSecError(error) }
       });
     }
   });
