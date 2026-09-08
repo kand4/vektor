@@ -27,6 +27,8 @@ import { AedesHuntGame } from './components/AedesHuntGame';
 import { useDeviceDetect } from './utils/deviceDetect';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { SimulationArchivePage } from './components/ArchivePage/SimulationArchivePage';
+import { getDefaultArchiveSessions } from './utils/defaultArchiveData';
+import { getSessionTimestamp } from './utils/archiveHelpers';
 
 const MANUAL_SIMULATION_DEFAULT_PROMPT = `Sila gunakan tool penjana imej (Imagen / Image FX) untuk mengubah imej ini dengan MEMATUHI ARAHAN STRICT PERSPEKTIF BERIKUT:
 
@@ -61,15 +63,28 @@ const App: React.FC = () => {
         const cachedSessions = await dbGet<AnalysisSession[]>('sessions');
         const cachedActiveId = await dbGet<string | null>('activeSessionId');
         if (cachedSessions && cachedSessions.length > 0) {
-          setSessions(cachedSessions);
-          if (cachedActiveId && cachedSessions.some(s => s.id === cachedActiveId)) {
+          // Normalize any sessions to guarantee valid timestamps exist
+          const normalized = cachedSessions.map(s => ({
+            ...s,
+            createdAt: s.createdAt || getSessionTimestamp(s)
+          }));
+          setSessions(normalized);
+          if (cachedActiveId && normalized.some(s => s.id === cachedActiveId)) {
             setActiveSessionId(cachedActiveId);
           } else {
-            setActiveSessionId(cachedSessions[0].id);
+            setActiveSessionId(normalized[0].id);
           }
+        } else {
+          // Pre-populate with verified benchmark inspection sessions so the date archive is immediately populated on Vercel
+          const initialSessions = getDefaultArchiveSessions();
+          setSessions(initialSessions);
+          setActiveSessionId(initialSessions[0].id);
+          await dbSet('sessions', initialSessions);
         }
       } catch (err) {
         console.error("Error loading history from IndexedDB:", err);
+        const initialSessions = getDefaultArchiveSessions();
+        setSessions(initialSessions);
       } finally {
         setDbLoaded(true);
       }
@@ -260,7 +275,8 @@ const App: React.FC = () => {
                     mimeType: "image/png",
                     status: 'SUCCESS',
                     mode: analysisMode,
-                    result: parsedResult
+                    result: parsedResult,
+                    createdAt: Date.now()
                 }, ...prev]);
                 setActiveSessionId(newId);
                 setShowBypassModal(false);
@@ -500,6 +516,13 @@ const App: React.FC = () => {
                     setSessions(prev => prev.map(s => s.id === updatedSession.id ? updatedSession : s));
                 }}
                 onClearAllSessions={resetApp}
+                onLoadDefaultArchive={() => {
+                    const defaultSessions = getDefaultArchiveSessions();
+                    setSessions(defaultSessions);
+                    setActiveSessionId(defaultSessions[0].id);
+                    dbSet('sessions', defaultSessions);
+                    setToastMsg({ msg: "3 Rekod Penanda Aras KKM mengikut tarikh telah berjaya dimuatkan!", type: 'success' });
+                }}
             />
         ) : (
             <>

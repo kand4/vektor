@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AnalysisSession, RiskDetection } from '../../types';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
-import { getSessionTimestamp, isOwnerAuthorized, OWNER_EMAIL } from '../../utils/archiveHelpers';
+import { getSessionTimestamp, isOwnerAuthorized } from '../../utils/archiveHelpers';
 import { OwnerAuthModal } from './OwnerAuthModal';
 import { generateCleanSimulation, askRiskFollowUp, SimulationConfig } from '../../services/geminiService';
 
@@ -158,14 +158,14 @@ export const SimulationDetailView: React.FC<SimulationDetailViewProps> = ({
         <div className="flex items-center gap-2 flex-wrap justify-end">
           {/* Owner Status Badge */}
           {isOwner ? (
-            <div className="inline-flex items-center gap-1.5 bg-emerald-950/60 border border-emerald-500/40 text-emerald-400 text-[11px] font-mono px-3 py-1.5 rounded-lg shadow-sm" title={`Dibenarkan memadam rekod (${OWNER_EMAIL})`}>
+            <div className="inline-flex items-center gap-1.5 bg-emerald-950/60 border border-emerald-500/40 text-emerald-400 text-[11px] font-mono px-3 py-1.5 rounded-lg shadow-sm" title="Dibenarkan memadam rekod (Akses Pemilik Sah)">
               <span>👑</span>
-              <span className="font-bold">Mod Pemilik</span>
+              <span className="font-bold">Mod Pemilik Sah</span>
             </div>
           ) : (
-            <div className="inline-flex items-center gap-1.5 bg-slate-800/80 border border-slate-700 text-slate-400 text-[11px] font-mono px-3 py-1.5 rounded-lg" title="Hanya pemilik legasiuka@gmail.com dibenarkan memadam rekod">
+            <div className="inline-flex items-center gap-1.5 bg-slate-800/80 border border-slate-700 text-slate-400 text-[11px] font-mono px-3 py-1.5 rounded-lg" title="Hanya pemilik sah dibenarkan memadam rekod">
               <span>🔒</span>
-              <span>Mod Pelawat (Paparan)</span>
+              <span>Mod Pelawat (Paparan Sahaja)</span>
             </div>
           )}
 
@@ -185,7 +185,7 @@ export const SimulationDetailView: React.FC<SimulationDetailViewProps> = ({
           <button
             onClick={() => handleRequestDelete('DELETE_SESSION')}
             className="bg-red-950/50 hover:bg-red-900/60 text-red-400 border border-red-500/40 hover:border-red-400 px-3.5 py-2 rounded-xl text-xs font-mono font-bold transition-colors flex items-center gap-1.5"
-            title="Hanya pemilik legasiuka@gmail.com boleh membuang rekod"
+            title="Hanya pemilik berdaftar sah boleh membuang rekod"
           >
             <span>🗑️</span>
             <span>{isOwner ? 'Padam Rekod' : 'Padam (Pemilik)'}</span>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { OWNER_EMAIL, verifyOwnerPasskey, setOwnerAuthorized } from '../../utils/archiveHelpers';
+import { verifyOwnerPasskey, setOwnerAuthorized } from '../../utils/archiveHelpers';
 
 interface OwnerAuthModalProps {
   isOpen: boolean;
@@ -32,7 +32,7 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
       onClose();
     } else {
       setIsSubmitting(false);
-      setErrorMsg('Kata laluan/PIN pemilik tidak tepat. Hanya legasiuka@gmail.com dibenarkan memadam rekod.');
+      setErrorMsg('Kata laluan/PIN pemilik tidak tepat. Hanya pentadbir sah dibenarkan memadam rekod.');
     }
   };
 
@@ -59,7 +59,7 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
         </h3>
 
         <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-4">
-          Hanya pemilik berdaftar (<span className="text-red-400 font-mono font-bold">{OWNER_EMAIL}</span>) yang mempunyai kebenaran rasmi untuk {targetActionDescription}.
+          Hanya pemilik berdaftar / pentadbir rasmi sistem yang mempunyai kebenaran sah untuk {targetActionDescription}.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">

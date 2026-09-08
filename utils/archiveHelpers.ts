@@ -1,6 +1,6 @@
 import { AnalysisSession } from '../types';
 
-export const OWNER_EMAIL = 'legasiuka@gmail.com';
+export const OWNER_EMAIL = 'Pentadbir Berdaftar';
 const OWNER_STORAGE_KEY = 'vectorguard_owner_auth_v1';
 const OWNER_CUSTOM_PIN_KEY = 'vectorguard_owner_custom_pin';
 
@@ -24,7 +24,7 @@ export const verifyOwnerPasskey = (input: string): boolean => {
   
   if (customPin && input.trim() === customPin.trim()) return true;
 
-  // Recognized default credentials for owner legasiuka@gmail.com
+  // Recognized default owner credentials
   const validKeys = [
     'legasiuka',
     'legasiuka@gmail.com',
@@ -45,11 +45,21 @@ export const setCustomOwnerPin = (newPin: string): void => {
  * Robust timestamp extractor for any past or new session
  */
 export const getSessionTimestamp = (session: AnalysisSession): number => {
-  if (session.createdAt && !isNaN(session.createdAt)) {
-    return session.createdAt;
+  if (session.createdAt) {
+    const num = typeof session.createdAt === 'number' ? session.createdAt : Number(session.createdAt);
+    if (!isNaN(num) && num > 0) {
+      return num;
+    }
+    const d = new Date(session.createdAt).getTime();
+    if (!isNaN(d) && d > 0) {
+      return d;
+    }
   }
-  if (session.result?.timestamp && !isNaN(session.result.timestamp)) {
-    return session.result.timestamp;
+  if (session.result?.timestamp) {
+    const num = typeof session.result.timestamp === 'number' ? session.result.timestamp : Number(session.result.timestamp);
+    if (!isNaN(num) && num > 0) {
+      return num;
+    }
   }
   // Try extracting milliseconds from id e.g. "session-1725...-..." or "live-1725..."
   const match = session.id.match(/(\d{10,13})/);

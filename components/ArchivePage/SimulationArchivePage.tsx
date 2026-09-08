@@ -4,8 +4,7 @@ import {
   groupSessionsByDate, 
   getSessionTimestamp, 
   isOwnerAuthorized, 
-  setOwnerAuthorized, 
-  OWNER_EMAIL 
+  setOwnerAuthorized
 } from '../../utils/archiveHelpers';
 import { SimulationDetailView } from './SimulationDetailView';
 import { OwnerAuthModal } from './OwnerAuthModal';
@@ -18,6 +17,7 @@ interface SimulationArchivePageProps {
   onDeleteSimulationOnly: (sessionId: string) => void;
   onUpdateSession: (updatedSession: AnalysisSession) => void;
   onClearAllSessions?: () => void;
+  onLoadDefaultArchive?: () => void;
 }
 
 export const SimulationArchivePage: React.FC<SimulationArchivePageProps> = ({
@@ -27,7 +27,8 @@ export const SimulationArchivePage: React.FC<SimulationArchivePageProps> = ({
   onDeleteSession,
   onDeleteSimulationOnly,
   onUpdateSession,
-  onClearAllSessions
+  onClearAllSessions,
+  onLoadDefaultArchive
 }) => {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -221,7 +222,7 @@ export const SimulationArchivePage: React.FC<SimulationArchivePageProps> = ({
                   <>
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
                     <span className="text-xs font-mono font-bold text-emerald-300">
-                      👑 PEMILIK AKTIF ({OWNER_EMAIL})
+                      👑 MOD PEMILIK AKTIF (KUASA PENUH)
                     </span>
                   </>
                 ) : (
@@ -371,6 +372,17 @@ export const SimulationArchivePage: React.FC<SimulationArchivePageProps> = ({
             <option value="OLDEST_FIRST">Tarikh Terlama</option>
           </select>
 
+          {onLoadDefaultArchive && (
+            <button
+              onClick={onLoadDefaultArchive}
+              className="px-3 py-2 bg-cyan-950/60 hover:bg-cyan-900/80 text-cyan-300 border border-cyan-500/40 hover:border-cyan-400 rounded-xl text-xs font-mono transition-colors flex items-center gap-1.5"
+              title="Muat 3 Rekod Penanda Aras KKM (Mengikut Tarikh)"
+            >
+              <span>📥</span>
+              <span className="hidden sm:inline">Data Contoh KKM</span>
+            </button>
+          )}
+
           {onClearAllSessions && sessions.length > 0 && (
             <button
               onClick={handleTriggerClearAll}
@@ -392,16 +404,27 @@ export const SimulationArchivePage: React.FC<SimulationArchivePageProps> = ({
           </h3>
           <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mb-6">
             {sessions.length === 0
-              ? 'Belum ada sebarang imej dianalisis atau disimulasikan. Sila muat naik imej baharu di menu utama.'
+              ? 'Belum ada sebarang imej dianalisis atau disimulasikan. Sila muat naik imej baharu atau muat data contoh penanda aras KKM.'
               : 'Tiada rekod yang sepadan dengan tapisan carian anda. Sila tetapkan semula tapisan.'}
           </p>
           {sessions.length === 0 ? (
-            <button
-              onClick={onBackToHome}
-              className="bg-cyan-600 hover:bg-cyan-500 text-white font-mono font-bold text-xs px-6 py-3 rounded-xl transition-all"
-            >
-              MULAKAN IMBASAN PERTAMA
-            </button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                onClick={onBackToHome}
+                className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-500 text-white font-mono font-bold text-xs px-6 py-3 rounded-xl transition-all shadow-lg shadow-cyan-950/50"
+              >
+                MULAKAN IMBASAN PERTAMA
+              </button>
+              {onLoadDefaultArchive && (
+                <button
+                  onClick={onLoadDefaultArchive}
+                  className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/40 font-mono font-bold text-xs px-6 py-3 rounded-xl transition-all flex items-center justify-center gap-2"
+                >
+                  <span>📥</span>
+                  <span>MUAT CONTOH REKOD KKM (DENGAN TARIKH)</span>
+                </button>
+              )}
+            </div>
           ) : (
             <button
               onClick={() => {
@@ -477,9 +500,11 @@ export const SimulationArchivePage: React.FC<SimulationArchivePageProps> = ({
                             {session.mode === 'KKM_FOOD_STANDARD' ? 'STANDARD KKM' : 'KAWALAN VEKTOR'}
                           </div>
 
-                          {/* Time badge */}
-                          <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur px-2 py-0.5 rounded text-[10px] font-mono text-slate-400">
-                            ⏱️ {timeStr}
+                          {/* Date & Time badge */}
+                          <div className="absolute bottom-2 right-2 bg-black/85 backdrop-blur border border-slate-700/80 px-2 py-0.5 rounded-lg text-[10px] font-mono text-cyan-300 flex items-center gap-1.5 shadow">
+                            <span>📅 {new Date(ts).toLocaleDateString(language === 'ms' ? 'ms-MY' : 'en-US', { day: 'numeric', month: 'short' })}</span>
+                            <span className="text-slate-500">•</span>
+                            <span>⏱️ {timeStr}</span>
                           </div>
                         </div>
 
@@ -526,7 +551,7 @@ export const SimulationArchivePage: React.FC<SimulationArchivePageProps> = ({
                         <button
                           onClick={(e) => handleTriggerDelete(session.id, e)}
                           className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-950/40 rounded-lg transition-colors text-xs"
-                          title={isOwner ? "Padam rekod ini" : "Khas untuk Pemilik (legasiuka@gmail.com)"}
+                          title={isOwner ? "Padam rekod ini" : "Khas untuk Pemilik Berdaftar"}
                         >
                           🗑️
                         </button>
