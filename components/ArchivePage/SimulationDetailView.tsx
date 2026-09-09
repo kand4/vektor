@@ -1,39 +1,29 @@
 import React, { useState } from 'react';
 import { AnalysisSession, RiskDetection } from '../../types';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
-import { getSessionTimestamp, isOwnerAuthorized } from '../../utils/archiveHelpers';
-import { OwnerAuthModal } from './OwnerAuthModal';
-import { generateCleanSimulation, askRiskFollowUp, SimulationConfig } from '../../services/geminiService';
+import { getSessionTimestamp } from '../../utils/archiveHelpers';
+import { askRiskFollowUp } from '../../services/geminiService';
 
 interface SimulationDetailViewProps {
   session: AnalysisSession;
   language?: string;
   onBack: () => void;
-  onDeleteSession: (sessionId: string) => void;
-  onDeleteSimulationOnly: (sessionId: string) => void;
-  onUpdateSession: (updatedSession: AnalysisSession) => void;
+  onDeleteSession?: (sessionId: string) => void;
+  onDeleteSimulationOnly?: (sessionId: string) => void;
+  onUpdateSession?: (updatedSession: AnalysisSession) => void;
 }
 
 export const SimulationDetailView: React.FC<SimulationDetailViewProps> = ({
   session,
   language = 'ms',
-  onBack,
-  onDeleteSession,
-  onDeleteSimulationOnly,
-  onUpdateSession
+  onBack
 }) => {
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authAction, setAuthAction] = useState<'DELETE_SESSION' | 'DELETE_SIMULATION'>('DELETE_SESSION');
-  const [isGeneratingSim, setIsGeneratingSim] = useState(false);
-  const [simError, setSimError] = useState<string | null>(null);
-
   // Chat follow-up state
   const [activeRiskForChat, setActiveRiskForChat] = useState<RiskDetection | null>(null);
   const [chatQuestion, setChatQuestion] = useState('');
   const [chatAnswer, setChatAnswer] = useState<string | null>(null);
   const [isChatLoading, setIsChatLoading] = useState(false);
 
-  const isOwner = isOwnerAuthorized();
   const timestamp = getSessionTimestamp(session);
   const dateObj = new Date(timestamp);
   const formattedDate = dateObj.toLocaleDateString(language === 'ms' ? 'ms-MY' : 'en-US', {
@@ -47,60 +37,6 @@ export const SimulationDetailView: React.FC<SimulationDetailViewProps> = ({
   const vectorRisks = risks.filter(r => r.category === 'VECTOR');
   const hygieneRisks = risks.filter(r => r.category === 'HYGIENE');
   const safetyRisks = risks.filter(r => r.category === 'SAFETY');
-
-  // Trigger owner authorization before deleting
-  const handleRequestDelete = (action: 'DELETE_SESSION' | 'DELETE_SIMULATION') => {
-    if (!isOwnerAuthorized()) {
-      setAuthAction(action);
-      setShowAuthModal(true);
-      return;
-    }
-
-    if (action === 'DELETE_SESSION') {
-      if (window.confirm('Adakah anda pasti ingin memadam rekod analisis dan simulasi ini? Tindakan ini tidak boleh diundur.')) {
-        onDeleteSession(session.id);
-      }
-    } else {
-      if (window.confirm('Adakah anda pasti ingin memadam imej simulasi ini? Gambar asal dan rekod analisis akan kekal.')) {
-        onDeleteSimulationOnly(session.id);
-      }
-    }
-  };
-
-  const handleAuthSuccess = () => {
-    if (authAction === 'DELETE_SESSION') {
-      onDeleteSession(session.id);
-    } else {
-      onDeleteSimulationOnly(session.id);
-    }
-  };
-
-  // Generate Simulation on the fly if session doesn't have one yet
-  const handleGenerateSimulation = async () => {
-    setIsGeneratingSim(true);
-    setSimError(null);
-    try {
-      const simConfig: SimulationConfig = {
-        mode: 'SANITIZE_ONLY',
-        humans: 'REMOVE',
-        lighting: 'NATURAL',
-        engine: 'GEMINI_IMAGEN',
-        customPrompt: "Kawasan dibersihkan sepenuhnya mengikut piawaian KKM. Tiada takungan air, tiada longgokan sampah, kayu dan palet dinaikkan serta disanitasi bebas daripada sarang lipas dan tikus."
-      };
-
-      const result = await generateCleanSimulation(session.imageSrc, session.mimeType, simConfig);
-      const updated: AnalysisSession = {
-        ...session,
-        simulationImage: result.imageUrl
-      };
-      onUpdateSession(updated);
-    } catch (err: any) {
-      console.error("Simulation generation error:", err);
-      setSimError(err?.message || "Gagal menjana simulasi. Sila semak sambungan rangkaian atau kunci API.");
-    } finally {
-      setIsGeneratingSim(false);
-    }
-  };
 
   const handleAskQuestion = async (risk: RiskDetection) => {
     if (!chatQuestion.trim()) return;
@@ -154,42 +90,12 @@ export const SimulationDetailView: React.FC<SimulationDetailViewProps> = ({
           </div>
         </div>
 
-        {/* Security & Action Tools */}
+        {/* Visitor View Status Badge (Clean, Read-Only) */}
         <div className="flex items-center gap-2 flex-wrap justify-end">
-          {/* Owner Status Badge */}
-          {isOwner ? (
-            <div className="inline-flex items-center gap-1.5 bg-emerald-950/60 border border-emerald-500/40 text-emerald-400 text-[11px] font-mono px-3 py-1.5 rounded-lg shadow-sm" title="Dibenarkan memadam rekod (Akses Pemilik Sah)">
-              <span>👑</span>
-              <span className="font-bold">Mod Pemilik Sah</span>
-            </div>
-          ) : (
-            <div className="inline-flex items-center gap-1.5 bg-slate-800/80 border border-slate-700 text-slate-400 text-[11px] font-mono px-3 py-1.5 rounded-lg" title="Hanya pemilik sah dibenarkan memadam rekod">
-              <span>🔒</span>
-              <span>Mod Pelawat (Paparan Sahaja)</span>
-            </div>
-          )}
-
-          {/* Delete simulation button */}
-          {session.simulationImage && (
-            <button
-              onClick={() => handleRequestDelete('DELETE_SIMULATION')}
-              className="bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-500/30 hover:border-amber-400 px-3 py-2 rounded-xl text-xs font-mono font-bold transition-colors flex items-center gap-1.5"
-              title="Padam imej simulasi sahaja"
-            >
-              <span>✨✕</span>
-              <span className="hidden sm:inline">Padam Simulasi</span>
-            </button>
-          )}
-
-          {/* Delete entire session record button */}
-          <button
-            onClick={() => handleRequestDelete('DELETE_SESSION')}
-            className="bg-red-950/50 hover:bg-red-900/60 text-red-400 border border-red-500/40 hover:border-red-400 px-3.5 py-2 rounded-xl text-xs font-mono font-bold transition-colors flex items-center gap-1.5"
-            title="Hanya pemilik berdaftar sah boleh membuang rekod"
-          >
-            <span>🗑️</span>
-            <span>{isOwner ? 'Padam Rekod' : 'Padam (Pemilik)'}</span>
-          </button>
+          <div className="inline-flex items-center gap-1.5 bg-slate-800/80 border border-slate-700 text-slate-400 text-[11px] font-mono px-3.5 py-1.5 rounded-lg shadow-sm" title="Paparan Arkib Rasmi (Mod Pelawat)">
+            <span>👁️</span>
+            <span>Paparan Pelawat (Arkib Rasmi)</span>
+          </div>
         </div>
       </div>
 
@@ -206,7 +112,7 @@ export const SimulationDetailView: React.FC<SimulationDetailViewProps> = ({
           </div>
         ) : (
           <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 md:p-8 text-center flex flex-col items-center">
-            <div className="relative w-full max-w-2xl h-80 rounded-2xl overflow-hidden border border-slate-700 mb-6 bg-slate-950">
+            <div className="relative w-full max-w-2xl h-80 rounded-2xl overflow-hidden border border-slate-700 mb-4 bg-slate-950">
               <img 
                 src={session.imageSrc} 
                 alt="Imej Asal" 
@@ -218,40 +124,16 @@ export const SimulationDetailView: React.FC<SimulationDetailViewProps> = ({
                 }}
               />
               <div className="absolute top-3 left-3 bg-black/70 backdrop-blur border border-slate-600 text-slate-300 text-[10px] font-mono px-3 py-1 rounded-lg uppercase">
-                IMEJ ASAL (BELUM DISIMULASIKAN)
+                IMEJ ASAL PEMERIKSAAN
               </div>
             </div>
 
-            <h3 className="text-xl font-bold font-sci-fi text-cyan-400 mb-2">
-              SIMULASI BERSIH BELUM DIJANA UNTUK REKOD INI
+            <h3 className="text-lg font-bold font-sci-fi text-cyan-400 mb-1">
+              IMEJ PEMERIKSAAN ASAL
             </h3>
-            <p className="text-slate-400 text-xs sm:text-sm max-w-xl mb-6">
-              Jana simulasi automatik menggunakan AI generatif untuk memvisualisasikan premis ini selepas dinyahkuman, sisa disingkirkan, dan habitat vektor dihapuskan.
+            <p className="text-slate-400 text-xs sm:text-sm max-w-xl">
+              Rekod imbasan premis ini disimpan untuk rujukan pematuhan kebersihan dan kawalan vektor kesihatan awam.
             </p>
-
-            {simError && (
-              <div className="mb-4 p-3 bg-red-950/60 border border-red-500/40 rounded-xl text-red-300 text-xs font-mono max-w-md">
-                ⚠️ {simError}
-              </div>
-            )}
-
-            <button
-              onClick={handleGenerateSimulation}
-              disabled={isGeneratingSim}
-              className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold font-mono text-xs sm:text-sm px-8 py-3.5 rounded-xl shadow-lg shadow-cyan-900/40 transition-all flex items-center gap-2"
-            >
-              {isGeneratingSim ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  <span>SEDANG MENJANA SIMULASI REMEDIASI...</span>
-                </>
-              ) : (
-                <>
-                  <span>✨</span>
-                  <span>JANA SIMULASI REMEDIASI SEKARANG (AI)</span>
-                </>
-              )}
-            </button>
           </div>
         )}
       </div>
@@ -501,14 +383,6 @@ export const SimulationDetailView: React.FC<SimulationDetailViewProps> = ({
           </div>
         </div>
       )}
-
-      {/* Owner Auth Modal */}
-      <OwnerAuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onSuccess={handleAuthSuccess}
-        targetActionDescription={authAction === 'DELETE_SESSION' ? 'memadam rekod analisis dan simulasi ini' : 'memadam imej simulasi ini'}
-      />
     </div>
   );
 };

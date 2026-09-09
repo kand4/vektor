@@ -650,16 +650,36 @@ ${textPrompt}`;
                                 </div>
 
                                 {/* Actions Section */}
-                                <div className="flex items-center gap-2">
-                                     <button onClick={handleOpenSimulation} disabled={isCleaning} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-600 hover:border-cyan-500 hover:shadow-[0_0_15px_rgba(34,211,238,0.2)] rounded-lg text-xs font-bold uppercase transition-all disabled:opacity-50 text-white group">
+                                <div className="flex flex-wrap items-center gap-2">
+                                     <button onClick={handleOpenSimulation} disabled={isCleaning} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-600 hover:border-cyan-500 hover:shadow-[0_0_15px_rgba(34,211,238,0.2)] rounded-lg text-xs font-bold uppercase transition-all disabled:opacity-50 text-white group">
                                          {isCleaning ? <span className="animate-pulse">SIMULATING...</span> : (
                                             <>
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-cyan-400 group-hover:rotate-12 transition-transform">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-cyan-400 group-hover:rotate-12 transition-transform">
                                                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.813-3.814a1.5 1.5 0 0 0-2.12-2.12l-3.813 3.813a15.995 15.995 0 0 0-4.648 4.764m3.42 3.42a15.995 15.995 0 0 1-4.764 4.648l-3.813 3.813a1.5 1.5 0 0 1-2.12 2.12l3.813-3.813a15.995 15.995 0 0 1 4.648-4.764" />
                                                 </svg>
                                                 <span>{t('btn_simulation')}</span>
                                             </>
                                          )}
+                                     </button>
+
+                                     {/* Share / Export to Telegram & Telegraph */}
+                                     <button
+                                         onClick={() => setShowExportModal(true)}
+                                         className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-sky-900/60 to-blue-900/60 border border-sky-500/50 hover:border-sky-400 hover:shadow-[0_0_15px_rgba(56,189,248,0.3)] rounded-lg text-xs font-bold uppercase transition-all text-sky-200 hover:text-white group"
+                                         title="Hantar dan kongsi laporan ke Telegram & Telegraph"
+                                     >
+                                         <span className="text-sm group-hover:scale-110 transition-transform">✈️</span>
+                                         <span>{t('btn_export') || 'KONGSI KE TELEGRAM & TELEGRAPH'}</span>
+                                     </button>
+
+                                     {/* Print PDF Button */}
+                                     <button
+                                         onClick={handlePrint}
+                                         className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-slate-850 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-xs font-bold uppercase transition-all text-slate-200"
+                                         title="Cetak atau Muat Turun PDF"
+                                     >
+                                         <span>🖨️</span>
+                                         <span className="hidden sm:inline">CETAK PDF</span>
                                      </button>
                                 </div>
                             </div>
@@ -984,6 +1004,47 @@ ${textPrompt}`;
                             <span className="text-[8px] font-mono-sci text-slate-500 uppercase tracking-tighter">Tiada Hasil (0%)</span>
                             <span className="text-[8px] font-mono-sci text-emerald-500 uppercase tracking-tighter font-black underline">Lengkap (100%)</span>
                         </div>
+                    </div>
+
+                    {/* Quick Action Toolbar: Simulation, Telegram/Telegraph, Print */}
+                    <div className="mt-3 pt-3 border-t border-slate-800/80 flex flex-wrap items-center gap-2">
+                        {/* Simulation Button */}
+                        <button
+                            onClick={handleOpenSimulation}
+                            disabled={isCleaning}
+                            className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-600 hover:border-cyan-500 hover:shadow-[0_0_15px_rgba(34,211,238,0.25)] rounded-lg text-xs font-bold uppercase transition-all disabled:opacity-50 text-white group"
+                        >
+                            {isCleaning ? (
+                                <span className="animate-pulse">SIMULATING...</span>
+                            ) : (
+                                <>
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-cyan-400 group-hover:rotate-12 transition-transform">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.813-3.814a1.5 1.5 0 0 0-2.12-2.12l-3.813 3.813a15.995 15.995 0 0 0-4.648 4.764m3.42 3.42a15.995 15.995 0 0 1-4.764 4.648l-3.813 3.813a1.5 1.5 0 0 1-2.12 2.12l3.813-3.813a15.995 15.995 0 0 1 4.648-4.764" />
+                                    </svg>
+                                    <span>{t('btn_simulation')}</span>
+                                </>
+                            )}
+                        </button>
+
+                        {/* Export / Share to Telegram & Telegraph */}
+                        <button
+                            onClick={() => setShowExportModal(true)}
+                            className="flex-1 min-w-[170px] flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-sky-900/50 to-blue-900/50 border border-sky-500/50 hover:border-sky-400 hover:shadow-[0_0_15px_rgba(56,189,248,0.3)] rounded-lg text-xs font-bold uppercase transition-all text-sky-200 hover:text-white group"
+                            title="Kongsi laporan ke Telegram & Telegraph"
+                        >
+                            <span className="text-sm group-hover:scale-110 transition-transform">✈️</span>
+                            <span>{t('btn_export') || 'KONGSI KE TELEGRAM & TELEGRAPH'}</span>
+                        </button>
+
+                        {/* Print PDF Button */}
+                        <button
+                            onClick={handlePrint}
+                            className="flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-xs font-bold uppercase transition-all text-slate-200"
+                            title="Cetak atau Muat Turun PDF"
+                        >
+                            <span>🖨️</span>
+                            <span className="hidden sm:inline">CETAK PDF</span>
+                        </button>
                     </div>
                 </div>
             </div>
