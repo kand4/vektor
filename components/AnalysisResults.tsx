@@ -11,6 +11,7 @@ import { SimulationResultModal } from './Modals/SimulationResultModal';
 import { ManualSimulationModal } from './Modals/ManualSimulationModal';
 import { ExportModal } from './Modals/ExportModal';
 import { DualScoreCard } from './DualScoreCard';
+import { BeforeAfterSlider } from './ArchivePage/BeforeAfterSlider';
 
 const getRiskColorParams = (category: RiskCategory) => {
   switch (category) {
@@ -95,6 +96,8 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   const [isProcessingManual, setIsProcessingManual] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
   const [cleanImages, setCleanImages] = useState<string[]>(savedSimulationImage ? [savedSimulationImage] : []);
+  const activeCleanImage = cleanImages.length > 0 ? cleanImages[cleanImages.length - 1] : (savedSimulationImage || null);
+  const [viewMode, setViewMode] = useState<'SLIDER' | 'ANNOTATION'>(Boolean(savedSimulationImage) ? 'SLIDER' : 'ANNOTATION');
   const [showCleanModal, setShowCleanModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -112,7 +115,12 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
   const { language, t } = useLanguage();
 
-  useEffect(() => { setCleanImages(savedSimulationImage ? [savedSimulationImage] : []); }, [savedSimulationImage]);
+  useEffect(() => { 
+    setCleanImages(savedSimulationImage ? [savedSimulationImage] : []); 
+    if (savedSimulationImage) {
+      setViewMode('SLIDER');
+    }
+  }, [savedSimulationImage]);
   useEffect(() => { 
       // Only auto-set activeRisk if it's currently null AND there are risks to select.
       if (currentRisks && currentRisks.length > 0 && !activeRisk) {
@@ -539,80 +547,69 @@ ${textPrompt}`;
                 </div>
              )}
 
-             <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+             <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4 md:mb-6">
                 <h2 className="text-2xl font-bold text-blue-400 font-sci-fi">LAPORAN PEMERIKSAAN KKM</h2>
-                <div className="flex gap-2">
-                    <button onClick={() => setShowExportModal(true)} className="flex items-center gap-2 px-4 py-2 rounded text-sm font-bold uppercase tracking-wider transition-all border border-blue-500/50 hover:bg-blue-900/30 text-blue-400 bg-slate-900 shadow-lg" title="Eksport ke Telegram/Telegraph">
-                        📤 {t('btn_export') || 'EKSPORT (TG)'}
-                    </button>
-                    <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 rounded text-sm font-bold uppercase tracking-wider transition-all border border-green-500/50 hover:bg-green-900/30 text-green-400 bg-slate-900 shadow-lg" title="Cetak Laporan PDF">
-                        🖨️ {t('btn_print_pdf') || 'CETAK LAPORAN PDF'}
-                    </button>
-                    
-                    {onOpenBypass && (
-                       <button 
-                         onClick={onOpenBypass} 
-                         className="flex items-center gap-2 px-4 py-2 rounded text-sm font-bold uppercase tracking-wider transition-all border border-emerald-500/50 hover:bg-emerald-900/30 text-emerald-400 bg-slate-900 shadow-lg"
-                         title="Memintas kuota atau tampal huraian AI Claude/GPT"
-                       >
-                         🧬 {language === 'ms' ? 'TAMPAL JSON LUARAN' : 'PASTE EXTERNAL JSON'}
-                       </button>
-                    )}
-
-                    {allSessions.length > 1 && (
-                        <div className="bg-blue-900/40 border border-blue-500/50 px-4 py-2 rounded flex items-center gap-3 shadow-lg">
-                            <div className="flex flex-col items-end">
-                                <span className="text-[10px] text-blue-300 font-bold uppercase tracking-tighter">SKOR KUMULATIF ({validSessions.length})</span>
-                                <span className="text-sm font-sci-fi font-bold text-white">{avgHygiene.toFixed(1)} / 5.0</span>
-                            </div>
-                            <div className={`w-8 h-8 rounded border-2 flex items-center justify-center font-bold text-sm ${avgHygiene <= 2.5 ? 'border-emerald-500 text-emerald-400' : avgHygiene <= 3.5 ? 'border-yellow-500 text-yellow-400' : 'border-red-500 text-red-500'}`}>
-                                {avgHygiene <= 1.5 ? 'A' : avgHygiene <= 2.5 ? 'B' : avgHygiene <= 3.5 ? 'C' : avgHygiene <= 4.5 ? 'D' : 'E'}
-                            </div>
+                {allSessions.length > 1 && (
+                    <div className="bg-blue-900/40 border border-blue-500/50 px-4 py-2 rounded flex items-center gap-3 shadow-lg">
+                        <div className="flex flex-col items-end">
+                            <span className="text-[10px] text-blue-300 font-bold uppercase tracking-tighter">SKOR KUMULATIF ({validSessions.length})</span>
+                            <span className="text-sm font-sci-fi font-bold text-white">{avgHygiene.toFixed(1)} / 5.0</span>
                         </div>
-                    )}
-                    {validSessions.length > 1 && (
-                        <button 
-                            onClick={() => document.getElementById('cumulative-table')?.scrollIntoView({ behavior: 'smooth' })}
-                            className="bg-slate-800 border border-slate-700 px-4 py-2 rounded text-xs font-bold text-slate-300 hover:bg-slate-700 transition"
-                        >
-                            📊 LIHAT PECAHAN
-                        </button>
-                    )}
-                </div>
+                        <div className={`w-8 h-8 rounded border-2 flex items-center justify-center font-bold text-sm ${avgHygiene <= 2.5 ? 'border-emerald-500 text-emerald-400' : avgHygiene <= 3.5 ? 'border-yellow-500 text-yellow-400' : 'border-red-500 text-red-500'}`}>
+                            {avgHygiene <= 1.5 ? 'A' : avgHygiene <= 2.5 ? 'B' : avgHygiene <= 3.5 ? 'C' : avgHygiene <= 4.5 ? 'D' : 'E'}
+                        </div>
+                    </div>
+                )}
              </div>
 
              <div className="flex flex-col gap-6">
-                 {/* Top: Evidence Full Width for 4K visibility */}
+                 {/* Top: Evidence Full Width */}
                  <div className="flex flex-col gap-4">
                      <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 relative">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
                            <h3 className="text-sm font-bold text-white uppercase flex items-center gap-2">
-                              <span>BUKTI GAMBAR (ANNOTATED)</span>
-                              <span className="text-[9px] font-mono-sci bg-slate-800 px-2 py-1 rounded text-cyan-400 border border-cyan-900/50">Klik Imej untuk Zoom 4K</span>
+                              <span>BUKTI GAMBAR DAN SIMULASI</span>
+                              <span className="text-[9px] font-mono-sci bg-slate-800 px-2 py-1 rounded text-cyan-400 border border-cyan-900/50">Forensik Interaktif</span>
                            </h3>
-                           <div className="flex items-center gap-2 mt-2 sm:mt-0">
-                               <button 
-                                   onClick={() => setIsEditing(!isEditing)} 
-                                   className={`text-[9px] uppercase font-bold px-2 py-1 rounded transition-colors flex items-center gap-1 border shadow-md backdrop-blur-md ${isEditing ? 'bg-red-900/60 text-red-300 border-red-800/80 animate-pulse' : 'bg-slate-900/60 text-slate-400 border-slate-700 hover:bg-slate-800'}`}
-                                   title={isEditing ? "Matikan Sasar Manual" : "Sasar Kawasan Manual"}
+                           {activeCleanImage && (
+                             <div className="flex items-center gap-2">
+                               <button
+                                 onClick={() => setViewMode('SLIDER')}
+                                 className={`px-2.5 py-1 rounded text-xs font-mono font-bold transition-all ${
+                                   viewMode === 'SLIDER'
+                                     ? 'bg-cyan-500 text-slate-950 font-bold shadow-md'
+                                     : 'bg-slate-800 text-slate-300 border border-slate-700'
+                                 }`}
                                >
-                                   {isEditing ? `🔴 ${t('label_targeting') || 'SEDANG SEDIA MENGESAN'}` : `🎯 ${t('btn_manual_scan') || 'SASARAN MANUAL'}`}
+                                 ↔ SLIDER
                                </button>
                                <button
-                                  onClick={() => setIsAutoScrollEnabled(!isAutoScrollEnabled)}
-                                  className={`text-[9px] uppercase font-bold px-2 py-1 rounded transition-colors flex items-center gap-1 border shadow-md backdrop-blur-md ${
-                                    isAutoScrollEnabled ? 'bg-cyan-900/60 text-cyan-300 border-cyan-800/80 hover:bg-cyan-800/80' : 'bg-slate-900/60 text-slate-400 border-slate-700 hover:bg-slate-800'
-                                  }`}
-                                  title={isAutoScrollEnabled ? "Matikan Auto-Scroll" : "Hidupkan Auto-Scroll"}
+                                 onClick={() => setViewMode('ANNOTATION')}
+                                 className={`px-2.5 py-1 rounded text-xs font-mono font-bold transition-all ${
+                                   viewMode === 'ANNOTATION'
+                                     ? 'bg-emerald-500 text-slate-950 font-bold shadow-md'
+                                     : 'bg-slate-800 text-slate-300 border border-slate-700'
+                                 }`}
                                >
-                                  {isAutoScrollEnabled ? '✅ Auto-Scroll (ON)' : '❌ Auto-Scroll (OFF)'}
+                                 🎯 ANOTASI ({filteredRisks.length})
                                </button>
-                           </div>
+                             </div>
+                           )}
                         </div>
-                        <div className="border border-slate-700 rounded-xl bg-slate-950">
+
+                        <div className="border border-slate-700 rounded-xl bg-slate-950 overflow-hidden">
+                          {viewMode === 'SLIDER' && activeCleanImage ? (
+                            <div className="p-2">
+                               <BeforeAfterSlider
+                                  originalImage={imageSrc}
+                                  simulatedImage={activeCleanImage}
+                                  title="PERBANDINGAN SEBELUM & SELEPAS (KKM)"
+                               />
+                            </div>
+                          ) : (
                             <ImageAnnotator 
                                 imageSrc={imageSrc} 
-                                cleanedImageSrc={cleanImages[cleanImages.length - 1]}
+                                cleanedImageSrc={activeCleanImage || undefined}
                                 risks={filteredRisks} 
                                 onRiskSelect={handleRiskChange} 
                                 selectedId={activeRisk?.id} 
@@ -620,7 +617,7 @@ ${textPrompt}`;
                                 onRegionDrawn={handleRegionDrawn} 
                                 fullWidthMode={true}
                             />
-                            
+                          )}    
                             {/* ADVANCED AI CONTROLS (KKM) */}
                             <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between border-t border-slate-800 p-3 md:p-4 gap-4 bg-slate-950/80 rounded-b-xl">
                                 {/* Slider Section */}
@@ -858,48 +855,55 @@ ${textPrompt}`;
          </div>
       )}
 
-      <div className="flex flex-wrap gap-3 justify-between items-center mb-4 md:mb-6 no-print">
-         <div className="flex gap-2">
-            <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded text-xs md:text-sm font-bold uppercase tracking-wider transition-all border ${isEditing ? 'bg-red-600 text-white border-red-500 animate-pulse' : 'bg-slate-800 text-slate-300 border-slate-600'}`}>
-                {isEditing ? `🔴 ${t('label_targeting')}` : `🎯 ${t('btn_manual_scan')}`}
+      {/* Clean presentation without cluttering menu buttons as requested */}
+      {activeCleanImage && (
+        <div className="flex items-center justify-between gap-3 mb-3 md:mb-4 no-print bg-slate-900/70 border border-slate-800 rounded-xl p-2 md:p-2.5 shadow-sm">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setViewMode('SLIDER')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5 ${
+                viewMode === 'SLIDER'
+                  ? 'bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(6,182,212,0.5)]'
+                  : 'bg-slate-800 text-slate-300 hover:text-white border border-slate-700'
+              }`}
+            >
+              <span>↔</span>
+              <span>SLIDER SEBELUM & SELEPAS</span>
             </button>
-            <button onClick={handleOpenSimulation} disabled={isCleaning} className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded text-xs md:text-sm font-bold uppercase tracking-wider transition-all border border-cyan-500/50 hover:bg-cyan-900/30 text-cyan-400 disabled:opacity-50`}>
-                {isCleaning ? <span className="animate-pulse">SIMULATING...</span> : <>✨ {t('btn_simulation')}</>}
+            <button
+              onClick={() => setViewMode('ANNOTATION')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1.5 ${
+                viewMode === 'ANNOTATION'
+                  ? 'bg-emerald-500 text-slate-950 shadow-[0_0_12px_rgba(16,185,129,0.5)]'
+                  : 'bg-slate-800 text-slate-300 hover:text-white border border-slate-700'
+              }`}
+            >
+              <span>🎯</span>
+              <span>KOTAK RISIKO ({filteredRisks.length})</span>
             </button>
-            <button onClick={() => setShowExportModal(true)} className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded text-xs md:text-sm font-bold uppercase tracking-wider transition-all border border-blue-500/50 hover:bg-blue-900/30 text-blue-400 bg-slate-900 shadow-md" title="Eksport ke Telegram/Telegraph">
-                📤 {t('btn_export') || 'EKSPORT (TG)'}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const cur = allSessions?.find(s => s.imageSrc === imageSrc || s.simulationImage === savedSimulationImage);
+                const shareUrl = cur ? `${window.location.origin}${window.location.pathname}?session=${cur.id}` : window.location.href;
+                navigator.clipboard.writeText(shareUrl);
+                setToastMsg({ msg: "Pautan Gelangser Berjaya Disalin! Hantar kepada rakan/pegawai lain untuk terus melihat perbandingan Sebelum & Selepas ini.", type: 'success' });
+              }}
+              className="px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold bg-slate-800 hover:bg-cyan-950 text-cyan-300 border border-cyan-500/40 hover:border-cyan-400 transition-all flex items-center gap-1.5 shadow-sm"
+              title="Salin pautan untuk peranti lain terus membuka gelangser ini"
+            >
+              <span>🔗</span>
+              <span className="hidden sm:inline">KONGSI SLIDER</span>
+              <span className="sm:hidden">KONGSI</span>
             </button>
-            <button onClick={handlePrint} className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded text-xs md:text-sm font-bold uppercase tracking-wider transition-all border border-green-500/50 hover:bg-green-900/30 text-green-400">
-                🖨️ {t('btn_print_pdf')}
-            </button>
-            
-            {onOpenBypass && (
-               <button 
-                 onClick={onOpenBypass} 
-                 className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded text-xs md:text-sm font-bold uppercase tracking-wider transition-all border border-emerald-500/50 hover:bg-emerald-900/30 text-emerald-400 bg-slate-900 shadow-md"
-                 title="Memintas kuota atau tampal huraian AI Claude/GPT"
-               >
-                 🧬 {language === 'ms' ? 'TAMPAL JSON LUARAN' : 'PASTE EXTERNAL JSON'}
-               </button>
-            )}
-
-            {onDeleteSession && (
-               <button 
-                 onClick={onDeleteSession} 
-                 className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded text-xs md:text-sm font-bold uppercase tracking-wider transition-all border border-red-500/50 hover:bg-red-950 hover:text-red-400 text-red-500 bg-slate-900 shadow-md"
-                 title="Padam Rekod Sesi Ini"
-               >
-                 🗑️ {t('btn_clear') || 'PADAM'}
-               </button>
-            )}
-         </div>
-         <div className="flex items-center gap-2 md:gap-4">
-            <div className="flex items-center gap-2 bg-slate-900 rounded-full p-1 border border-slate-700">
-               <button onClick={() => setIsSavageMode(false)} className={`px-3 py-1 rounded-full text-[10px] font-bold ${!isSavageMode ? 'bg-emerald-600 text-white' : 'text-slate-500'}`}>{t('tab_official')}</button>
-               <button onClick={() => setIsSavageMode(true)} className={`px-3 py-1 rounded-full text-[10px] font-bold ${isSavageMode ? 'bg-red-600 text-white' : 'text-slate-500'}`}>{t('tab_savage')}</button>
-            </div>
-         </div>
-      </div>
+            <span className="text-[11px] font-mono text-cyan-400 font-bold hidden sm:flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+              SIMULASI AKTIF
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 no-print">
         {/* LEFT COL: Image & List */}
@@ -927,21 +931,32 @@ ${textPrompt}`;
                  )}
             </div>
 
-           <div className="relative rounded-xl border border-slate-700 bg-slate-900 group">
-              {/* Auto Scroll Toggle */}
-              <div className="absolute top-2 right-2 z-50">
-                 <button
-                    onClick={() => setIsAutoScrollEnabled(!isAutoScrollEnabled)}
-                    className={`text-[9px] uppercase font-bold px-2 py-1 rounded transition-colors flex items-center gap-1 border shadow-md backdrop-blur-md ${
-                      isAutoScrollEnabled ? 'bg-cyan-900/60 text-cyan-300 border-cyan-800/80 hover:bg-cyan-800/80' : 'bg-slate-900/60 text-slate-400 border-slate-700 hover:bg-slate-800'
-                    }`}
-                    title={isAutoScrollEnabled ? "Matikan Auto-Scroll" : "Hidupkan Auto-Scroll"}
-                 >
-                    {isAutoScrollEnabled ? '✅ Auto-Scroll (ON)' : '❌ Auto-Scroll (OFF)'}
-                 </button>
-              </div>
-              <ImageAnnotator imageSrc={imageSrc} cleanedImageSrc={cleanImages[cleanImages.length - 1]} risks={filteredRisks} onRiskSelect={handleRiskChange} selectedId={activeRisk?.id} isEditing={isEditing} onRegionDrawn={handleRegionDrawn} />
-           </div>
+            {/* Direct Image Presentation (Before/After Slider or Annotator) */}
+            {viewMode === 'SLIDER' && activeCleanImage ? (
+               <div className="rounded-2xl border border-cyan-500/30 bg-slate-950 shadow-2xl overflow-hidden p-2 sm:p-3">
+                  <BeforeAfterSlider
+                     originalImage={imageSrc}
+                     simulatedImage={activeCleanImage}
+                     title="PERBANDINGAN SEBELUM & SELEPAS"
+                  />
+               </div>
+            ) : (
+               <div className="relative rounded-xl border border-slate-700 bg-slate-900 group">
+                  {/* Auto Scroll Toggle */}
+                  <div className="absolute top-2 right-2 z-50">
+                     <button
+                        onClick={() => setIsAutoScrollEnabled(!isAutoScrollEnabled)}
+                        className={`text-[9px] uppercase font-bold px-2 py-1 rounded transition-colors flex items-center gap-1 border shadow-md backdrop-blur-md ${
+                          isAutoScrollEnabled ? 'bg-cyan-900/60 text-cyan-300 border-cyan-800/80 hover:bg-cyan-800/80' : 'bg-slate-900/60 text-slate-400 border-slate-700 hover:bg-slate-800'
+                        }`}
+                        title={isAutoScrollEnabled ? "Matikan Auto-Scroll" : "Hidupkan Auto-Scroll"}
+                     >
+                        {isAutoScrollEnabled ? '✅ Auto-Scroll (ON)' : '❌ Auto-Scroll (OFF)'}
+                     </button>
+                  </div>
+                  <ImageAnnotator imageSrc={imageSrc} cleanedImageSrc={activeCleanImage || undefined} risks={filteredRisks} onRiskSelect={handleRiskChange} selectedId={activeRisk?.id} isEditing={isEditing} onRegionDrawn={handleRegionDrawn} />
+               </div>
+            )}
 
            {/* SENSITIVITY CONTROL SECTION (STANDARD) */}
            <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 animate-fade-in no-print mt-2">

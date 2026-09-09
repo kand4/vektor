@@ -31,6 +31,13 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [sliderPos, setSliderPos] = useState(50);
   const isSlidingRef = useRef(false);
+  const [imageLoadError, setImageLoadError] = useState(false);
+  const [cleanedLoadError, setCleanedLoadError] = useState(false);
+
+  useEffect(() => {
+    setImageLoadError(false);
+    setCleanedLoadError(false);
+  }, [imageSrc, cleanedImageSrc]);
 
   const handleSliderMove = (e: React.PointerEvent) => {
     if (!isSlidingRef.current || !cleanedImageSrc || !containerRef.current) return;
@@ -190,14 +197,20 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
         }}
       >
         <div className="relative rounded">
-            {cleanedImageSrc ? (
+            {cleanedImageSrc && !cleanedLoadError ? (
               <div className="relative rounded group/slider touch-none">
-                <img src={cleanedImageSrc} alt="Cleaned" className={imgClasses} />
+                <img 
+                  src={cleanedImageSrc} 
+                  alt="Cleaned" 
+                  className={imgClasses} 
+                  onError={() => setCleanedLoadError(true)}
+                />
                 <div style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }} className="absolute inset-0 z-10 w-full h-full">
                   <img 
                     ref={imageRef}
                     src={imageSrc} 
                     alt="Analyzed" 
+                    onError={() => setImageLoadError(true)}
                     className={`${imgClasses} absolute inset-0 w-full h-full object-cover`}
                   />
                   <div className="absolute inset-0 bg-[linear-gradient(rgba(34,211,238,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.1)_1px,transparent_1px)] bg-[size:40px_40px] opacity-0 group-hover:opacity-20 pointer-events-none z-10 transition-opacity duration-500"></div>
@@ -419,12 +432,32 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
               </div>
             ) : (
               <React.Fragment>
-                <img 
-                  ref={imageRef}
-                  src={imageSrc} 
-                  alt="Analyzed" 
-                  className={imgClasses} 
-                />
+                {imageLoadError ? (
+                  <div className="w-full min-h-[320px] flex flex-col items-center justify-center p-8 text-center bg-slate-950/80 border border-amber-500/40 rounded-xl space-y-3">
+                    <div className="w-12 h-12 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xl text-amber-400">
+                      ⚠️
+                    </div>
+                    <h4 className="text-sm font-bold text-amber-400 font-sci-fi tracking-wider">
+                      IMEJ TIDAK DAPAT DIPAPARKAN
+                    </h4>
+                    <p className="text-xs text-slate-300 max-w-md font-mono leading-relaxed">
+                      Format gambar ini mungkin tidak disokong secara terus oleh pelayar (contohnya fail <b>.HEIC / .HEIF</b> kamera iPhone) atau data gambar tidak lengkap.
+                    </p>
+                    <div className="text-[11px] text-slate-400 bg-slate-900/90 px-4 py-3 rounded-lg border border-slate-800 font-mono text-left space-y-1.5 max-w-md">
+                      <div className="text-cyan-400 font-bold">💡 Cadangan Pantas:</div>
+                      <div>1. Buka foto dalam galeri telefon anda dan ambil <b>Screenshot (Tangkap Layar)</b>, kemudian muat naik screenshot tersebut.</div>
+                      <div>2. Atau simpan gambar sebagai format standard <b>JPG / PNG / WebP</b>.</div>
+                    </div>
+                  </div>
+                ) : (
+                  <img 
+                    ref={imageRef}
+                    src={imageSrc} 
+                    alt="Analyzed" 
+                    onError={() => setImageLoadError(true)}
+                    className={imgClasses} 
+                  />
+                )}
                 
                 <div className="absolute inset-0 bg-[linear-gradient(rgba(34,211,238,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.1)_1px,transparent_1px)] bg-[size:40px_40px] opacity-0 group-hover:opacity-20 pointer-events-none z-10 transition-opacity duration-500"></div>
                 

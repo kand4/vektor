@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import cors from "cors";
 import { GoogleGenAI } from "@google/genai";
@@ -549,6 +550,141 @@ async function startServer() {
     } catch (error: any) {
       console.error("Telegraph page proxy error:", error);
       res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  // Local uploads directory & static serving
+  const uploadsDir = path.join(process.cwd(), "uploads");
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  app.use("/uploads", express.static(uploadsDir));
+
+  // Shared sessions storage
+  const SESSIONS_FILE = path.join(uploadsDir, "shared_sessions.json");
+
+  const loadSharedSessions = (): any[] => {
+    try {
+      if (fs.existsSync(SESSIONS_FILE)) {
+        const raw = fs.readFileSync(SESSIONS_FILE, "utf-8");
+        return JSON.parse(raw) || [];
+      }
+    } catch (err) {
+      console.warn("⚠️ Ralat membaca fail sesi:", err);
+    }
+    return [];
+  };
+
+  const saveSharedSessions = (sessions: any[]) => {
+    try {
+      const trimmed = sessions.slice(0, 50); // Simpan sehingga 50 sesi terkini
+      fs.writeFileSync(SESSIONS_FILE, JSON.stringify(trimmed, null, 2), "utf-8");
+    } catch (err) {
+      console.warn("⚠️ Ralat menyimpan fail sesi:", err);
+    }
+  };
+
+  // Endpoint to upload and host images (Cloud + Server mirror)
+  app.post("/api/upload-image", async (req, res) => {
+    try {
+      const { image, name } = req.body || {};
+      if (!image || typeof image !== "string") {
+        return res.status(400).json({ error: "Tiada imej dibekalkan." });
+      }
+
+      if (image.startsWith("http://") || image.startsWith("https://")) {
+        return res.json({ url: image });
+      }
+
+      const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      const type = matches ? matches[1] : "image/jpeg";
+      const base64Data = matches ? matches[2] : image;
+      const buffer = Buffer.from(base64Data, "base64");
+      const ext = type.includes("png") ? "png" : type.includes("webp") ? "webp" : "jpg";
+      const safePrefix = (name || "vg").replace(/[^a-zA-Z0-9_-]/g, "_").substring(0, 20);
+      const filename = `${safePrefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+
+      // 1. Simpan salinan tempatan di pelayan
+      const localFilePath = path.join(uploadsDir, filename);
+      fs.writeFileSync(localFilePath, buffer);
+      const localUrl = `/uploads/${filename}`;
+
+      // 2. Muat naik ke Litterbox (Catbox) / Tmpfiles sebagai cermin awan HTTPS
+      let cloudUrl = localUrl;
+      try {
+        const fd = new FormData();
+        fd.append("reqtype", "fileupload");
+        fd.append("time", "72h");
+        fd.append("fileToUpload", new Blob([buffer], { type }), filename);
+
+        const catboxRes = await fetch("https://litterbox.catbox.moe/resources/internals/api.php", {
+          method: "POST",
+          body: fd,
+          signal: AbortSignal.timeout(6000)
+        });
+
+        if (catboxRes.ok) {
+          const directUrl = (await catboxRes.text()).trim();
+          if (directUrl.startsWith("http")) {
+            cloudUrl = directUrl;
+          }
+        }
+      } catch (mirrorErr) {
+        console.warn("⚠️ Cermin awan gagal, menggunakan hos pelayan tempatan:", mirrorErr);
+      }
+
+      return res.json({ url: cloudUrl, localUrl });
+    } catch (err: any) {
+      console.error("Ralat /api/upload-image:", err);
+      return res.status(500).json({ error: err.message || "Gagal memproses imej" });
+    }
+  });
+
+  // Endpoints for shared sessions across all devices
+  app.get("/api/shared-sessions", (req, res) => {
+    const sessions = loadSharedSessions();
+    return res.json({ sessions });
+  });
+
+  app.get("/api/shared-sessions/:id", (req, res) => {
+    const { id } = req.params;
+    const sessions = loadSharedSessions();
+    const found = sessions.find((s: any) => s.id === id);
+    if (found) {
+      return res.json({ session: found });
+    }
+    return res.status(404).json({ error: "Sesi tidak ditemui" });
+  });
+
+  app.post("/api/shared-sessions", (req, res) => {
+    try {
+      const session = req.body;
+      if (!session || !session.id) {
+        return res.status(400).json({ error: "Sesi tidak sah" });
+      }
+      const current = loadSharedSessions();
+      const existingIdx = current.findIndex((s: any) => s.id === session.id);
+      if (existingIdx >= 0) {
+        current[existingIdx] = { ...current[existingIdx], ...session };
+      } else {
+        current.unshift(session);
+      }
+      saveSharedSessions(current);
+      return res.json({ success: true, count: current.length });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || "Gagal menyimpan sesi" });
+    }
+  });
+
+  app.delete("/api/shared-sessions/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      const current = loadSharedSessions();
+      const filtered = current.filter((s: any) => s.id !== id);
+      saveSharedSessions(filtered);
+      return res.json({ success: true, count: filtered.length });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || "Gagal memadam sesi" });
     }
   });
 

@@ -29,6 +29,7 @@ import { MobileBottomNav } from './components/MobileBottomNav';
 import { SimulationArchivePage } from './components/ArchivePage/SimulationArchivePage';
 import { getDefaultArchiveSessions } from './utils/defaultArchiveData';
 import { getSessionTimestamp } from './utils/archiveHelpers';
+import { uploadImageToCloud, syncSessionToServer, fetchSharedSessionsFromServer, deleteSharedSessionFromServer } from './services/cloudStorageService';
 
 const MANUAL_SIMULATION_DEFAULT_PROMPT = `Sila gunakan tool penjana imej (Imagen / Image FX) untuk mengubah imej ini dengan MEMATUHI ARAHAN STRICT PERSPEKTIF BERIKUT:
 
@@ -56,16 +57,17 @@ const App: React.FC = () => {
   const [dbLoaded, setDbLoaded] = useState(false);
   const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
 
-  // Load from IndexedDB on startup
+  // Load from IndexedDB and sync with cloud server on startup
   useEffect(() => {
     const loadFromDb = async () => {
       try {
         const cachedSessions = await dbGet<AnalysisSession[]>('sessions');
         const cachedActiveId = await dbGet<string | null>('activeSessionId');
+        let currentList: AnalysisSession[] = [];
+
         if (cachedSessions && cachedSessions.length > 0) {
-          // Normalize sessions and auto-repair any stale or broken svg URIs from earlier caches
           const defaultRef = getDefaultArchiveSessions();
-          const normalized = cachedSessions.map(s => {
+          currentList = cachedSessions.map(s => {
             let imageSrc = s.imageSrc;
             let simulationImage = s.simulationImage;
             if (imageSrc && imageSrc.includes('data:image/svg+xml;utf8')) {
@@ -75,6 +77,12 @@ const App: React.FC = () => {
                 simulationImage = matched.simulationImage || simulationImage;
               }
             }
+            if (!simulationImage) {
+              const matched = defaultRef.find(d => d.id === s.id || d.fileName === s.fileName);
+              if (matched?.simulationImage) {
+                simulationImage = matched.simulationImage;
+              }
+            }
             return {
               ...s,
               imageSrc,
@@ -82,23 +90,48 @@ const App: React.FC = () => {
               createdAt: s.createdAt || getSessionTimestamp(s)
             };
           });
-          setSessions(normalized);
-          if (cachedActiveId && normalized.some(s => s.id === cachedActiveId)) {
-            setActiveSessionId(cachedActiveId);
-          } else {
-            setActiveSessionId(normalized[0].id);
-          }
         } else {
-          // Pre-populate with verified benchmark inspection sessions so the date archive is immediately populated on Vercel
-          const initialSessions = getDefaultArchiveSessions();
-          setSessions(initialSessions);
-          setActiveSessionId(initialSessions[0].id);
-          await dbSet('sessions', initialSessions);
+          currentList = getDefaultArchiveSessions();
+        }
+
+        // Fetch shared sessions from cloud server to sync cross-device
+        try {
+          const serverSessions = await fetchSharedSessionsFromServer();
+          if (serverSessions && serverSessions.length > 0) {
+            const map = new Map<string, AnalysisSession>();
+            // Server sessions take priority
+            serverSessions.forEach(s => map.set(s.id, s));
+            currentList.forEach(s => {
+              if (!map.has(s.id)) {
+                map.set(s.id, s);
+              }
+            });
+            currentList = Array.from(map.values());
+          }
+        } catch (srvErr) {
+          console.warn("Could not sync shared sessions on mount:", srvErr);
+        }
+
+        setSessions(currentList);
+
+        // Check if user came in via shared direct link: ?session=ID
+        const urlParams = new URLSearchParams(window.location.search);
+        const sharedId = urlParams.get('session');
+
+        if (sharedId && currentList.some(s => s.id === sharedId)) {
+          setActiveSessionId(sharedId);
+        } else if (cachedActiveId && currentList.some(s => s.id === cachedActiveId)) {
+          setActiveSessionId(cachedActiveId);
+        } else {
+          // Default to latest session that has a simulation image so sliding is displayed immediately!
+          const withSim = currentList.find(s => !!s.simulationImage);
+          setActiveSessionId(withSim ? withSim.id : (currentList[0]?.id || null));
         }
       } catch (err) {
         console.error("Error loading history from IndexedDB:", err);
         const initialSessions = getDefaultArchiveSessions();
         setSessions(initialSessions);
+        setActiveSessionId(initialSessions[0].id);
       } finally {
         setDbLoaded(true);
       }
@@ -230,6 +263,23 @@ const App: React.FC = () => {
           setActiveSessionId(newSessions[0].id);
         }
         setIsGalleryExpanded(true);
+
+        // Upload original images to cloud & sync session across devices in background
+        newSessions.forEach(async (sess) => {
+          try {
+            const hostedOrig = await uploadImageToCloud(sess.imageSrc, `orig_${sess.id}`);
+            setSessions(prev => {
+              const updated = prev.map(s => s.id === sess.id ? { ...s, imageSrc: hostedOrig } : s);
+              const target = updated.find(s => s.id === sess.id);
+              if (target) {
+                syncSessionToServer(target);
+              }
+              return updated;
+            });
+          } catch (e) {
+            console.warn("Upload error:", e);
+          }
+        });
       }
     } catch (error) {
        console.error("Error batch processing files:", error);
@@ -257,15 +307,38 @@ const App: React.FC = () => {
       if (!session) return;
       try {
           // 'DETAILED' mode now implies 32k token budget deep scan
-          const result = await analyzeLandscape(session.imageSrc.split(',')[1], session.mimeType, 'DETAILED', language, sensitivity, session.mode || analysisMode);
-          setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'SUCCESS', result: result } : s));
+          const result = await analyzeLandscape(session.imageSrc.split(',')[1] || session.imageSrc, session.mimeType, 'DETAILED', language, sensitivity, session.mode || analysisMode);
+          setSessions(prev => {
+            const updated = prev.map(s => s.id === sessionId ? { ...s, status: 'SUCCESS' as const, result: result } : s);
+            const target = updated.find(s => s.id === sessionId);
+            if (target) {
+              syncSessionToServer(target);
+            }
+            return updated;
+          });
       } catch (error: any) {
           setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'ERROR', error: error.message } : s));
       }
   };
 
-  const handleSimulationSave = (sessionId: string, image: string) => {
+  const handleSimulationSave = async (sessionId: string, image: string) => {
+      // 1. Immediately update UI so slider works instantly
       setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, simulationImage: image } : s));
+      
+      // 2. Upload to cloud and sync to server so all other devices see it
+      try {
+        const hostedSimUrl = await uploadImageToCloud(image, `sim_${sessionId}`);
+        setSessions(prev => {
+          const updated = prev.map(s => s.id === sessionId ? { ...s, simulationImage: hostedSimUrl } : s);
+          const target = updated.find(s => s.id === sessionId);
+          if (target) {
+            syncSessionToServer(target);
+          }
+          return updated;
+        });
+      } catch (e) {
+        console.warn("Ralat muat naik imej simulasi:", e);
+      }
   };
 
   const handleAnalyzeGeneratedImage = async (url: string, bypassJson?: string) => {
@@ -345,6 +418,7 @@ const App: React.FC = () => {
       if (activeSessionId === sessionId) {
           setActiveSessionId(null);
       }
+      deleteSharedSessionFromServer(sessionId);
   };
 
   const handleLiveAnalysisCapture = (capturedResult: AnalysisResponse, capturedImageSrc: string) => {
@@ -353,6 +427,17 @@ const App: React.FC = () => {
     setSessions(prev => [newSession, ...prev]);
     setActiveSessionId(newSession.id);
     setIsGalleryExpanded(true);
+    // Background cloud sync
+    (async () => {
+      try {
+        const hosted = await uploadImageToCloud(capturedImageSrc, `live_${newSession.id}`);
+        const updated = { ...newSession, imageSrc: hosted };
+        setSessions(prev => prev.map(s => s.id === newSession.id ? updated : s));
+        syncSessionToServer(updated);
+      } catch (err) {
+        console.warn("Live capture cloud sync error:", err);
+      }
+    })();
   };
 
   const resetApp = async () => {
@@ -363,9 +448,10 @@ const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   
-  const handleSaveManualSimulation = (originalImageBase64: string, simulatedImageBase64: string) => {
+  const handleSaveManualSimulation = async (originalImageBase64: string, simulatedImageBase64: string) => {
+    const tempId = `manual-sim-${Date.now()}`;
     const newSession: AnalysisSession = {
-      id: `manual-sim-${Date.now()}`,
+      id: tempId,
       fileName: `Manual_Sim_${new Date().toISOString().slice(0,10)}.jpg`,
       imageSrc: originalImageBase64,
       mimeType: 'image/jpeg',
@@ -375,13 +461,24 @@ const App: React.FC = () => {
       createdAt: Date.now(),
       result: {
         risks: [],
-        generalAdvice: "Simulasi Kebersihan Manual Berjaya Diselamatkan! Sila guna tab simulasi lepas/sejarah simulasi untuk banding semula data.",
+        generalAdvice: "Simulasi Kebersihan Manual Berjaya Disimpan! Sila guna gelangser untuk banding semula keadaan sebelum dan selepas.",
         hygieneLevel: 1, 
         safetyLevel: 1,
       }
     };
     setSessions(prev => [newSession, ...prev]);
     setActiveSessionId(newSession.id);
+
+    // Sync both images to cloud host in background
+    try {
+      const hostedOrig = await uploadImageToCloud(originalImageBase64, `orig_${tempId}`);
+      const hostedSim = await uploadImageToCloud(simulatedImageBase64, `sim_${tempId}`);
+      const syncedSession = { ...newSession, imageSrc: hostedOrig, simulationImage: hostedSim };
+      setSessions(prev => prev.map(s => s.id === tempId ? syncedSession : s));
+      await syncSessionToServer(syncedSession);
+    } catch (err) {
+      console.warn("Manual sim cloud sync error:", err);
+    }
   };
 
   const handleManualSimulation = () => {

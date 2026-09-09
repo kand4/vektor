@@ -42,14 +42,24 @@ const UploadZone: React.FC<UploadZoneProps> = ({ onImagesSelected, disabled, isA
       return extMatch;
     };
 
+    let hasHeic = false;
     for (let i = 0; i < fileList.length; i++) {
         const file = fileList[i];
+        if (/\.(heic|heif)$/i.test(file.name)) {
+            hasHeic = true;
+        }
         if (isImageFile(file)) {
             validFiles.push(file);
         }
     }
     
     if (validFiles.length > 0) {
+        if (hasHeic) {
+            setToastMsg({
+                msg: 'Peringatan Format: Fail .HEIC dikesan. Sesetengah pelayar web tidak dapat memaparkan HEIC secara terus. Jika gambar kosong, disarankan guna JPG/PNG atau screenshot.',
+                type: 'error'
+            });
+        }
         onImagesSelected(validFiles);
     } else {
         setToastMsg({ msg: 'ACCESS DENIED: Invalid File Type. Only Images allowed.', type: 'error' });
