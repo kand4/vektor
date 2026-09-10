@@ -6,6 +6,7 @@ import {
   isOwnerAuthorized, 
   setOwnerAuthorized
 } from '../../utils/archiveHelpers';
+import { getProxiedImageUrl } from '../../utils/imageProxy';
 import { SimulationDetailView } from './SimulationDetailView';
 import { OwnerAuthModal } from './OwnerAuthModal';
 
@@ -487,6 +488,11 @@ export const SimulationArchivePage: React.FC<SimulationArchivePageProps> = ({
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             onError={(e) => {
                               const target = e.currentTarget;
+                              if (!target.dataset.proxied && session.imageSrc?.startsWith('http')) {
+                                target.dataset.proxied = 'true';
+                                target.src = getProxiedImageUrl(session.imageSrc);
+                                return;
+                              }
                               target.onerror = null;
                               target.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='250' viewBox='0 0 400 250' style='background:%230f172a'><rect width='400' height='250' fill='%230f172a'/><text x='50%25' y='45%25' fill='%2338bdf8' font-size='15' font-family='monospace' font-weight='bold' text-anchor='middle'>REKOD PEMERIKSAAN KKM</text><text x='50%25' y='60%25' fill='%2394a3b8' font-size='11' font-family='sans-serif' text-anchor='middle'>Klik untuk perincian analisis &amp; remediasi</text></svg>";
                             }}

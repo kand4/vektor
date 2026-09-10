@@ -18,7 +18,7 @@ import AdultMosquitoScanner from './components/AdultMosquitoScanner';
 import { SimulationGallery } from './components/SimulationGallery';
 import { ManualSimulationPage } from './components/ManualSimulationPage';
 import { fetchNationalDengueTrend } from './services/dataGovService';
-import { fetchLatestIDengueStats, fetchRegionalDengueStats, analyzeLandscape } from './services/geminiService';
+import { fetchLatestIDengueStats, fetchRegionalDengueStats, analyzeLandscape, resolveImageBase64 } from './services/geminiService';
 import { resizeAndCompressImage } from './utils/imageUtils';
 import { dbGet, dbSet, dbClear } from './utils/db';
 import { Toast } from './components/Toast';
@@ -307,7 +307,8 @@ const App: React.FC = () => {
       if (!session) return;
       try {
           // 'DETAILED' mode now implies 32k token budget deep scan
-          const result = await analyzeLandscape(session.imageSrc.split(',')[1] || session.imageSrc, session.mimeType, 'DETAILED', language, sensitivity, session.mode || analysisMode);
+          const cleanBase64 = await resolveImageBase64(session.imageSrc);
+          const result = await analyzeLandscape(cleanBase64, session.mimeType, 'DETAILED', language, sensitivity, session.mode || analysisMode);
           setSessions(prev => {
             const updated = prev.map(s => s.id === sessionId ? { ...s, status: 'SUCCESS' as const, result: result } : s);
             const target = updated.find(s => s.id === sessionId);

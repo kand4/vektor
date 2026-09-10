@@ -61,7 +61,7 @@ export const SimulationConfigModal: React.FC<SimulationConfigModalProps> = ({ is
                    </div>
                    {lighting === 'CLINICAL_BLUE' && (
                      <p className="text-[10px] text-cyan-400 mt-1.5 flex items-center gap-1 font-mono-sci animate-fade-in">
-                       <span>🔬</span> Mod Makmal Perubatan: Mengekalkan susun atur peralatan asal tetapi dibersihkan & diperbaharui bertaraf klinikal.
+                       <span>🔬</span> Mod Makmal Perubatan: Suasana klinikal steril, perabut & alatan memasak kekal di posisi asal dan diubah menjadi serba baru.
                      </p>
                    )}
                 </div>

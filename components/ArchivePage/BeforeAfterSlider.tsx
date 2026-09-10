@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { getProxiedImageUrl } from '../../utils/imageProxy';
 
 interface BeforeAfterSliderProps {
   originalImage: string;
@@ -16,8 +17,18 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
 }) => {
   const [sliderPos, setSliderPos] = useState<number>(50);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [useProxyForOriginal, setUseProxyForOriginal] = useState(false);
+  const [useProxyForSimulated, setUseProxyForSimulated] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef<boolean>(false);
+
+  useEffect(() => {
+    setUseProxyForOriginal(false);
+    setUseProxyForSimulated(false);
+  }, [originalImage, simulatedImage]);
+
+  const effectiveOrig = useProxyForOriginal ? getProxiedImageUrl(originalImage) : originalImage;
+  const effectiveSim = useProxyForSimulated ? getProxiedImageUrl(simulatedImage) : simulatedImage;
 
   const handleMove = (clientX: number) => {
     if (!containerRef.current) return;
@@ -109,8 +120,13 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
       >
         {/* Layer 1: Simulated Clean Image (Background / Right) */}
         <img
-          src={simulatedImage}
+          src={effectiveSim}
           alt="Simulasi Remediasi Bersih"
+          onError={() => {
+            if (!useProxyForSimulated && simulatedImage && simulatedImage.startsWith('http')) {
+              setUseProxyForSimulated(true);
+            }
+          }}
           className="absolute inset-0 w-full h-full object-contain bg-slate-950 pointer-events-none"
         />
 
@@ -120,8 +136,13 @@ export const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
           style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
         >
           <img
-            src={originalImage}
+            src={effectiveOrig}
             alt="Imej Asal Sebelum"
+            onError={() => {
+              if (!useProxyForOriginal && originalImage && originalImage.startsWith('http')) {
+                setUseProxyForOriginal(true);
+              }
+            }}
             className="absolute inset-0 w-full h-full object-contain pointer-events-none"
           />
         </div>

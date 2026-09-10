@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, useDragControls } from 'motion/react';
 import { RiskDetection, BoundingBox } from '../types';
+import { getProxiedImageUrl } from '../utils/imageProxy';
 
 interface ImageAnnotatorProps {
   imageSrc: string;
@@ -33,11 +34,34 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
   const isSlidingRef = useRef(false);
   const [imageLoadError, setImageLoadError] = useState(false);
   const [cleanedLoadError, setCleanedLoadError] = useState(false);
+  const [useProxyForOriginal, setUseProxyForOriginal] = useState(false);
+  const [useProxyForCleaned, setUseProxyForCleaned] = useState(false);
 
   useEffect(() => {
     setImageLoadError(false);
     setCleanedLoadError(false);
+    setUseProxyForOriginal(false);
+    setUseProxyForCleaned(false);
   }, [imageSrc, cleanedImageSrc]);
+
+  const effectiveImageSrc = useProxyForOriginal ? getProxiedImageUrl(imageSrc) : imageSrc;
+  const effectiveCleanedSrc = cleanedImageSrc && (useProxyForCleaned ? getProxiedImageUrl(cleanedImageSrc) : cleanedImageSrc);
+
+  const handleOriginalImageError = () => {
+    if (!useProxyForOriginal && imageSrc && imageSrc.startsWith('http')) {
+      setUseProxyForOriginal(true);
+    } else {
+      setImageLoadError(true);
+    }
+  };
+
+  const handleCleanedImageError = () => {
+    if (!useProxyForCleaned && cleanedImageSrc && cleanedImageSrc.startsWith('http')) {
+      setUseProxyForCleaned(true);
+    } else {
+      setCleanedLoadError(true);
+    }
+  };
 
   const handleSliderMove = (e: React.PointerEvent) => {
     if (!isSlidingRef.current || !cleanedImageSrc || !containerRef.current) return;
@@ -200,17 +224,17 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
             {cleanedImageSrc && !cleanedLoadError ? (
               <div className="relative rounded group/slider touch-none">
                 <img 
-                  src={cleanedImageSrc} 
+                  src={effectiveCleanedSrc || cleanedImageSrc} 
                   alt="Cleaned" 
                   className={imgClasses} 
-                  onError={() => setCleanedLoadError(true)}
+                  onError={handleCleanedImageError}
                 />
                 <div style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }} className="absolute inset-0 z-10 w-full h-full">
                   <img 
                     ref={imageRef}
-                    src={imageSrc} 
+                    src={effectiveImageSrc} 
                     alt="Analyzed" 
-                    onError={() => setImageLoadError(true)}
+                    onError={handleOriginalImageError}
                     className={`${imgClasses} absolute inset-0 w-full h-full object-cover`}
                   />
                   <div className="absolute inset-0 bg-[linear-gradient(rgba(34,211,238,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.1)_1px,transparent_1px)] bg-[size:40px_40px] opacity-0 group-hover:opacity-20 pointer-events-none z-10 transition-opacity duration-500"></div>
@@ -452,9 +476,9 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
                 ) : (
                   <img 
                     ref={imageRef}
-                    src={imageSrc} 
+                    src={effectiveImageSrc} 
                     alt="Analyzed" 
-                    onError={() => setImageLoadError(true)}
+                    onError={handleOriginalImageError}
                     className={imgClasses} 
                   />
                 )}

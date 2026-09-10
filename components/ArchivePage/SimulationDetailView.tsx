@@ -3,6 +3,7 @@ import { AnalysisSession, RiskDetection } from '../../types';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
 import { getSessionTimestamp } from '../../utils/archiveHelpers';
 import { askRiskFollowUp } from '../../services/geminiService';
+import { getProxiedImageUrl } from '../../utils/imageProxy';
 
 interface SimulationDetailViewProps {
   session: AnalysisSession;
@@ -119,6 +120,11 @@ export const SimulationDetailView: React.FC<SimulationDetailViewProps> = ({
                 className="w-full h-full object-contain" 
                 onError={(e) => {
                   const target = e.currentTarget;
+                  if (!target.dataset.proxied && session.imageSrc?.startsWith('http')) {
+                    target.dataset.proxied = 'true';
+                    target.src = getProxiedImageUrl(session.imageSrc);
+                    return;
+                  }
                   target.onerror = null;
                   target.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400' style='background:%230f172a'><rect width='600' height='400' fill='%230f172a'/><text x='50%25' y='50%25' fill='%2338bdf8' font-size='18' font-family='monospace' font-weight='bold' text-anchor='middle'>IMEJ PEMERIKSAAN KKM</text></svg>";
                 }}

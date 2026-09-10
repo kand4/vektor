@@ -37,7 +37,7 @@ export const ManualSimulationPage: React.FC<ManualSimulationPageProps> = ({ onBa
 
     const lightText = 
       lighting === 'NATURAL' ? 'natural, soft ambient lighting' :
-      lighting === 'NEON_SURGICAL' ? 'bright surgical neon overhead lighting, transforming the room into a pristine medical laboratory/clinical setting with renewed, spotless, high-grade medical furniture and equipment strictly preserving original layout' :
+      lighting === 'NEON_SURGICAL' ? 'bright surgical neon overhead lighting, rendering the atmosphere into a pristine medical laboratory/clinical setting with all original furniture, cooking appliances, counters, and utensils strictly preserved in their original positions but renewed into brand-new, spotless condition' :
       'crisp, clear daylight shining into the room';
 
     const humanText = keepPeople 
@@ -45,7 +45,7 @@ export const ManualSimulationPage: React.FC<ManualSimulationPageProps> = ({ onBa
       : '5. Alih keluar atau hilangkan sebarang kelibat manusia/pekerja di dalam gambar supaya hanya kelihatan persekitaran bertaraf steril.';
 
     const environmentDirective = lighting === 'NEON_SURGICAL'
-      ? '\n8. PERSEKITARAN KLINIKAL / MAKMAL PERUBATAN: Ubah suasana menjadi persekitaran makmal perubatan atau fasiliti klinikal yang amat bersih dan steril. Susun atur dan geometri perabut serta peralatan KEKAL SEPERTI ASAL, tetapi perabut dan peralatan tersebut dibersihkan, dibarukan (renewed), dan dinaik taraf kepada kemasan keluli tahan karat perubatan atau bahan gred makmal yang serba baru dan berkilat.'
+      ? '\n8. PERSEKITARAN KLINIKAL / MAKMAL PERUBATAN: Ubah suasana menjadi persekitaran makmal perubatan atau fasiliti klinikal yang amat bersih dan steril. Susun atur, perabut, serta segala alatan memasak, dapur, sinki, periuk dan perkakas KEKAL SEPERTI ASAL pada kedudukan yang sama, tetapi dibersihkan secara menyeluruh dan DIUBAH MENJADI BARU (renewed) dengan kemasan keluli tahan karat berkilat (gleaming commercial stainless steel) gred sanitasi klinikal tanpa digantikan dengan alatan asing yang tidak berkaitan.'
       : '';
 
     return `Sila gunakan tool penjana imej (Imagen / Image FX) untuk mengubah imej kotor/tidak sanitasi ini berdasarkan panduan berikut:

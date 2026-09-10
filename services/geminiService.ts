@@ -488,14 +488,84 @@ export const fetchRegionalDengueStats = async (state: string, district: string):
     }
 };
 
-const compressImage = (base64Str: string, maxWidth = 1600, quality = 0.9): Promise<string> => {
+/**
+ * Ensures any image input (HTTP/HTTPS URL, relative /uploads/ path, data URL, or raw base64)
+ * is cleanly resolved into a raw base64 string suitable for Gemini API inlineData.
+ */
+export const resolveImageBase64 = async (imageInput: string): Promise<string> => {
+    if (!imageInput) return '';
+    const trimmed = imageInput.trim();
+
+    // 1. If it's a data URL like data:image/jpeg;base64,xxxx -> return pure base64
+    if (trimmed.startsWith('data:')) {
+        const commaIndex = trimmed.indexOf(',');
+        return commaIndex !== -1 ? trimmed.substring(commaIndex + 1) : trimmed;
+    }
+
+    // 2. If it's an HTTP/HTTPS URL, relative path, or blob URL
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('/uploads/') || trimmed.startsWith('uploads/') || trimmed.startsWith('blob:')) {
+        try {
+            let resp: Response;
+            try {
+                resp = await fetch(trimmed);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            } catch {
+                // Fallback to proxy route to bypass browser CORS
+                resp = await fetch(`/api/image-proxy?url=${encodeURIComponent(trimmed)}`);
+            }
+            const blob = await resp.blob();
+            return await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const res = reader.result as string;
+                    const commaIdx = res.indexOf(',');
+                    resolve(commaIdx !== -1 ? res.substring(commaIdx + 1) : res);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (err) {
+            console.warn('resolveImageBase64 fetch failed, trying proxy canvas:', err);
+            // Fallback: try proxying via canvas
+            return new Promise<string>((resolve) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth || img.width;
+                    canvas.height = img.naturalHeight || img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx?.drawImage(img, 0, 0);
+                    try {
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                        resolve(dataUrl.split(',')[1] || dataUrl);
+                    } catch {
+                        resolve(trimmed);
+                    }
+                };
+                img.onerror = () => resolve(trimmed);
+                const proxySrc = trimmed.startsWith('http') ? `/api/image-proxy?url=${encodeURIComponent(trimmed)}` : trimmed;
+                img.src = proxySrc;
+            });
+        }
+    }
+
+    // Already pure base64 string
+    return trimmed;
+};
+
+const compressImage = async (imageInput: string, maxWidth = 1600, quality = 0.9): Promise<string> => {
+    if (!imageInput) return '';
+    const rawBase64 = await resolveImageBase64(imageInput);
+    if (!rawBase64) return '';
+
     return new Promise((resolve) => {
         const img = new Image();
-        img.src = `data:image/jpeg;base64,${base64Str}`;
+        img.crossOrigin = 'anonymous';
         img.onload = () => {
             const canvas = document.createElement('canvas');
-            let width = img.width;
-            let height = img.height;
+            let width = img.naturalWidth || img.width;
+            let height = img.naturalHeight || img.height;
             if (width > maxWidth) {
                 height = Math.round((height * maxWidth) / width);
                 width = maxWidth;
@@ -504,9 +574,15 @@ const compressImage = (base64Str: string, maxWidth = 1600, quality = 0.9): Promi
             canvas.height = height;
             const ctx = canvas.getContext('2d');
             ctx?.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL('image/jpeg', quality).split(',')[1]);
+            try {
+                const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                resolve(dataUrl.split(',')[1] || rawBase64);
+            } catch {
+                resolve(rawBase64);
+            }
         };
-        img.onerror = () => resolve(base64Str); 
+        img.onerror = () => resolve(rawBase64);
+        img.src = `data:image/jpeg;base64,${rawBase64}`;
     });
 };
 
@@ -1118,20 +1194,20 @@ export const generateSimulationPrompt = async (base64Image: string, config: Simu
     if (config.customPrompt && config.customPrompt.trim().length > 0) {
         basePrompt = `[ABSOLUTE PERSPECTIVE MANDATE: STRICTLY LOCK AND PRESERVE THE EXACT ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, FIELD OF VIEW, VANISHING POINTS, AND SPATIAL GEOMETRY WITHOUT THE SLIGHTEST CHANGE. DO NOT ROTATE, PAN, ZOOM, SHIFT CAMERA POSITION, OR ALTER SCENE ORIENTATION.] User instructions: ${config.customPrompt}`;
     } else if (isClinical) {
-        basePrompt = "[ABSOLUTE PERSPECTIVE MANDATE: STRICTLY LOCK AND PRESERVE THE EXACT ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, FIELD OF VIEW, VANISHING POINTS, AND SPATIAL GEOMETRY WITHOUT THE SLIGHTEST CHANGE. DO NOT ROTATE, PAN, ZOOM, SHIFT CAMERA POSITION, OR ALTER SCENE ORIENTATION.] Transform the room and atmosphere into a pristine medical laboratory and clinical healthcare grade environment. The original layout, positions, and spatial geometry of all existing furniture, counters, shelves, and equipment MUST REMAIN IDENTICAL to the original image, but completely renovated, sanitized, and renewed into immaculate modern medical laboratory or hospital-grade equipment and furniture with spotless stainless steel, seamless medical surfaces, and high-tech sanitary fixtures.";
+        basePrompt = "[ABSOLUTE PERSPECTIVE MANDATE: STRICTLY LOCK AND PRESERVE THE EXACT ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, FIELD OF VIEW, VANISHING POINTS, AND SPATIAL GEOMETRY WITHOUT THE SLIGHTEST CHANGE. DO NOT ROTATE, PAN, ZOOM, SHIFT CAMERA POSITION, OR ALTER SCENE ORIENTATION.] Transform the atmosphere, room lighting, and sanitation into a pristine, ultra-clean medical laboratory and clinical healthcare grade environment. ALL EXISTING FURNITURE, COUNTERS, STOVES, SINKS, COOKING APPLIANCES, POTS, PANS, AND UTENSILS FROM THE ORIGINAL SCENE MUST BE STRICTLY PRESERVED IN THEIR EXACT ORIGINAL POSITIONS AND ARRANGEMENT. Do not replace them with unrelated scientific gadgets or hospital beds; instead, keep all the original cooking equipment and furniture, renewing them completely so they look brand-new, polished, spotless, and sanitized to clinical laboratory hygiene standards with gleaming commercial stainless steel surfaces and spotless fixtures.";
         
         if (config.mode === 'UPGRADE_FURNITURE') {
-            basePrompt += " All equipment, counters, and furniture are upgraded into brand-new modern medical-grade lab versions while strictly retaining the exact original spatial arrangement and positions.";
+            basePrompt += " Every original cooking appliance, stove, counter, and piece of furniture is renewed into a brand-new, state-of-the-art commercial stainless steel version strictly in its exact original spot.";
         } else if (config.mode === 'FULL_RECONSTRUCTION') {
-            basePrompt += " Complete architectural upgrade into a high-tech medical laboratory facility with antimicrobial epoxy floors and sterile clinical walls, strictly keeping the exact same structural layout and camera viewpoint.";
+            basePrompt += " The room receives an immaculate medical laboratory architectural finish with sterile antimicrobial floors and walls, while keeping all original furniture and cooking equipment in their exact original spots, fully renewed and brand-new.";
         } else {
-            basePrompt += " The original furniture and equipment remain in their exact positions, renewed and cleaned into sparkling, spotless, sterile medical-lab grade condition.";
+            basePrompt += " The original furniture, cooking appliances, and utensils remain in their exact spots, renewed into brand-new, sparkling, spotless, and clinically sanitized condition.";
         }
         
         if (config.humans === 'KEEP_PROTECTED') {
-            basePrompt += " Keep existing people at their exact positions, wearing clean sterile medical lab coats or hospital PPE scrubs.";
+            basePrompt += " Keep existing people at their exact positions, wearing clean sterile medical-grade coats or clinical hygiene scrubs.";
         } else {
-            basePrompt += " Zero humans present, completely sterile and immaculate empty medical laboratory room.";
+            basePrompt += " Zero humans present, completely sterile and immaculate empty room.";
         }
         
         basePrompt += " Professional clinical cool blue sterile surgical lighting.";
@@ -1204,10 +1280,13 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
     if (typeof window !== 'undefined') {
         try {
             const img = new Image();
+            img.crossOrigin = 'anonymous';
             await new Promise((resolve, reject) => {
                 img.onload = resolve;
                 img.onerror = reject;
-                img.src = base64Image;
+                img.src = base64Image.startsWith('data:') || base64Image.startsWith('http') || base64Image.startsWith('/uploads') || base64Image.startsWith('blob:')
+                    ? base64Image
+                    : `data:${mimeType || 'image/jpeg'};base64,${base64Image}`;
             });
             const ratio = img.width / img.height;
             width = img.width;
@@ -1237,20 +1316,20 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
         if (config.customPrompt && config.customPrompt.trim().length > 0) {
             basePrompt = `[ABSOLUTE PERSPECTIVE MANDATE: STRICTLY LOCK AND PRESERVE THE EXACT ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, FIELD OF VIEW, VANISHING POINTS, AND SPATIAL GEOMETRY WITHOUT THE SLIGHTEST CHANGE. DO NOT ROTATE, PAN, ZOOM, OR SHIFT CAMERA POSITION.] User instructions: ${config.customPrompt}`;
         } else if (isClinical) {
-            basePrompt = "[ABSOLUTE PERSPECTIVE MANDATE: STRICTLY LOCK AND PRESERVE THE EXACT ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, FIELD OF VIEW, VANISHING POINTS, AND SPATIAL GEOMETRY WITHOUT THE SLIGHTEST CHANGE. DO NOT ROTATE, PAN, ZOOM, OR SHIFT CAMERA POSITION.] Transform the room and atmosphere into a pristine medical laboratory and clinical healthcare grade environment. The original layout, positions, and spatial geometry of all existing furniture, counters, shelves, and equipment MUST REMAIN IDENTICAL to the original image, but completely renovated, sanitized, and renewed into immaculate modern medical laboratory or hospital-grade equipment and furniture with spotless stainless steel, seamless medical surfaces, and high-tech sanitary fixtures.";
+            basePrompt = "[ABSOLUTE PERSPECTIVE MANDATE: STRICTLY LOCK AND PRESERVE THE EXACT ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, FIELD OF VIEW, VANISHING POINTS, AND SPATIAL GEOMETRY WITHOUT THE SLIGHTEST CHANGE. DO NOT ROTATE, PAN, ZOOM, OR SHIFT CAMERA POSITION.] Transform the atmosphere, room lighting, and sanitation into a pristine, ultra-clean medical laboratory and clinical healthcare grade environment. ALL EXISTING FURNITURE, COUNTERS, STOVES, SINKS, COOKING APPLIANCES, POTS, PANS, AND UTENSILS FROM THE ORIGINAL SCENE MUST BE STRICTLY PRESERVED IN THEIR EXACT ORIGINAL POSITIONS AND ARRANGEMENT. Do not replace them with unrelated scientific equipment or hospital beds; instead, keep all original cooking equipment and furniture, renewing them completely into brand-new, spotless, gleaming commercial stainless steel condition sanitized to clinical standards.";
             
             if (config.mode === 'UPGRADE_FURNITURE') {
-                basePrompt += " Upgrade with brand new modern medical-grade furniture and lab equipment strictly matching the original layout.";
+                basePrompt += " Every original cooking appliance, stove, counter, and piece of furniture is renewed into a brand-new commercial stainless steel version strictly matching the original layout.";
             } else if (config.mode === 'FULL_RECONSTRUCTION') {
-                basePrompt += " Complete architectural reconstruction into a modern medical laboratory with antimicrobial floors and walls, strictly keeping the same structural layout and camera viewpoint.";
+                basePrompt += " Complete architectural reconstruction into a pristine medical laboratory facility with antimicrobial floors and walls, strictly keeping all original cooking equipment and furniture in their exact original spots, renewed and brand-new.";
             } else {
-                basePrompt += " Keep existing furniture and equipment in their exact original positions, renewed, clean, dry, sterile, and spotless.";
+                basePrompt += " Keep existing furniture, cooking appliances, and utensils in their exact original positions, renewed into brand-new, sparkling, dry, sterile, and spotless condition.";
             }
             
             if (config.humans === 'KEEP_PROTECTED') {
                 basePrompt += " Keep existing people in the image at their exact positions, dressed in sterile medical lab coats or clean clinical scrubs.";
             } else {
-                basePrompt += " Zero humans present, completely empty and sterile medical lab scene.";
+                basePrompt += " Zero humans present, completely empty and sterile room.";
             }
             
             basePrompt += " Cool blue sterile clinical surgical lighting.";

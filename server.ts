@@ -18,6 +18,97 @@ function sanitizeOpSecError(error: any): string {
   return msg;
 }
 
+// Convert any URLs, data URLs, or local file paths in inlineData to pure base64
+async function sanitizeGeminiContents(contents: any): Promise<any> {
+  if (!contents) return contents;
+
+  const sanitizePart = async (part: any) => {
+    if (!part || typeof part !== "object") return part;
+    
+    // Check inlineData or inline_data
+    const inlineData = part.inlineData || part.inline_data;
+    if (inlineData && typeof inlineData.data === "string") {
+      let rawData = inlineData.data.trim();
+      
+      // 1. If it's a data URL like data:image/jpeg;base64,xxxx
+      if (rawData.startsWith("data:")) {
+        const commaIdx = rawData.indexOf(",");
+        if (commaIdx !== -1) {
+          const prefix = rawData.substring(0, commaIdx);
+          const mimeMatch = prefix.match(/data:([^;]+)/);
+          if (mimeMatch && mimeMatch[1]) {
+            inlineData.mimeType = mimeMatch[1];
+          }
+          rawData = rawData.substring(commaIdx + 1);
+        }
+      }
+      
+      // 2. If it's an HTTP/HTTPS URL (e.g. litterbox, catbox, cloud storage)
+      if (rawData.startsWith("http://") || rawData.startsWith("https://")) {
+        try {
+          console.log(`📥 Server downloading image from URL for Gemini inlineData: ${rawData}`);
+          const fetchRes = await fetch(rawData, { signal: AbortSignal.timeout(15000) });
+          if (fetchRes.ok) {
+            const contentType = fetchRes.headers.get("content-type");
+            if (contentType && !contentType.includes("text")) {
+              inlineData.mimeType = contentType.split(";")[0].trim();
+            }
+            const arrayBuf = await fetchRes.arrayBuffer();
+            rawData = Buffer.from(arrayBuf).toString("base64");
+            console.log(`✅ Successfully converted URL to base64 (${rawData.length} chars)`);
+          } else {
+            console.warn(`⚠️ Gagal muat turun imej dari URL (${fetchRes.status}): ${rawData}`);
+          }
+        } catch (fetchErr) {
+          console.warn(`⚠️ Ralat memuat turun URL imej untuk Gemini inlineData:`, fetchErr);
+        }
+      } else if (rawData.startsWith("/uploads/") || rawData.startsWith("uploads/")) {
+        // 3. Local uploaded file
+        try {
+          const relPath = rawData.startsWith("/") ? rawData.slice(1) : rawData;
+          const localPath = path.join(process.cwd(), relPath);
+          if (fs.existsSync(localPath)) {
+            const buf = fs.readFileSync(localPath);
+            rawData = buf.toString("base64");
+            const ext = path.extname(localPath).toLowerCase();
+            if (ext === ".png") inlineData.mimeType = "image/png";
+            else if (ext === ".webp") inlineData.mimeType = "image/webp";
+            else inlineData.mimeType = "image/jpeg";
+          }
+        } catch (readErr) {
+          console.warn(`⚠️ Ralat membaca fail imej tempatan untuk Gemini inlineData:`, readErr);
+        }
+      }
+      
+      inlineData.data = rawData;
+    }
+    return part;
+  };
+
+  // If contents is an array
+  if (Array.isArray(contents)) {
+    for (const item of contents) {
+      if (item && Array.isArray(item.parts)) {
+        for (const p of item.parts) {
+          await sanitizePart(p);
+        }
+      } else if (item && item.parts) {
+        await sanitizePart(item.parts);
+      }
+    }
+  } else if (contents && typeof contents === "object") {
+    if (Array.isArray(contents.parts)) {
+      for (const p of contents.parts) {
+        await sanitizePart(p);
+      }
+    } else if (contents.parts) {
+      await sanitizePart(contents.parts);
+    }
+  }
+
+  return contents;
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -114,6 +205,9 @@ async function startServer() {
         }
         console.log(`🤖 Backend calling Gemini model: ${model}`);
         
+        // Ensure all inline image data are valid base64 (not raw URLs or file paths)
+        const sanitizedContents = await sanitizeGeminiContents(contents);
+
         // Safe and approved fallback models list in order of preference (prioritizing active supported models)
         const safeFallbacks = [
           "gemini-3.8-flash",
@@ -160,7 +254,7 @@ async function startServer() {
 
             response = await ai.models.generateContent({
               model: targetModel,
-              contents,
+              contents: sanitizedContents,
               config: activeConfig
             });
             break; // Success! Break out of the loop
@@ -550,6 +644,42 @@ async function startServer() {
     } catch (error: any) {
       console.error("Telegraph page proxy error:", error);
       res.status(500).json({ error: error?.message || String(error) });
+    }
+  });
+
+  // API proxy route for images (CORS bypass for client canvas/fetch)
+  app.get("/api/image-proxy", async (req, res) => {
+    try {
+      const imageUrl = (req.query.url as string || "").trim();
+      if (!imageUrl) {
+        return res.status(400).send("Parameter 'url' diperlukan.");
+      }
+
+      if (imageUrl.startsWith("/uploads/") || imageUrl.startsWith("uploads/")) {
+        const relPath = imageUrl.startsWith("/") ? imageUrl.slice(1) : imageUrl;
+        const localPath = path.join(process.cwd(), relPath);
+        if (fs.existsSync(localPath)) {
+          return res.sendFile(localPath);
+        }
+      }
+
+      if (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {
+        return res.status(400).send("URL imej mestilah bermula dengan http:// atau https://");
+      }
+
+      const response = await fetch(imageUrl, { signal: AbortSignal.timeout(15000) });
+      if (!response.ok) {
+        return res.status(response.status).send("Gagal mengambil imej dari sumber asal");
+      }
+
+      const contentType = response.headers.get("content-type") || "image/jpeg";
+      const arrayBuffer = await response.arrayBuffer();
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.send(Buffer.from(arrayBuffer));
+    } catch (err: any) {
+      res.status(500).send(err.message || "Ralat memproses proksi imej");
     }
   });
 

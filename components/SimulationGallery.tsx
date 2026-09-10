@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AnalysisSession } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getProxiedImageUrl } from '../utils/imageProxy';
 
 interface SimulationGalleryProps {
   sessions: AnalysisSession[];
@@ -60,7 +61,18 @@ export const SimulationGallery: React.FC<SimulationGalleryProps> = ({ sessions, 
                                 onClick={() => setActiveSessionId(session.id)}
                                 className={`w-full h-full rounded-xl overflow-hidden border-2 transition-all ${activeSessionId === session.id ? 'border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.5)]' : 'border-slate-700 opacity-60 hover:opacity-100'}`}
                             >
-                                <img src={session.simulationImage!} className="w-full h-full object-cover" alt="Simulasi" />
+                                <img 
+                                    src={session.simulationImage!} 
+                                    className="w-full h-full object-cover" 
+                                    alt="Simulasi"
+                                    onError={(e) => {
+                                        const t = e.currentTarget;
+                                        if (!t.dataset.proxied && session.simulationImage?.startsWith('http')) {
+                                            t.dataset.proxied = 'true';
+                                            t.src = getProxiedImageUrl(session.simulationImage);
+                                        }
+                                    }} 
+                                />
                             </button>
                             <button onClick={() => onDeleteSimulation(session.id)} className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 hover:bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-lg focus:opacity-100 z-10 border border-red-400" title="Padam Simulasi Ini">✖</button>
                         </div>
@@ -78,11 +90,33 @@ export const SimulationGallery: React.FC<SimulationGalleryProps> = ({ sessions, 
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-fr h-full min-h-[400px]">
                         <div className="relative group rounded-xl overflow-hidden border border-slate-700 h-full flex flex-col">
                             <div className="absolute top-0 left-0 bg-slate-900/80 backdrop-blur-sm px-4 py-2 border-b border-r border-slate-700 rounded-br-lg z-10 text-[10px] font-bold tracking-widest text-slate-300">ASAL</div>
-                            <img src={activeSession.imageSrc} className="w-full h-full object-contain bg-black" alt="Original" />
+                            <img 
+                                src={activeSession.imageSrc} 
+                                className="w-full h-full object-contain bg-black" 
+                                alt="Original"
+                                onError={(e) => {
+                                    const t = e.currentTarget;
+                                    if (!t.dataset.proxied && activeSession.imageSrc?.startsWith('http')) {
+                                        t.dataset.proxied = 'true';
+                                        t.src = getProxiedImageUrl(activeSession.imageSrc);
+                                    }
+                                }} 
+                            />
                         </div>
                         <div className="relative group rounded-xl overflow-hidden border border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.15)] h-full flex flex-col">
                             <div className="absolute top-0 left-0 bg-cyan-900/80 backdrop-blur-sm px-4 py-2 border-b border-r border-cyan-500/50 rounded-br-lg z-10 text-[10px] font-bold tracking-widest text-cyan-300">SIMULASI BERSIH</div>
-                            <img src={activeSession.simulationImage} className="w-full h-full object-contain bg-black" alt="Generated" />
+                            <img 
+                                src={activeSession.simulationImage} 
+                                className="w-full h-full object-contain bg-black" 
+                                alt="Generated"
+                                onError={(e) => {
+                                    const t = e.currentTarget;
+                                    if (!t.dataset.proxied && activeSession.simulationImage?.startsWith('http')) {
+                                        t.dataset.proxied = 'true';
+                                        t.src = getProxiedImageUrl(activeSession.simulationImage);
+                                    }
+                                }} 
+                            />
                             <a href={activeSession.simulationImage} download={`Simulasi_Bersih_${activeSession.id}.jpg`} className="absolute bottom-4 right-4 bg-cyan-600/90 hover:bg-cyan-500 text-white p-3 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10" title="Muat Turun">⬇️</a>
                         </div>
                     </div>
