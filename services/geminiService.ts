@@ -1113,9 +1113,28 @@ export const generateSimulationPrompt = async (base64Image: string, config: Simu
     const optimizedImage = await compressImage(base64Image);
     
     let basePrompt = "";
+    const isClinical = config.lighting === 'CLINICAL_BLUE';
     
     if (config.customPrompt && config.customPrompt.trim().length > 0) {
         basePrompt = `[ABSOLUTE PERSPECTIVE MANDATE: STRICTLY LOCK AND PRESERVE THE EXACT ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, FIELD OF VIEW, VANISHING POINTS, AND SPATIAL GEOMETRY WITHOUT THE SLIGHTEST CHANGE. DO NOT ROTATE, PAN, ZOOM, SHIFT CAMERA POSITION, OR ALTER SCENE ORIENTATION.] User instructions: ${config.customPrompt}`;
+    } else if (isClinical) {
+        basePrompt = "[ABSOLUTE PERSPECTIVE MANDATE: STRICTLY LOCK AND PRESERVE THE EXACT ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, FIELD OF VIEW, VANISHING POINTS, AND SPATIAL GEOMETRY WITHOUT THE SLIGHTEST CHANGE. DO NOT ROTATE, PAN, ZOOM, SHIFT CAMERA POSITION, OR ALTER SCENE ORIENTATION.] Transform the room and atmosphere into a pristine medical laboratory and clinical healthcare grade environment. The original layout, positions, and spatial geometry of all existing furniture, counters, shelves, and equipment MUST REMAIN IDENTICAL to the original image, but completely renovated, sanitized, and renewed into immaculate modern medical laboratory or hospital-grade equipment and furniture with spotless stainless steel, seamless medical surfaces, and high-tech sanitary fixtures.";
+        
+        if (config.mode === 'UPGRADE_FURNITURE') {
+            basePrompt += " All equipment, counters, and furniture are upgraded into brand-new modern medical-grade lab versions while strictly retaining the exact original spatial arrangement and positions.";
+        } else if (config.mode === 'FULL_RECONSTRUCTION') {
+            basePrompt += " Complete architectural upgrade into a high-tech medical laboratory facility with antimicrobial epoxy floors and sterile clinical walls, strictly keeping the exact same structural layout and camera viewpoint.";
+        } else {
+            basePrompt += " The original furniture and equipment remain in their exact positions, renewed and cleaned into sparkling, spotless, sterile medical-lab grade condition.";
+        }
+        
+        if (config.humans === 'KEEP_PROTECTED') {
+            basePrompt += " Keep existing people at their exact positions, wearing clean sterile medical lab coats or hospital PPE scrubs.";
+        } else {
+            basePrompt += " Zero humans present, completely sterile and immaculate empty medical laboratory room.";
+        }
+        
+        basePrompt += " Professional clinical cool blue sterile surgical lighting.";
     } else {
         basePrompt = "[ABSOLUTE PERSPECTIVE MANDATE: STRICTLY LOCK AND PRESERVE THE EXACT ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, FIELD OF VIEW, VANISHING POINTS, AND SPATIAL GEOMETRY WITHOUT THE SLIGHTEST CHANGE. DO NOT ROTATE, PAN, ZOOM, SHIFT CAMERA POSITION, OR ALTER SCENE ORIENTATION.] The exact same physical room structure, but now represented as exceptionally clean, tidy, dry, and pristine. Do not change the general location type into a medical lab, clinic, or clinic hospital.";
         
@@ -1133,9 +1152,7 @@ export const generateSimulationPrompt = async (base64Image: string, config: Simu
             basePrompt += " Zero humans present, completely quiet empty tidy scene.";
         }
         
-        if (config.lighting === 'CLINICAL_BLUE') {
-            basePrompt += " Cool bright blue lighting.";
-        } else if (config.lighting === 'WARM') {
+        if (config.lighting === 'WARM') {
             basePrompt += " Warm soft bright cozy lighting.";
         } else {
             basePrompt += " Bright natural sunlight streaming in.";
@@ -1215,8 +1232,28 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
         console.warn("Could not generate smart prompt with Gemini, using config base prompt as fallback:", error);
         
         let basePrompt = "";
+        const isClinical = config.lighting === 'CLINICAL_BLUE';
+        
         if (config.customPrompt && config.customPrompt.trim().length > 0) {
             basePrompt = `[ABSOLUTE PERSPECTIVE MANDATE: STRICTLY LOCK AND PRESERVE THE EXACT ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, FIELD OF VIEW, VANISHING POINTS, AND SPATIAL GEOMETRY WITHOUT THE SLIGHTEST CHANGE. DO NOT ROTATE, PAN, ZOOM, OR SHIFT CAMERA POSITION.] User instructions: ${config.customPrompt}`;
+        } else if (isClinical) {
+            basePrompt = "[ABSOLUTE PERSPECTIVE MANDATE: STRICTLY LOCK AND PRESERVE THE EXACT ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, FIELD OF VIEW, VANISHING POINTS, AND SPATIAL GEOMETRY WITHOUT THE SLIGHTEST CHANGE. DO NOT ROTATE, PAN, ZOOM, OR SHIFT CAMERA POSITION.] Transform the room and atmosphere into a pristine medical laboratory and clinical healthcare grade environment. The original layout, positions, and spatial geometry of all existing furniture, counters, shelves, and equipment MUST REMAIN IDENTICAL to the original image, but completely renovated, sanitized, and renewed into immaculate modern medical laboratory or hospital-grade equipment and furniture with spotless stainless steel, seamless medical surfaces, and high-tech sanitary fixtures.";
+            
+            if (config.mode === 'UPGRADE_FURNITURE') {
+                basePrompt += " Upgrade with brand new modern medical-grade furniture and lab equipment strictly matching the original layout.";
+            } else if (config.mode === 'FULL_RECONSTRUCTION') {
+                basePrompt += " Complete architectural reconstruction into a modern medical laboratory with antimicrobial floors and walls, strictly keeping the same structural layout and camera viewpoint.";
+            } else {
+                basePrompt += " Keep existing furniture and equipment in their exact original positions, renewed, clean, dry, sterile, and spotless.";
+            }
+            
+            if (config.humans === 'KEEP_PROTECTED') {
+                basePrompt += " Keep existing people in the image at their exact positions, dressed in sterile medical lab coats or clean clinical scrubs.";
+            } else {
+                basePrompt += " Zero humans present, completely empty and sterile medical lab scene.";
+            }
+            
+            basePrompt += " Cool blue sterile clinical surgical lighting.";
         } else {
             basePrompt = "[ABSOLUTE PERSPECTIVE MANDATE: STRICTLY LOCK AND PRESERVE THE EXACT ORIGINAL CAMERA ANGLE, PERSPECTIVE, ELEVATION, FIELD OF VIEW, VANISHING POINTS, AND SPATIAL GEOMETRY WITHOUT THE SLIGHTEST CHANGE. DO NOT ROTATE, PAN, ZOOM, OR SHIFT CAMERA POSITION.] The exact same room structure, but represented as exceptionally clean, tidy, dry, and pristine. Do not change it into a lab or hospital.";
             
@@ -1234,9 +1271,7 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
                 basePrompt += " Zero humans present, completely empty scene.";
             }
             
-            if (config.lighting === 'CLINICAL_BLUE') {
-                basePrompt += " Cool blue sterile lighting.";
-            } else if (config.lighting === 'WARM') {
+            if (config.lighting === 'WARM') {
                 basePrompt += " Warm soft bright lighting.";
             } else {
                 basePrompt += " Bright natural sunlight streaming in.";

@@ -37,12 +37,16 @@ export const ManualSimulationPage: React.FC<ManualSimulationPageProps> = ({ onBa
 
     const lightText = 
       lighting === 'NATURAL' ? 'natural, soft ambient lighting' :
-      lighting === 'NEON_SURGICAL' ? 'bright surgical neon overhead lighting' :
+      lighting === 'NEON_SURGICAL' ? 'bright surgical neon overhead lighting, transforming the room into a pristine medical laboratory/clinical setting with renewed, spotless, high-grade medical furniture and equipment strictly preserving original layout' :
       'crisp, clear daylight shining into the room';
 
     const humanText = keepPeople 
       ? '5. KEKALKAN semua manusia/pekerja di kedudukan yang sama seperti imej asal, cuma pastikan pakaian mereka disterilkan atau ditukar kepada uniform yang bersih.'
       : '5. Alih keluar atau hilangkan sebarang kelibat manusia/pekerja di dalam gambar supaya hanya kelihatan persekitaran bertaraf steril.';
+
+    const environmentDirective = lighting === 'NEON_SURGICAL'
+      ? '\n8. PERSEKITARAN KLINIKAL / MAKMAL PERUBATAN: Ubah suasana menjadi persekitaran makmal perubatan atau fasiliti klinikal yang amat bersih dan steril. Susun atur dan geometri perabut serta peralatan KEKAL SEPERTI ASAL, tetapi perabut dan peralatan tersebut dibersihkan, dibarukan (renewed), dan dinaik taraf kepada kemasan keluli tahan karat perubatan atau bahan gred makmal yang serba baru dan berkilat.'
+      : '';
 
     return `Sila gunakan tool penjana imej (Imagen / Image FX) untuk mengubah imej kotor/tidak sanitasi ini berdasarkan panduan berikut:
 
@@ -51,9 +55,8 @@ export const ManualSimulationPage: React.FC<ManualSimulationPageProps> = ({ onBa
 2. KEBERSIHAN MAKSIMUM: Ubah status kebersihan semasanya kepada "${levelText}". Buang semua kotoran, kesan karat, minyak, takungan air, jentik-jentik, lalat, serangga, sampah sarap, habuk, dan sisa tercemar.
 3. PEMULIHAN DINDING/LANTAI: Sekiranya ada lantai pecah, tiles rosak, cat dinding terkopat atau berlumut, gantikan dengan cat baru/lantai baru yang kukuh dan berkilat.
 4. PENCAHAYAAN: Gunakan "${lightText}" untuk memperlihatkan tahap kesterilan kawasan secara profesional.
-${humanText}
-${additionalDirectives ? `6. ARAHAN TAMBAHAN PENGGUNA: ${additionalDirectives}` : ''}
-7. KUALITI VISUAL: Hasilkan output dengan gaya hiper-fotorealistik, tekstur yang sangat terperinci (8k resolution), tanpa herotan/distorsi, kelihatan seperti foto sebenar kawasan yang telah dibersihkan secara intensif.`;
+5. ${humanText}
+${additionalDirectives ? `6. ARAHAN TAMBAHAN PENGGUNA: ${additionalDirectives}\n` : ''}7. KUALITI VISUAL: Hasilkan output dengan gaya hiper-fotorealistik, tekstur yang sangat terperinci (8k resolution), tanpa herotan/distorsi, kelihatan seperti foto sebenar kawasan yang telah dibersihkan secara intensif.${environmentDirective}`;
   };
 
   const currentPrompt = generatePromptText();

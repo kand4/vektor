@@ -59,6 +59,11 @@ export const SimulationConfigModal: React.FC<SimulationConfigModalProps> = ({ is
                       <OptionBtn label={t('opt_natural')} selected={lighting === 'NATURAL'} onClick={() => setLighting('NATURAL')} />
                       <OptionBtn label={t('opt_warm')} selected={lighting === 'WARM'} onClick={() => setLighting('WARM')} />
                    </div>
+                   {lighting === 'CLINICAL_BLUE' && (
+                     <p className="text-[10px] text-cyan-400 mt-1.5 flex items-center gap-1 font-mono-sci animate-fade-in">
+                       <span>🔬</span> Mod Makmal Perubatan: Mengekalkan susun atur peralatan asal tetapi dibersihkan & diperbaharui bertaraf klinikal.
+                     </p>
+                   )}
                 </div>
 
                 <div>
