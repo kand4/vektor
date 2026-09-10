@@ -25,6 +25,20 @@ export const SimulationDetailView: React.FC<SimulationDetailViewProps> = ({
   const [chatAnswer, setChatAnswer] = useState<string | null>(null);
   const [isChatLoading, setIsChatLoading] = useState(false);
 
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const handleShareLink = () => {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('session', session.id);
+      navigator.clipboard.writeText(url.toString());
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 3000);
+    } catch {
+      // Fallback
+    }
+  };
+
   const timestamp = getSessionTimestamp(session);
   const dateObj = new Date(timestamp);
   const formattedDate = dateObj.toLocaleDateString(language === 'ms' ? 'ms-MY' : 'en-US', {
@@ -91,8 +105,20 @@ export const SimulationDetailView: React.FC<SimulationDetailViewProps> = ({
           </div>
         </div>
 
-        {/* Visitor View Status Badge (Clean, Read-Only) */}
+        {/* Visitor View Status Badge & Share Button */}
         <div className="flex items-center gap-2 flex-wrap justify-end">
+          <button
+            onClick={handleShareLink}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all border ${
+              copiedLink
+                ? 'bg-emerald-600 text-white border-emerald-400 shadow-md shadow-emerald-600/30'
+                : 'bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 border-cyan-500/40 hover:border-cyan-400'
+            }`}
+            title="Salin pautan langsung untuk dihantar kepada rakan/pegawai KKM"
+          >
+            <span>{copiedLink ? '✓' : '🔗'}</span>
+            <span>{copiedLink ? 'Pautan Disalin!' : 'Kongsi Pautan Sesi'}</span>
+          </button>
           <div className="inline-flex items-center gap-1.5 bg-slate-800/80 border border-slate-700 text-slate-400 text-[11px] font-mono px-3.5 py-1.5 rounded-lg shadow-sm" title="Paparan Arkib Rasmi (Mod Pelawat)">
             <span>👁️</span>
             <span>Paparan Pelawat (Arkib Rasmi)</span>

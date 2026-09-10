@@ -40,6 +40,7 @@ export const SimulationArchivePage: React.FC<SimulationArchivePageProps> = ({
   const [isOwner, setIsOwner] = useState<boolean>(() => isOwnerAuthorized());
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [pendingDeleteAction, setPendingDeleteAction] = useState<{ type: 'SINGLE' | 'ALL'; sessionId?: string } | null>(null);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   // Selected session object for detail view
   const selectedSession = useMemo(() => {
@@ -246,6 +247,18 @@ export const SimulationArchivePage: React.FC<SimulationArchivePageProps> = ({
               }`}
             >
               {isOwner ? 'Kunci Semula Pelawat' : 'Buka Kunci Pemilik'}
+            </button>
+
+            <button
+              onClick={() => {
+                setIsSyncing(true);
+                window.location.reload();
+              }}
+              className="px-3 py-2 rounded-xl text-xs font-mono font-bold transition-all border bg-slate-900 hover:bg-slate-800 text-cyan-400 border-cyan-500/40 hover:border-cyan-400 flex items-center gap-1.5"
+              title="Segerakkan rekod terkini dari pelayan awan untuk semua peranti"
+            >
+              <span className={isSyncing ? 'animate-spin' : ''}>🔄</span>
+              <span>{isSyncing ? 'Menyegerak...' : 'Segerak Awan'}</span>
             </button>
           </div>
         </div>
