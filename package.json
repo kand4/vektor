@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@google/genai": "latest",
-    "@react-three/drei": "^9.121.2",
+    "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^8.17.14",
     "axios": "^1.16.0",
     "cors": "^2.8.6",
