@@ -65,11 +65,18 @@ export const ManualSimulationModal: React.FC<ManualSimulationModalProps> = ({
   return (
     <div className="fixed inset-0 z-[170] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in no-print" onPaste={handlePaste}>
         <div className="bg-slate-900 border border-cyan-500 rounded-xl p-6 w-full max-w-4xl shadow-[0_0_50px_rgba(34,211,238,0.3)] max-h-[90vh] flex flex-col">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-3">
                 <h3 className="text-xl font-sci-fi font-bold text-cyan-400 flex items-center gap-2">
                 ✍️ Mod Eksternal Sifar-Kuota (Manual)
                 </h3>
-                <button onClick={onClose} className="text-slate-400 hover:text-white">✕</button>
+                <button
+                    onClick={onClose}
+                    title="Tutup Tetingkap"
+                    aria-label="Tutup Tetingkap"
+                    className="w-9 h-9 rounded-lg bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white flex items-center justify-center border border-slate-700 transition-colors font-bold text-sm shrink-0"
+                >
+                    ✕
+                </button>
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2">

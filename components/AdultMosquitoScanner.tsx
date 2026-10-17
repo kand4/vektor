@@ -22,7 +22,11 @@ interface Prediction {
     isRelative?: boolean;
 }
 
-const AdultMosquitoScanner: React.FC = () => {
+interface AdultMosquitoScannerProps {
+    onClose?: () => void;
+}
+
+const AdultMosquitoScanner: React.FC<AdultMosquitoScannerProps> = ({ onClose }) => {
     const { t } = useLanguage();
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [predictions, setPredictions] = useState<Prediction[] | null>(null);
@@ -117,7 +121,7 @@ const AdultMosquitoScanner: React.FC = () => {
                         </div>
                         <p className="text-xs sm:text-sm text-slate-400 font-mono-sci pl-5">Powered by Gemini Vision Forensic AI</p>
                     </div>
-                    <div>
+                    <div className="flex flex-wrap items-center gap-2.5">
                         <button 
                             onClick={() => setShow3DModel(true)} 
                             className="flex items-center gap-2 px-4 py-2 bg-emerald-900/50 hover:bg-emerald-800/80 border border-emerald-500/50 rounded-lg text-emerald-300 font-sci-fi text-sm transition-all shadow-[0_0_10px_rgba(16,185,129,0.2)]"
@@ -127,6 +131,17 @@ const AdultMosquitoScanner: React.FC = () => {
                             </svg>
                             LIHAT MODEL 3D
                         </button>
+                        {onClose && (
+                            <button
+                                onClick={onClose}
+                                title="Tutup Tetingkap Analisis Nyamuk Dewasa"
+                                aria-label="Tutup Tetingkap Analisis Nyamuk Dewasa"
+                                className="px-3.5 py-2 bg-slate-800 hover:bg-red-600 border border-slate-700 hover:border-red-400 rounded-lg text-slate-200 hover:text-white font-mono text-xs font-bold transition-all flex items-center gap-1.5 shadow-md"
+                            >
+                                <span>✕</span>
+                                <span>TUTUP</span>
+                            </button>
+                        )}
                     </div>
                 </div>
 

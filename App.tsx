@@ -595,9 +595,9 @@ const App: React.FC = () => {
       <main className="flex-grow max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 mt-18 md:mt-24 relative z-10 w-full transition-all duration-300 pointer-events-auto pb-24 md:pb-8">
         
         {currentView === 'LARVAE_DETECTION' ? (
-            <LarvaeScanner />
+            <LarvaeScanner onClose={() => setCurrentView('HOME')} />
         ) : currentView === 'ADULT_MOSQUITO_DETECTION' ? (
-            <AdultMosquitoScanner />
+            <AdultMosquitoScanner onClose={() => setCurrentView('HOME')} />
         ) : currentView === 'GAME' ? (
             <div className="animate-fade-in pb-12">
                 <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-slate-900/40 p-4 rounded-xl border border-slate-800">
@@ -607,9 +607,20 @@ const App: React.FC = () => {
                     >
                         ← KEMBALI KE MEJA UTAMA
                     </button>
-                    <div className="text-left sm:text-right">
-                        <span className="block text-[10px] text-slate-500 uppercase tracking-widest font-mono">MODUL SEKARANG</span>
-                        <span className="block text-sm font-bold text-white font-sans uppercase tracking-wider">ARKED DETEKTIF HABITAT VEKTOR AI</span>
+                    <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+                        <div className="text-left sm:text-right">
+                            <span className="block text-[10px] text-slate-500 uppercase tracking-widest font-mono">MODUL SEKARANG</span>
+                            <span className="block text-sm font-bold text-white font-sans uppercase tracking-wider">ARKED DETEKTIF HABITAT VEKTOR AI</span>
+                        </div>
+                        <button
+                            onClick={() => setCurrentView('HOME')}
+                            title="Tutup Dewan Latihan"
+                            aria-label="Tutup Dewan Latihan"
+                            className="px-3 py-2 bg-red-950/80 hover:bg-red-600 text-red-200 hover:text-white rounded-lg border border-red-500/50 transition-all flex items-center gap-1.5 text-xs font-bold font-mono shrink-0 shadow-md"
+                        >
+                            <span className="text-sm leading-none">✕</span>
+                            <span>TUTUP</span>
+                        </button>
                     </div>
                 </div>
                 <AedesHuntGame sessions={sessions} />
@@ -649,17 +660,58 @@ const App: React.FC = () => {
                     <>
                         {currentHomeSubView === 'MENU' ? (
                             <div className="max-w-6xl mx-auto py-4 md:py-8">
-                                <div className="mb-12 text-center animate-fade-in">
-                                    <div className="inline-flex items-center gap-2 bg-emerald-950/50 border border-emerald-500/30 px-4 py-1.5 rounded-full text-[10px] md:text-xs font-mono-sci text-emerald-400 mb-4 uppercase tracking-[0.2em] shadow-md shadow-emerald-900/10">
-                                        <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span>
-                                       SOLUSI DIGITAL PEMERKASAAN KESIHATAN AWAM                                     
+                                <div className="mb-8 text-center animate-fade-in">
+                                    <div className="inline-flex items-center gap-2.5 text-[10px] md:text-xs font-mono-sci text-emerald-400 mb-3 uppercase tracking-[0.25em]">
+                                        <span className="w-2 h-2 bg-emerald-400 rounded-none rotate-45"></span>
+                                        <span>SISTEM KAWALAN VEKTOR & KESIHATAN AWAM BERSEPADU</span>
+                                        <span className="w-2 h-2 bg-emerald-400 rounded-none rotate-45"></span>
                                     </div>
-                                    <h2 className="text-3xl sm:text-5xl md:text-6xl font-sci-fi font-black tracking-wider text-white mb-4 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)] leading-none uppercase">
+                                    <h2 className="text-3xl sm:text-5xl md:text-6xl font-sci-fi font-black tracking-wider text-white mb-3 drop-shadow-[0_0_20px_rgba(16,185,129,0.25)] leading-none uppercase">
                                         VECTOR<span className="text-emerald-500">GUARD</span><span className="text-slate-500 font-mono text-xl lowercase opacity-60">.ai</span>
                                     </h2>
                                     <p className="text-slate-400 max-w-2xl mx-auto text-xs sm:text-sm md:text-base font-light font-sans tracking-wide px-4 leading-relaxed">
-                                        Platform bersepadu berlandaskan Kecerdasan Buatan (Gemini Pro) untuk pengecaman spesies nyamuk, kawalan jentik-jentik, simulasi sanitasi premis, ramalan wabak KKM, dan pencegahan jangkitan vektor.
+                                        Platform diagnostik lapangan berlandaskan Kecerdasan Buatan untuk pengesanan tempat pembiakan Aedes, simulasi sanitasi premis, audit pematuhan KKM, dan ramalan wabak.
                                     </p>
+                                </div>
+
+                                {/* Quick Executive Field Command Bar */}
+                                <div className="max-w-6xl mx-auto mb-10 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl backdrop-blur-md flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 animate-fade-in">
+                                    <div className="grid grid-cols-3 gap-3 sm:gap-6 flex-1 divide-x divide-slate-800">
+                                        <div className="px-2 sm:px-4 first:pl-0">
+                                            <div className="text-[10px] font-mono-sci uppercase tracking-widest text-slate-400">REKOD PEMERIKSAAN</div>
+                                            <div className="text-lg sm:text-2xl font-bold font-sci-fi text-white mt-0.5">{sessions.length} <span className="text-[10px] font-mono text-emerald-400 uppercase">Sesi</span></div>
+                                        </div>
+                                        <div className="px-2 sm:px-4">
+                                            <div className="text-[10px] font-mono-sci uppercase tracking-widest text-slate-400">SIMULASI BERSIH</div>
+                                            <div className="text-lg sm:text-2xl font-bold font-sci-fi text-cyan-400 mt-0.5">{sessions.filter(s => !!s.simulationImage).length} <span className="text-[10px] font-mono text-slate-400 uppercase">Imej</span></div>
+                                        </div>
+                                        <div className="px-2 sm:px-4">
+                                            <div className="text-[10px] font-mono-sci uppercase tracking-widest text-slate-400">AUDIT PEMATUHAN</div>
+                                            <div className="text-lg sm:text-2xl font-bold font-sci-fi text-emerald-400 mt-0.5">{sessions.filter(s => !!s.result?.complianceAudit).length} <span className="text-[10px] font-mono text-slate-400 uppercase">Premis</span></div>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2.5 shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-800">
+                                        <button
+                                            onClick={() => {
+                                                setCurrentHomeSubView('FORENSIC');
+                                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                            }}
+                                            className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-500 text-white font-sci-fi font-bold text-xs px-5 py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 active:scale-95"
+                                        >
+                                            <span>📸</span>
+                                            <span>IMBAS PREMIS SEKARANG</span>
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setCurrentView('SIMULATION_ARCHIVE');
+                                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                            }}
+                                            className="flex-1 sm:flex-none bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-cyan-500/50 text-cyan-400 font-mono-sci font-bold text-xs px-4 py-3 rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95"
+                                        >
+                                            <span>🗂️</span>
+                                            <span>ARKIB TARIKH ({sessions.length})</span>
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto mb-16 animate-fade-in-up">
@@ -673,9 +725,9 @@ const App: React.FC = () => {
                                     >
                                         <div>
                                             <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all">📸</div>
-                                            <div className="inline-block bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] font-bold px-2 py-0.5 rounded-full mb-2 tracking-wide uppercase font-mono-sci">TERAS GEMINI AI</div>
+                                            <div className="border-l-2 border-emerald-500 pl-2 text-emerald-400 text-[9px] font-bold mb-2 tracking-[0.2em] uppercase font-mono-sci">TERAS GEMINI AI</div>
                                             <h3 className="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors font-sci-fi tracking-wide mb-2">IMBASAN HABITAT & PREMIS</h3>
-                                            <p className="text-xs text-slate-400 leading-relaxed">Imbas, sah, dan ukur risiko takungan air pembiakan nyamuk dlm premis dengan cadangan sanitasi Automatik berdasarkan piawaian KKM.</p>
+                                            <p className="text-xs text-slate-400 leading-relaxed">Imbas, sah, dan ukur risiko takungan air pembiakan nyamuk dalam premis dengan cadangan sanitasi automatik berdasarkan piawaian KKM.</p>
                                         </div>
                                         <div className="mt-6 flex items-center justify-between text-[11px] font-bold text-emerald-400 group-hover:translate-x-1 transition-transform">
                                             <span>Mula Analisis Lapangan</span>
@@ -693,7 +745,7 @@ const App: React.FC = () => {
                                     >
                                         <div>
                                             <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 group-hover:bg-cyan-500/20 transition-all">🐛</div>
-                                            <div className="inline-block bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[9px] font-bold px-2 py-0.5 rounded-full mb-2 tracking-wide uppercase font-mono-sci">ROBOFLOW YOLOV8</div>
+                                            <div className="border-l-2 border-cyan-500 pl-2 text-cyan-400 text-[9px] font-bold mb-2 tracking-[0.2em] uppercase font-mono-sci">VISI KOMPUTER LARVA</div>
                                             <h3 className="text-lg font-bold text-white group-hover:text-cyan-400 transition-colors font-sci-fi tracking-wide mb-2">DETEKTIF JENTIK-JENTIK</h3>
                                             <p className="text-xs text-slate-400 leading-relaxed">Guna model visi komputer yang ditala khusus untuk mengesan, melabel, dan mengira bilangan larva Aedes dalam bekas tadahan.</p>
                                         </div>
@@ -713,9 +765,9 @@ const App: React.FC = () => {
                                     >
                                         <div>
                                             <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 group-hover:bg-purple-500/20 transition-all">🦟</div>
-                                            <div className="inline-block bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[9px] font-bold px-2 py-0.5 rounded-full mb-2 tracking-wide uppercase font-mono-sci">SIASATAN ENTIOMOLOGI</div>
+                                            <div className="border-l-2 border-purple-500 pl-2 text-purple-400 text-[9px] font-bold mb-2 tracking-[0.2em] uppercase font-mono-sci">SIASATAN ENTOMOLOGI</div>
                                             <h3 className="text-lg font-bold text-white group-hover:text-purple-400 transition-colors font-sci-fi tracking-wide mb-2">ANALISIS NYAMUK DEWASA</h3>
-                                            <p className="text-xs text-slate-400 leading-relaxed">Pengenalpastian morfologi sayap, abdomen, dan spesifikasi jantina vektor dewasa sama ada Aedes Albopictus atau Anopheles.</p>
+                                            <p className="text-xs text-slate-400 leading-relaxed">Pengenalpastian morfologi sayap, toraks, dan spesifikasi spesies vektor dewasa sama ada Aedes aegypti, Albopictus atau Culex.</p>
                                         </div>
                                         <div className="mt-6 flex items-center justify-between text-[11px] font-bold text-purple-400 group-hover:translate-x-1 transition-transform">
                                             <span>Pengelasan Spesies</span>
@@ -733,9 +785,9 @@ const App: React.FC = () => {
                                     >
                                         <div>
                                             <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 group-hover:bg-amber-500/20 transition-all">📊</div>
-                                            <div className="inline-block bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[9px] font-bold px-2 py-0.5 rounded-full mb-2 tracking-wide uppercase font-mono-sci">TELEMETRI KEBANGSAAN</div>
-                                            <h3 className="text-lg font-bold text-white group-hover:text-amber-400 transition-colors font-sci-fi tracking-wide mb-2">EPIDEMIOLOGY & RAMALAN</h3>
-                                            <p className="text-xs text-slate-400 leading-relaxed">Tinjau grafik kumulatif kes kebangsaan, hotspot aktif, minggu epidemiologi, serta akses penuh peta risiko iDengue KKM 2026.</p>
+                                            <div className="border-l-2 border-amber-500 pl-2 text-amber-500 text-[9px] font-bold mb-2 tracking-[0.2em] uppercase font-mono-sci">TELEMETRI KEBANGSAAN</div>
+                                            <h3 className="text-lg font-bold text-white group-hover:text-amber-400 transition-colors font-sci-fi tracking-wide mb-2">EPIDEMIOLOGI & RAMALAN</h3>
+                                            <p className="text-xs text-slate-400 leading-relaxed">Tinjau grafik kumulatif kes kebangsaan, hotspot aktif, minggu epidemiologi, serta akses penuh peta risiko iDengue KKM.</p>
                                         </div>
                                         <div className="mt-6 flex items-center justify-between text-[11px] font-bold text-amber-400 group-hover:translate-x-1 transition-transform">
                                             <span>Segerakkan Pangkalan Data</span>
@@ -750,9 +802,9 @@ const App: React.FC = () => {
                                     >
                                         <div>
                                             <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 group-hover:bg-rose-500/20 transition-all">✨</div>
-                                            <div className="inline-block bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[9px] font-bold px-2 py-0.5 rounded-full mb-2 tracking-wide uppercase font-mono-sci">IMAGEN 3 SANDBOX</div>
+                                            <div className="border-l-2 border-rose-500 pl-2 text-rose-400 text-[9px] font-bold mb-2 tracking-[0.2em] uppercase font-mono-sci">5 MOD SIMULASI AI</div>
                                             <h3 className="text-lg font-bold text-white group-hover:text-rose-400 transition-colors font-sci-fi tracking-wide mb-2">SIMULATOR REMEDIASI</h3>
-                                            <p className="text-xs text-slate-400 leading-relaxed">Keupayaan menjana gambar simulasi landskap selepas diperbaiki dan dinyah kuman untuk pameran, bilik gerakan, atau laporan inovasi.</p>
+                                            <p className="text-xs text-slate-400 leading-relaxed">Keupayaan menjana gambar simulasi landskap selepas diperbaiki dan dinyahkuman untuk pameran, bilik gerakan, atau laporan inovasi.</p>
                                         </div>
                                         <div className="mt-6 flex items-center justify-between text-[11px] font-bold text-rose-400 group-hover:translate-x-1 transition-transform">
                                             <span>Simulasi Arena</span>
@@ -770,12 +822,12 @@ const App: React.FC = () => {
                                     >
                                         <div>
                                             <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-2xl mb-4 group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all">🎮</div>
-                                            <div className="inline-block bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] font-bold px-2 py-0.5 rounded-full mb-2 tracking-wide uppercase font-mono-sci">EDUTAINMENT ARCADE</div>
+                                            <div className="border-l-2 border-emerald-500 pl-2 text-emerald-400 text-[9px] font-bold mb-2 tracking-[0.2em] uppercase font-mono-sci">LATIHAN INTERAKTIF</div>
                                             <h3 className="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors font-sci-fi tracking-wide mb-2">DETEKTIF HABITAT VEKTOR</h3>
-                                            <p className="text-xs text-slate-400 leading-relaxed">Permainan interaktif menjejaki dan menghapuskan takungan air pembiakan vektor ghaib dengan bantuan AI bagi mendidik komuniti.</p>
+                                            <p className="text-xs text-slate-400 leading-relaxed">Simulasi latihan menjejaki dan menghapuskan takungan air pembiakan vektor tersembunyi dengan bantuan AI bagi mendidik komuniti.</p>
                                         </div>
                                         <div className="mt-6 flex items-center justify-between text-[11px] font-bold text-emerald-400 group-hover:translate-x-1 transition-transform">
-                                            <span>Buka Dewan Arked</span>
+                                            <span>Buka Dewan Latihan</span>
                                             <span>→</span>
                                         </div>
                                     </button>
@@ -794,14 +846,14 @@ const App: React.FC = () => {
                                                     🗂️
                                                 </div>
                                                 <div>
-                                                    <div className="inline-block bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[9px] font-bold px-2.5 py-0.5 rounded-full mb-1.5 tracking-wide uppercase font-mono-sci">
-                                                        PANGKALAN REKOD & SLIDER SEBELUM/SELEPAS
+                                                    <div className="border-l-2 border-cyan-400 pl-2 text-cyan-400 text-[9px] font-bold mb-1.5 tracking-[0.2em] uppercase font-mono-sci">
+                                                        PANGKALAN REKOD AWAN & SLIDER SEBELUM/SELEPAS
                                                     </div>
                                                     <h3 className="text-lg md:text-xl font-bold text-white group-hover:text-cyan-400 transition-colors font-sci-fi tracking-wide mb-1">
                                                         ARKIB HASIL SIMULASI & ANALISIS (MENGIKUT TARIKH)
                                                     </h3>
                                                     <p className="text-xs text-slate-400 leading-relaxed max-w-2xl">
-                                                        Kompilasi lengkap semua rekod imbasan dan simulasi landskap mengikut tarikh. Dilengkapi slider interaktif sebelum & selepas, langkah mitigasi KKM, pecahan ancaman vektor & keselamatan, serta sistem kunci padam pemilik sah.
+                                                        Kompilasi lengkap semua rekod imbasan dan simulasi landskap mengikut tarikh. Dilengkapi slider interaktif sebelum & selepas, audit pematuhan sebenar, kalkulator dos Abate/Bti, dan eksport poster PNG.
                                                     </p>
                                                 </div>
                                             </div>
@@ -826,9 +878,20 @@ const App: React.FC = () => {
                                     >
                                         ← KEMBALI KE MEJA UTAMA
                                     </button>
-                                    <div className="text-left sm:text-right">
-                                        <span className="block text-[10px] text-slate-500 uppercase tracking-widest font-mono-sci">MODUL SEKARANG</span>
-                                        <span className="block text-sm font-bold text-white font-sci-fi uppercase tracking-wider">FORENSIK IMAGES & PENGESAN MULTIMODAL</span>
+                                    <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+                                        <div className="text-left sm:text-right">
+                                            <span className="block text-[10px] text-slate-500 uppercase tracking-widest font-mono-sci">MODUL SEKARANG</span>
+                                            <span className="block text-sm font-bold text-white font-sci-fi uppercase tracking-wider">FORENSIK IMAGES & PENGESAN MULTIMODAL</span>
+                                        </div>
+                                        <button
+                                            onClick={() => setCurrentHomeSubView('MENU')}
+                                            title="Tutup Tetingkap Forensik"
+                                            aria-label="Tutup Tetingkap Forensik"
+                                            className="px-3 py-2 bg-red-950/80 hover:bg-red-600 text-red-200 hover:text-white rounded-lg border border-red-500/50 transition-all flex items-center gap-1.5 text-xs font-bold font-mono-sci shrink-0 shadow-md"
+                                        >
+                                            <span className="text-sm leading-none">✕</span>
+                                            <span>TUTUP</span>
+                                        </button>
                                     </div>
                                 </div>
 
@@ -928,9 +991,20 @@ const App: React.FC = () => {
                                     >
                                         ← KEMBALI KE MEJA UTAMA
                                     </button>
-                                    <div className="text-left sm:text-right">
-                                        <span className="block text-[10px] text-slate-500 uppercase tracking-widest font-mono-sci">MODUL SEKARANG</span>
-                                        <span className="block text-sm font-bold text-white font-sci-fi uppercase tracking-wider">TELEMETRI DATA & ANALIS EPIDEMIOLOGI</span>
+                                    <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+                                        <div className="text-left sm:text-right">
+                                            <span className="block text-[10px] text-slate-500 uppercase tracking-widest font-mono-sci">MODUL SEKARANG</span>
+                                            <span className="block text-sm font-bold text-white font-sci-fi uppercase tracking-wider">TELEMETRI DATA & ANALIS EPIDEMIOLOGI</span>
+                                        </div>
+                                        <button
+                                            onClick={() => setCurrentHomeSubView('MENU')}
+                                            title="Tutup Tetingkap Telemetri"
+                                            aria-label="Tutup Tetingkap Telemetri"
+                                            className="px-3 py-2 bg-red-950/80 hover:bg-red-600 text-red-200 hover:text-white rounded-lg border border-red-500/50 transition-all flex items-center gap-1.5 text-xs font-bold font-mono-sci shrink-0 shadow-md"
+                                        >
+                                            <span className="text-sm leading-none">✕</span>
+                                            <span>TUTUP</span>
+                                        </button>
                                     </div>
                                 </div>
 
@@ -1042,7 +1116,16 @@ const App: React.FC = () => {
               {activeSessionId && getActiveSession() ? (
                  <div className="animate-fade-in">
                     {getActiveSession()!.status === 'PENDING' && (
-                       <div className="bg-slate-900/50 border border-slate-700 p-8 md:p-12 rounded-lg text-center min-h-[300px] flex flex-col items-center justify-center">
+                       <div className="relative bg-slate-900/50 border border-slate-700 p-8 md:p-12 rounded-lg text-center min-h-[300px] flex flex-col items-center justify-center">
+                          <button
+                             onClick={() => { setActiveSessionId(null); setIsGalleryExpanded(true); }}
+                             title="Tutup Tetingkap Sesi"
+                             aria-label="Tutup Tetingkap Sesi"
+                             className="absolute top-3 right-3 px-2.5 py-1.5 bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors flex items-center gap-1 text-xs font-bold font-mono-sci"
+                          >
+                             <span>✕</span>
+                             <span>TUTUP</span>
+                          </button>
                           <div className="w-10 h-10 md:w-12 md:h-12 border-2 border-dashed border-slate-600 rounded-full animate-spin-slow mb-4"></div>
                           <p className="text-slate-400 font-mono-sci tracking-widest text-xs md:text-sm">{t('waiting_queue')}</p>
                            <button onClick={() => setShowBypassModal(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 mt-4 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:scale-105 active:scale-95 duration-150 select-none">
@@ -1051,7 +1134,16 @@ const App: React.FC = () => {
                        </div>
                     )}
                     {getActiveSession()!.status === 'ANALYZING' && (
-                       <div className="bg-emerald-950/20 border border-emerald-500/50 p-8 md:p-12 rounded-lg text-center min-h-[300px] flex flex-col items-center justify-center">
+                       <div className="relative bg-emerald-950/20 border border-emerald-500/50 p-8 md:p-12 rounded-lg text-center min-h-[300px] flex flex-col items-center justify-center">
+                          <button
+                             onClick={() => { setActiveSessionId(null); setIsGalleryExpanded(true); }}
+                             title="Tutup Tetingkap Sesi"
+                             aria-label="Tutup Tetingkap Sesi"
+                             className="absolute top-3 right-3 px-2.5 py-1.5 bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors flex items-center gap-1 text-xs font-bold font-mono-sci"
+                          >
+                             <span>✕</span>
+                             <span>TUTUP</span>
+                          </button>
                           <div className="w-12 h-12 border-4 border-dashed border-emerald-500 rounded-full animate-spin mb-4"></div>
                           <p className="text-emerald-400 font-mono-sci tracking-widest text-sm animate-pulse">{t('processing_target')}</p>
                            <button onClick={() => setShowBypassModal(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-lg font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 mt-4 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:scale-105 active:scale-95 duration-150 select-none">
@@ -1060,7 +1152,16 @@ const App: React.FC = () => {
                        </div>
                     )}
                     {getActiveSession()!.status === 'ERROR' && (
-                       <div className="bg-red-950/20 border border-red-500/50 p-6 md:p-10 rounded-xl text-center min-h-[300px] flex flex-col items-center justify-center max-w-lg mx-auto">
+                       <div className="relative bg-red-950/20 border border-red-500/50 p-6 md:p-10 rounded-xl text-center min-h-[300px] flex flex-col items-center justify-center max-w-lg mx-auto">
+                          <button
+                             onClick={() => { setActiveSessionId(null); setIsGalleryExpanded(true); }}
+                             title="Tutup Tetingkap Ralat"
+                             aria-label="Tutup Tetingkap Ralat"
+                             className="absolute top-3 right-3 px-2.5 py-1.5 bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors flex items-center gap-1 text-xs font-bold font-mono-sci"
+                          >
+                             <span>✕</span>
+                             <span>TUTUP</span>
+                          </button>
                           <div className="text-4xl mb-3">⚠️</div>
                           <h4 className="text-lg font-sci-fi font-bold text-red-200 mb-2">ANALISIS TERGANGGU / HAD KUOTA</h4>
                           <p className="text-xs text-slate-400 font-mono-sci mb-6">
@@ -1087,6 +1188,10 @@ const App: React.FC = () => {
                              onAnalyzeGeneratedImage={handleAnalyzeGeneratedImage}
                              onUpdateResult={(newResult) => handleUpdateSessionResult(activeSessionId!, newResult)}
                              onOpenBypass={() => setShowBypassModal(true)}
+                             onClose={() => {
+                               setActiveSessionId(null);
+                               setIsGalleryExpanded(true);
+                             }}
                              onDeleteSession={() => {
                                if (activeSessionId) {
                                  handleDeleteSession(activeSessionId);

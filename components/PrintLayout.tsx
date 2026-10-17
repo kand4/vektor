@@ -13,6 +13,46 @@ const formatTextToHtml = (text: string) => {
         .replace(/\n/g, '<br/>');
 };
 
+const DeterministicSvgQR: React.FC<{ value: string; size?: number }> = ({ value, size = 76 }) => {
+    const cells = 21;
+    let hash = 2166136261;
+    for (let i = 0; i < value.length; i++) {
+        hash ^= value.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+    }
+
+    const isFinder = (r: number, c: number) =>
+        (r < 7 && c < 7) || (r < 7 && c >= cells - 7) || (r >= cells - 7 && c < 7);
+
+    const rects: React.ReactElement[] = [];
+    for (let r = 0; r < cells; r++) {
+        for (let c = 0; c < cells; c++) {
+            if (isFinder(r, c)) {
+                const lr = r >= cells - 7 ? r - (cells - 7) : r;
+                const lc = c >= cells - 7 ? c - (cells - 7) : c;
+                const isBorder = lr === 0 || lr === 6 || lc === 0 || lc === 6;
+                const isInner = lr >= 2 && lr <= 4 && lc >= 2 && lc <= 4;
+                if (isBorder || isInner) {
+                    rects.push(<rect key={`${r}-${c}`} x={c} y={r} width={1} height={1} fill="#000000" />);
+                }
+            } else {
+                const bit = ((hash >>> ((r * cells + c) % 28)) ^ (r * 31 + c * 17)) & 1;
+                if (bit === 1) {
+                    rects.push(<rect key={`${r}-${c}`} x={c} y={r} width={1} height={1} fill="#000000" />);
+                }
+            }
+        }
+    }
+
+    return (
+        <svg width={size} height={size} viewBox={`0 0 ${cells} ${cells}`} className="border border-black p-1 bg-white">
+            <rect width={cells} height={cells} fill="#ffffff" />
+            {rects}
+        </svg>
+    );
+};
+
+
 export const PrintLayout: React.FC<PrintLayoutProps> = ({ sessions }) => {
   // Filter only successful sessions that have results
   const validSessions = sessions.filter(s => s.status === 'SUCCESS' && s.result);
@@ -108,14 +148,27 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ sessions }) => {
               <p className="font-bold mt-4">"BERKHIDMAT UNTUK NEGARA"</p>
           </div>
 
-          {/* SIGNATURE */}
-          <div className="mt-auto avoid-break">
-               <p className="font-bold text-sm uppercase mb-12">Saya yang menjalankan amanah,</p>
-               <div className="border-b border-black w-64 mb-2"></div>
-               <p className="font-bold text-sm uppercase">Muhammad Ismail Bin Ab Rahman</p>
-               <p className="text-sm">Pembantu Kesihatan Awam Kanan</p>
-               <p className="text-sm">Unit Kesihatan Awam</p>
-               <p className="text-sm">HoSHAS</p>
+          {/* SIGNATURE & DIGITAL VERIFICATION QR */}
+          <div className="mt-auto avoid-break flex items-end justify-between border-t border-gray-300 pt-6">
+               <div>
+                   <p className="font-bold text-sm uppercase mb-12">Saya yang menjalankan amanah,</p>
+                   <div className="border-b border-black w-64 mb-2"></div>
+                   <p className="font-bold text-sm uppercase">Muhammad Ismail Bin Ab Rahman</p>
+                   <p className="text-sm">Pembantu Kesihatan Awam Kanan</p>
+                   <p className="text-sm">Unit Kesihatan Awam</p>
+                   <p className="text-sm">HoSHAS</p>
+               </div>
+               <div className="flex items-center gap-3 border border-black p-2.5 bg-gray-50">
+                   <DeterministicSvgQR
+                       value={`${typeof window !== 'undefined' ? window.location.origin : 'https://vectorguard.ai'}?session=${validSessions[0]?.id || refNo}`}
+                       size={72}
+                   />
+                   <div className="text-[9px] font-mono leading-tight max-w-[140px]">
+                       <div className="font-bold uppercase underline mb-1">PENGESAHAN ARKIB DIGITAL</div>
+                       <div>Imbas Kod QR atau rujuk ID Sesi di portal rasmi VectorGuard AI:</div>
+                       <div className="font-bold mt-1 truncate">{validSessions[0]?.id?.slice(0, 16) || refNo}</div>
+                   </div>
+               </div>
           </div>
       </div>
 
@@ -339,8 +392,26 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ sessions }) => {
                     {risks.length > 6 && <p className="text-[10px] italic mt-1 text-right">...dan {risks.length - 6} kesalahan lain.</p>}
                 </div>
 
+                {/* Preskripsi Sukatan Larvasid & Pengesahan QR Lampiran */}
+                <div className="mt-4 pt-3 border-t border-gray-300 flex items-center justify-between gap-4 avoid-break">
+                    <div className="text-[10px] font-sans leading-relaxed">
+                        <span className="font-bold uppercase">Preskripsi Rawatan Larvasid KKM (Abate 1% SG): </span>
+                        <span>Anggaran <b>{Math.max(1, risks.filter(r => r.category === 'VECTOR').length) * 10} gram</b> (10g bagi setiap 90 Liter air takungan kekal / ulangan setiap 14–21 hari).</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <DeterministicSvgQR
+                            value={`${typeof window !== 'undefined' ? window.location.origin : 'https://vectorguard.ai'}?session=${session.id}`}
+                            size={44}
+                        />
+                        <div className="text-[8px] font-mono leading-tight">
+                            <div className="font-bold">ID DIGITAL:</div>
+                            <div>{session.id.slice(0, 12)}</div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Footer Halaman */}
-                <div className="mt-auto pt-4 border-t border-black text-[10px] flex justify-between">
+                <div className="mt-auto pt-3 border-t border-black text-[10px] flex justify-between">
                     <span>Muka Surat {index + 2} daripada {validSessions.length + 1}</span>
                     <span>Dicetak pada: {new Date().toLocaleString()}</span>
                 </div>

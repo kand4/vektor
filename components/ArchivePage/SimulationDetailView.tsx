@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { AnalysisSession, RiskDetection } from '../../types';
+import { AnalysisSession, RiskDetection, ComplianceAuditResult } from '../../types';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
 import { getSessionTimestamp } from '../../utils/archiveHelpers';
 import { askRiskFollowUp } from '../../services/geminiService';
 import { getProxiedImageUrl } from '../../utils/imageProxy';
+import { generateAndDownloadPoster } from '../../utils/posterGenerator';
+import { ComplianceAuditModal } from '../Modals/ComplianceAuditModal';
+import { LarvicideCalculatorPanel } from '../LarvicideCalculatorPanel';
 
 interface SimulationDetailViewProps {
   session: AnalysisSession;
@@ -17,7 +20,8 @@ interface SimulationDetailViewProps {
 export const SimulationDetailView: React.FC<SimulationDetailViewProps> = ({
   session,
   language = 'ms',
-  onBack
+  onBack,
+  onUpdateSession
 }) => {
   // Chat follow-up state
   const [activeRiskForChat, setActiveRiskForChat] = useState<RiskDetection | null>(null);
@@ -26,8 +30,12 @@ export const SimulationDetailView: React.FC<SimulationDetailViewProps> = ({
   const [isChatLoading, setIsChatLoading] = useState(false);
 
   const [copiedLink, setCopiedLink] = useState(false);
+  const [isGeneratingPoster, setIsGeneratingPoster] = useState(false);
+  const [showAuditModal, setShowAuditModal] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
 
   const handleShareLink = () => {
+    setShowShareMenu(false);
     try {
       const url = new URL(window.location.href);
       url.searchParams.set('session', session.id);
@@ -36,6 +44,35 @@ export const SimulationDetailView: React.FC<SimulationDetailViewProps> = ({
       setTimeout(() => setCopiedLink(false), 3000);
     } catch {
       // Fallback
+    }
+  };
+
+  const handleDownloadPoster = async () => {
+    setShowShareMenu(false);
+    if (!session.result) return;
+    setIsGeneratingPoster(true);
+    try {
+      await generateAndDownloadPoster({
+        sessionId: session.id,
+        fileName: session.fileName,
+        originalImageSrc: session.imageSrc,
+        simulationImageSrc: session.simulationImage,
+        result: session.result
+      });
+    } finally {
+      setIsGeneratingPoster(false);
+    }
+  };
+
+  const handleSaveAudit = (auditResult: ComplianceAuditResult) => {
+    if (onUpdateSession && session.result) {
+      onUpdateSession({
+        ...session,
+        result: {
+          ...session.result,
+          complianceAudit: auditResult
+        }
+      });
     }
   };
 
@@ -77,57 +114,163 @@ export const SimulationDetailView: React.FC<SimulationDetailViewProps> = ({
 
   return (
     <div className="w-full pb-16 animate-fade-in text-left">
+      <ComplianceAuditModal
+        isOpen={showAuditModal}
+        onClose={() => setShowAuditModal(false)}
+        originalImageSrc={session.imageSrc}
+        detectedRisks={risks}
+        existingAudit={session.result?.complianceAudit}
+        onSaveAudit={handleSaveAudit}
+        language={language}
+      />
+
       {/* Top Header Navigation */}
-      <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-2xl p-4 md:p-6 mb-6 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-2xl p-4 md:p-6 mb-6 shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
             className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2.5 rounded-xl text-xs font-mono font-bold flex items-center gap-2 border border-slate-700 hover:border-cyan-500/50 transition-all active:scale-95 shrink-0"
           >
             <span>←</span>
-            <span>KEMBALI KE SENARAI TARIKH</span>
+            <span>KEMBALI</span>
           </button>
           
           <div className="h-6 w-px bg-slate-700 hidden sm:block"></div>
 
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-xl font-bold font-sci-fi text-white tracking-wide truncate max-w-[280px] sm:max-w-md">
-                {session.fileName}
-              </h2>
-              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${session.simulationImage ? 'bg-cyan-950/80 border-cyan-500/50 text-cyan-400' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
-                {session.simulationImage ? '✨ SIMULASI AKTIF' : '📸 ANALISIS SAHAJA'}
+            <h2 className="text-base sm:text-xl font-bold font-sci-fi text-white tracking-wide truncate max-w-[280px] sm:max-w-md">
+              {session.fileName}
+            </h2>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 font-mono mt-1">
+              <span className="text-slate-300 font-semibold">{formattedDate}, {formattedTime}</span>
+              <span aria-hidden="true">·</span>
+              <span>ID: {session.id.slice(0, 12)}</span>
+              <span aria-hidden="true">·</span>
+              <span className={session.simulationImage ? 'text-cyan-400 font-semibold' : 'text-slate-400'}>
+                {session.simulationImage ? 'Simulasi Aktif' : 'Analisis Sahaja'}
               </span>
+              {session.result?.complianceAudit && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="text-emerald-400 font-semibold">
+                    Audit: {session.result.complianceAudit.complianceScore}% ({session.result.complianceAudit.verdict})
+                  </span>
+                </>
+              )}
             </div>
-            <p className="text-xs text-slate-400 font-mono mt-0.5">
-              Tarikh: <span className="text-slate-300 font-bold">{formattedDate}</span> jam <span className="text-slate-300">{formattedTime}</span> | ID: <span className="text-slate-500">{session.id.slice(0, 16)}...</span>
-            </p>
           </div>
         </div>
 
-        {/* Visitor View Status Badge & Share Button */}
-        <div className="flex items-center gap-2 flex-wrap justify-end">
+        {/* 2-Hierarchy Action Controls */}
+        <div className="flex items-center gap-2 flex-wrap justify-end relative">
+          <button
+            onClick={() => setShowAuditModal(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-mono font-bold transition-all bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/40 hover:border-emerald-400"
+            title="Bandingkan Gambar Asal vs Gambar Sebenar Selepas Dicuci"
+          >
+            <span>✅</span>
+            <span>
+              {session.result?.complianceAudit
+                ? `Audit (${session.result.complianceAudit.complianceScore}%)`
+                : 'Audit Pematuhan'}
+            </span>
+          </button>
+
           <button
             onClick={handleShareLink}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all border ${
+            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-mono font-bold transition-all border ${
               copiedLink
-                ? 'bg-emerald-600 text-white border-emerald-400 shadow-md shadow-emerald-600/30'
+                ? 'bg-emerald-600 text-white border-emerald-400'
                 : 'bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 border-cyan-500/40 hover:border-cyan-400'
             }`}
             title="Salin pautan langsung untuk dihantar kepada rakan/pegawai KKM"
           >
             <span>{copiedLink ? '✓' : '🔗'}</span>
-            <span>{copiedLink ? 'Pautan Disalin!' : 'Kongsi Pautan Sesi'}</span>
+            <span>{copiedLink ? 'Pautan Disalin!' : 'Salin Pautan'}</span>
           </button>
-          <div className="inline-flex items-center gap-1.5 bg-slate-800/80 border border-slate-700 text-slate-400 text-[11px] font-mono px-3.5 py-1.5 rounded-lg shadow-sm" title="Paparan Arkib Rasmi (Mod Pelawat)">
-            <span>👁️</span>
-            <span>Paparan Pelawat (Arkib Rasmi)</span>
+
+          <div className="relative">
+            <button
+              onClick={() => setShowShareMenu(prev => !prev)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-mono font-bold transition-all bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700"
+              title="Menu Eksport Poster PNG & Muat Turun Imej"
+            >
+              <span>📤</span>
+              <span>{isGeneratingPoster ? 'Menjana...' : 'Eksport & Kongsi'}</span>
+              <span className="text-[10px] opacity-80">▾</span>
+            </button>
+
+            {showShareMenu && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setShowShareMenu(false)}></div>
+                <div className="absolute right-0 top-full mt-2 w-64 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden z-40 py-1.5 text-left animate-fade-in">
+                  <div className="px-3 py-1.5 border-b border-slate-800 flex items-center justify-between">
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400">
+                      Pilihan Eksport Rekod
+                    </span>
+                    <button
+                      onClick={() => setShowShareMenu(false)}
+                      title="Tutup Menu"
+                      aria-label="Tutup Menu"
+                      className="w-5 h-5 rounded bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white flex items-center justify-center text-[10px] font-bold transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {session.result && (
+                    <button
+                      onClick={handleDownloadPoster}
+                      disabled={isGeneratingPoster}
+                      className="w-full px-3.5 py-2.5 text-xs font-bold text-slate-200 hover:bg-slate-800 flex items-center gap-2.5 transition-colors"
+                    >
+                      <span>🖼️</span>
+                      <div className="flex flex-col">
+                        <span>Muat Turun Poster (PNG)</span>
+                        <span className="text-[10px] font-normal text-slate-400">Infografik penuh WhatsApp / Telegram</span>
+                      </div>
+                    </button>
+                  )}
+                  {session.simulationImage && (
+                    <button
+                      onClick={() => { setShowShareMenu(false); handleDownloadCleanImage(); }}
+                      className="w-full px-3.5 py-2.5 text-xs font-bold text-cyan-300 hover:bg-slate-800 flex items-center gap-2.5 transition-colors"
+                    >
+                      <span>📥</span>
+                      <div className="flex flex-col">
+                        <span>Muat Turun Imej Simulasi</span>
+                        <span className="text-[10px] font-normal text-slate-400">Simpan gambar selepas dibersihkan</span>
+                      </div>
+                    </button>
+                  )}
+                  <button
+                    onClick={handleShareLink}
+                    className="w-full px-3.5 py-2.5 text-xs font-bold text-emerald-300 hover:bg-slate-800 flex items-center gap-2.5 transition-colors border-t border-slate-800/80"
+                  >
+                    <span>🔗</span>
+                    <div className="flex flex-col">
+                      <span>Salin Pautan Awan</span>
+                      <span className="text-[10px] font-normal text-slate-400">Kongsi rekod merentas peranti</span>
+                    </div>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
+
+          <button
+            onClick={onBack}
+            title="Tutup Tetingkap Butiran"
+            aria-label="Tutup Tetingkap Butiran"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-mono font-bold transition-all bg-slate-800 hover:bg-red-600 text-slate-200 hover:text-white border border-slate-700 hover:border-red-400"
+          >
+            <span>✕</span>
+            <span>Tutup</span>
+          </button>
         </div>
       </div>
 
       {/* SECTION 1: INTERACTIVE BEFORE / AFTER SLIDING CANVAS */}
-      <div className="mb-8">
+      <div className="mb-6">
         {session.simulationImage ? (
           <div className="bg-slate-900/60 border border-cyan-500/30 rounded-3xl p-4 md:p-6 shadow-2xl backdrop-blur-sm">
             <BeforeAfterSlider
@@ -170,17 +313,22 @@ export const SimulationDetailView: React.FC<SimulationDetailViewProps> = ({
         )}
       </div>
 
+      {/* SECTION 1.5: KALKULATOR DOS LARVASID KKM (ABATE 1% SG & BTI) */}
+      <div className="mb-8">
+        <LarvicideCalculatorPanel risks={risks} defaultExpanded={false} />
+      </div>
+
       {/* SECTION 2: EXECUTIVE MITIGATION PLAN (LANGKAH-LANGKAH YANG PERLU DIAMBIL) */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
             <h3 className="text-lg sm:text-xl font-bold font-sci-fi text-white tracking-wide uppercase">
               LANGKAH-LANGKAH KAWALAN & REMEDIASI PREMIS (KKM PROTOKOL)
             </h3>
           </div>
-          <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-1 rounded-full uppercase tracking-wider">
-            STANDARD KESIHATAN AWAM
+          <span className="text-xs font-mono text-emerald-400">
+            Standard Kesihatan Awam
           </span>
         </div>
 

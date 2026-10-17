@@ -62,7 +62,15 @@ export const SimulationResultModal: React.FC<SimulationResultModalProps> = ({
                  <h3 className="text-lg font-sci-fi font-bold text-cyan-400 flex items-center gap-2">
                     <span className="animate-pulse">✨</span> {t('sim_complete')}
                  </h3>
-                 <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-white">✕</button>
+                 <button
+                    onClick={onClose}
+                    title="Tutup Tetingkap"
+                    aria-label="Tutup Tetingkap"
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-red-600 border border-slate-700 hover:border-red-400 rounded-lg transition-colors text-slate-200 hover:text-white font-mono text-xs font-bold flex items-center gap-1.5"
+                 >
+                    <span>✕</span>
+                    <span>TUTUP</span>
+                 </button>
              </div>
              <div className="flex-1 overflow-y-auto relative bg-black/50 p-4 md:p-6 flex flex-col items-center gap-6 custom-scrollbar">
                  {/* Image Container */}

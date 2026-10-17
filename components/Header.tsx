@@ -31,6 +31,25 @@ const Header: React.FC<HeaderProps> = ({
   const { isMobile, isDesktop } = useDeviceDetect();
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [themeMode, setThemeMode] = useState<'cyber' | 'clinical'>(() => {
+    try {
+      return localStorage.getItem('vectorguard_theme') === 'clinical' ? 'clinical' : 'cyber';
+    } catch {
+      return 'cyber';
+    }
+  });
+
+  React.useEffect(() => {
+    const root = document.documentElement;
+    if (themeMode === 'clinical') {
+      root.classList.add('light-clinical');
+    } else {
+      root.classList.remove('light-clinical');
+    }
+    try {
+      localStorage.setItem('vectorguard_theme', themeMode);
+    } catch {}
+  }, [themeMode]);
 
   React.useEffect(() => {
     const handleFullscreenChange = () => {
@@ -86,21 +105,13 @@ const Header: React.FC<HeaderProps> = ({
           
           <div className="flex flex-col justify-center overflow-hidden min-w-0">
             <div className="flex items-center gap-1.5">
-              <h1 className="text-[13px] sm:text-xl md:text-2xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 drop-shadow-sm leading-tight truncate group-hover:from-white group-hover:to-emerald-400 transition-all whitespace-nowrap">
+              <h1 className="text-[14px] sm:text-xl md:text-2xl font-sci-fi font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 drop-shadow-sm leading-tight truncate group-hover:from-white group-hover:to-emerald-400 transition-all whitespace-nowrap">
                 VECTOR<span className="text-slate-100">GUARD</span><span className="hidden sm:inline">.AI</span>
               </h1>
-              
-              {/* Device Mode Badge */}
-              <span 
-                className="text-[9px] font-mono-sci font-bold px-1.5 py-0.5 rounded border border-emerald-500/40 bg-emerald-950/60 text-emerald-400 tracking-wider hidden sm:inline-flex items-center gap-1"
-                title={isMobile ? "Papar Khas Mobil Aktif" : "Papar PC Desktop Aktif"}
-              >
-                {isMobile ? '📱 MOBIL' : '💻 PC'}
-              </span>
             </div>
             <div className="flex items-center gap-1.5 md:gap-2">
-               <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping shrink-0"></span>
-               <p className="text-[9px] md:text-xs text-emerald-500 font-mono-sci tracking-[0.1em] md:tracking-[0.15em] uppercase truncate whitespace-nowrap">
+               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full shrink-0"></span>
+               <p className="text-[9px] md:text-xs text-slate-400 font-mono-sci tracking-[0.08em] md:tracking-[0.12em] uppercase truncate whitespace-nowrap">
                  {t('app_subtitle')}
                </p>
             </div>
@@ -108,34 +119,41 @@ const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Right Controls */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-4 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3.5 shrink-0">
            {/* Arkib & Simulasi Navigation Button */}
            {onGoArchive && (
              <button
                onClick={onGoArchive}
                title="Pangkalan Arkib Analisis & Simulasi Mengikut Tarikh"
-               className={`flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg border font-mono-sci text-xs font-bold transition-all min-h-[36px] sm:min-h-[40px] ${
+               className={`flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-lg border font-mono-sci text-xs font-bold transition-all min-h-[36px] sm:min-h-[40px] ${
                  currentView === 'SIMULATION_ARCHIVE'
-                   ? 'bg-cyan-500 text-slate-950 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)]'
-                   : 'bg-slate-900/90 border-slate-700 text-slate-300 hover:text-cyan-400 hover:border-cyan-500/50'
+                   ? 'bg-cyan-500 text-slate-950 border-cyan-400 shadow-sm'
+                   : 'bg-slate-900/90 border-slate-700 text-slate-200 hover:text-cyan-400 hover:border-cyan-500/50'
                }`}
              >
                <span className="text-sm">🗂️</span>
                <span className="hidden sm:inline">ARKIB TARIKH</span>
                {archiveCount > 0 && (
-                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
-                   currentView === 'SIMULATION_ARCHIVE' ? 'bg-slate-950 text-cyan-300' : 'bg-cyan-950 text-cyan-400 border border-cyan-500/30'
+                 <span className={`text-[10px] font-mono font-bold ${
+                   currentView === 'SIMULATION_ARCHIVE' ? 'text-slate-950' : 'text-cyan-400'
                  }`}>
-                   {archiveCount}
+                   ({archiveCount})
                  </span>
                )}
              </button>
            )}
 
-           {/* Mobile Device Smart Indicator */}
-           <span className="text-[8px] font-mono-sci font-bold px-1 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-400 sm:hidden">
-              {isMobile ? '📱 MOBIL' : '💻 PC'}
-           </span>
+           {/* Theme Mode Toggle: Cyber Dark vs KKM Clinical Light */}
+           <button
+             onClick={() => setThemeMode(prev => prev === 'cyber' ? 'clinical' : 'cyber')}
+             title={themeMode === 'cyber' ? 'Tukar ke Mod Klinikal Cerah (KKM)' : 'Tukar ke Mod Gelap Siber'}
+             className="flex items-center gap-1.5 bg-slate-900 border border-slate-700 hover:border-emerald-500 px-2 py-1.5 sm:px-2.5 md:px-3 rounded transition-colors min-h-[36px] sm:min-h-[40px] text-slate-300 hover:text-emerald-400"
+           >
+             <span className="text-xs sm:text-sm leading-none">{themeMode === 'cyber' ? '☀️' : '🌙'}</span>
+             <span className="text-[10px] md:text-xs font-mono-sci font-bold hidden lg:inline-block leading-none uppercase">
+               {themeMode === 'cyber' ? 'KLINIKAL' : 'SIBER'}
+             </span>
+           </button>
 
            {/* Language Selector */}
            <div className="relative">
@@ -150,7 +168,18 @@ const Header: React.FC<HeaderProps> = ({
               {isLangMenuOpen && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setIsLangMenuOpen(false)}></div>
-                  <div className="absolute right-0 top-full mt-2 w-32 bg-slate-900 border border-emerald-500/30 rounded-lg shadow-xl overflow-hidden z-20 flex flex-col">
+                  <div className="absolute right-0 top-full mt-2 w-36 bg-slate-900 border border-emerald-500/30 rounded-lg shadow-xl overflow-hidden z-20 flex flex-col">
+                      <div className="px-3 py-1.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+                        <span className="text-[9px] font-mono text-slate-400 uppercase tracking-widest">Bahasa</span>
+                        <button
+                          onClick={() => setIsLangMenuOpen(false)}
+                          title="Tutup Menu Bahasa"
+                          aria-label="Tutup Menu Bahasa"
+                          className="w-5 h-5 rounded bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white flex items-center justify-center text-[10px] font-bold transition-colors"
+                        >
+                          ✕
+                        </button>
+                      </div>
                       {languages.map((lang) => (
                         <button 
                           key={lang.code}

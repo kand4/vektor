@@ -182,7 +182,7 @@ ${additionalDirectives ? `6. ARAHAN TAMBAHAN PENGGUNA: ${additionalDirectives}\n
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => {
               setOriginalImage(null);
@@ -203,6 +203,15 @@ ${additionalDirectives ? `6. ARAHAN TAMBAHAN PENGGUNA: ${additionalDirectives}\n
             }`}
           >
             💾 Simpan Rekod
+          </button>
+          <button
+            onClick={onBack}
+            title="Tutup Halaman Simulasi Manual"
+            aria-label="Tutup Halaman Simulasi Manual"
+            className="px-3.5 py-2.5 rounded-lg text-xs font-mono font-bold uppercase bg-slate-800 hover:bg-red-600 border border-slate-700 hover:border-red-400 text-slate-200 hover:text-white transition-all flex items-center gap-1.5"
+          >
+            <span>✕</span>
+            <span>TUTUP</span>
           </button>
         </div>
       </div>

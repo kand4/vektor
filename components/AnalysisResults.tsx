@@ -12,6 +12,10 @@ import { ManualSimulationModal } from './Modals/ManualSimulationModal';
 import { ExportModal } from './Modals/ExportModal';
 import { DualScoreCard } from './DualScoreCard';
 import { BeforeAfterSlider } from './ArchivePage/BeforeAfterSlider';
+import { generateAndDownloadPoster } from '../utils/posterGenerator';
+import { ComplianceAuditModal } from './Modals/ComplianceAuditModal';
+import { LarvicideCalculatorPanel } from './LarvicideCalculatorPanel';
+import { ComplianceAuditResult } from '../types';
 
 const getRiskColorParams = (category: RiskCategory) => {
   switch (category) {
@@ -65,6 +69,7 @@ interface AnalysisResultsProps {
   onDeleteSession?: () => void;
   onAnalyzeGeneratedImage?: (imageUrl: string, bypassJson?: string) => void;
   onOpenBypass?: () => void;
+  onClose?: () => void;
 }
 
 export const AnalysisResults: React.FC<AnalysisResultsProps> = ({ 
@@ -76,7 +81,8 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     onUpdateResult,
     onDeleteSession,
     onAnalyzeGeneratedImage,
-    onOpenBypass
+    onOpenBypass,
+    onClose
 }) => {
   const [activeRisk, setActiveRisk] = useState<RiskDetection | null>(null);
   
@@ -109,6 +115,49 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
   const [isPrinting, setIsPrinting] = useState(false);
   const [displayThreshold, setDisplayThreshold] = useState(100); // 0-100 threshold
+  const [showAuditModal, setShowAuditModal] = useState(false);
+  const [isGeneratingPoster, setIsGeneratingPoster] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+
+  const handleDownloadPoster = async () => {
+    setShowShareMenu(false);
+    setIsGeneratingPoster(true);
+    try {
+      const cur = allSessions?.find(s => s.imageSrc === imageSrc || s.simulationImage === savedSimulationImage);
+      await generateAndDownloadPoster({
+        sessionId: cur?.id,
+        fileName: cur?.fileName || 'Pemeriksaan_KKM',
+        originalImageSrc: imageSrc,
+        simulationImageSrc: activeCleanImage,
+        result
+      });
+      setToastMsg({ msg: 'Poster Infografik PNG berjaya dimuat turun! Sedia dihantar ke WhatsApp / Telegram.', type: 'success' });
+    } catch {
+      setToastMsg({ msg: 'Gagal menjana poster PNG. Sila cuba lagi.', type: 'error' });
+    } finally {
+      setIsGeneratingPoster(false);
+    }
+  };
+
+  const handleCopySessionLink = () => {
+    setShowShareMenu(false);
+    const cur = allSessions?.find(s => s.imageSrc === imageSrc || s.simulationImage === savedSimulationImage);
+    const url = cur?.id
+      ? `${window.location.origin}${window.location.pathname}?session=${encodeURIComponent(cur.id)}`
+      : window.location.href;
+    navigator.clipboard.writeText(url);
+    setToastMsg({ msg: 'Pautan langsung sesi disalin ke papan keratan!', type: 'success' });
+  };
+
+  const handleSaveAudit = (auditResult: ComplianceAuditResult) => {
+    if (onUpdateResult) {
+      onUpdateResult({
+        ...result,
+        complianceAudit: auditResult
+      });
+    }
+    setToastMsg({ msg: `Audit Pematuhan Selesai: Skor ${auditResult.complianceScore}% (${auditResult.verdict})`, type: 'success' });
+  };
 
   // Reference for scrolling
   const detailsPanelRef = useRef<HTMLDivElement>(null);
@@ -500,6 +549,7 @@ ${textPrompt}`;
              <SimulationResultModal isOpen={showCleanModal} onClose={() => setShowCleanModal(false)} originalImage={imageSrc} generatedImages={cleanImages} generatedPrompt={generatedSimPrompt} onRegenerate={handleRegenerateSimulation} onManualFallback={handleManualFallback} onAnalyzeSimulation={onAnalyzeGeneratedImage} />
              <ManualSimulationModal isOpen={showManualSimModal} onClose={() => setShowManualSimModal(false)} promptText={manualSimPrompt} onImagePasted={handleManualSimulationPasted} />
              <ExportModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} sessions={allSessions} />
+             <ComplianceAuditModal isOpen={showAuditModal} onClose={() => setShowAuditModal(false)} originalImageSrc={imageSrc} detectedRisks={currentRisks} existingAudit={result.complianceAudit} onSaveAudit={handleSaveAudit} language={language} />
              
              {/* THE HIDDEN PRINT MODULE */}
              <PrintLayout sessions={allSessions.map(session => {
@@ -549,17 +599,30 @@ ${textPrompt}`;
 
              <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4 md:mb-6">
                 <h2 className="text-2xl font-bold text-blue-400 font-sci-fi">LAPORAN PEMERIKSAAN KKM</h2>
-                {allSessions.length > 1 && (
-                    <div className="bg-blue-900/40 border border-blue-500/50 px-4 py-2 rounded flex items-center gap-3 shadow-lg">
-                        <div className="flex flex-col items-end">
-                            <span className="text-[10px] text-blue-300 font-bold uppercase tracking-tighter">SKOR KUMULATIF ({validSessions.length})</span>
-                            <span className="text-sm font-sci-fi font-bold text-white">{avgHygiene.toFixed(1)} / 5.0</span>
+                <div className="flex items-center gap-3">
+                    {allSessions.length > 1 && (
+                        <div className="bg-blue-900/40 border border-blue-500/50 px-4 py-2 rounded flex items-center gap-3 shadow-lg">
+                            <div className="flex flex-col items-end">
+                                <span className="text-[10px] text-blue-300 font-bold uppercase tracking-tighter">SKOR KUMULATIF ({validSessions.length})</span>
+                                <span className="text-sm font-sci-fi font-bold text-white">{avgHygiene.toFixed(1)} / 5.0</span>
+                            </div>
+                            <div className={`w-8 h-8 rounded border-2 flex items-center justify-center font-bold text-sm ${avgHygiene <= 2.5 ? 'border-emerald-500 text-emerald-400' : avgHygiene <= 3.5 ? 'border-yellow-500 text-yellow-400' : 'border-red-500 text-red-500'}`}>
+                                {avgHygiene <= 1.5 ? 'A' : avgHygiene <= 2.5 ? 'B' : avgHygiene <= 3.5 ? 'C' : avgHygiene <= 4.5 ? 'D' : 'E'}
+                            </div>
                         </div>
-                        <div className={`w-8 h-8 rounded border-2 flex items-center justify-center font-bold text-sm ${avgHygiene <= 2.5 ? 'border-emerald-500 text-emerald-400' : avgHygiene <= 3.5 ? 'border-yellow-500 text-yellow-400' : 'border-red-500 text-red-500'}`}>
-                            {avgHygiene <= 1.5 ? 'A' : avgHygiene <= 2.5 ? 'B' : avgHygiene <= 3.5 ? 'C' : avgHygiene <= 4.5 ? 'D' : 'E'}
-                        </div>
-                    </div>
-                )}
+                    )}
+                    {onClose && (
+                        <button
+                            onClick={onClose}
+                            title="Tutup Paparan Laporan"
+                            aria-label="Tutup Paparan Laporan"
+                            className="no-print px-3.5 py-2 bg-slate-800 hover:bg-red-600 border border-slate-700 hover:border-red-400 rounded-lg text-slate-200 hover:text-white font-mono text-xs font-bold transition-all flex items-center gap-1.5 shadow-md"
+                        >
+                            <span>✕</span>
+                            <span>TUTUP</span>
+                        </button>
+                    )}
+                </div>
              </div>
 
              <div className="flex flex-col gap-6">
@@ -649,8 +712,9 @@ ${textPrompt}`;
                                     </div>
                                 </div>
 
-                                {/* Actions Section */}
-                                <div className="flex flex-wrap items-center gap-2">
+                                {/* 2-Hierarchy Action Bar (KKM Mode) */}
+                                <div className="flex flex-wrap items-center gap-2 relative">
+                                     {/* 1. Primary Action: AI Simulation */}
                                      <button onClick={handleOpenSimulation} disabled={isCleaning} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-600 hover:border-cyan-500 hover:shadow-[0_0_15px_rgba(34,211,238,0.2)] rounded-lg text-xs font-bold uppercase transition-all disabled:opacity-50 text-white group">
                                          {isCleaning ? <span className="animate-pulse">SIMULATING...</span> : (
                                             <>
@@ -662,33 +726,116 @@ ${textPrompt}`;
                                          )}
                                      </button>
 
-                                     {/* Share / Export to Telegram & Telegraph */}
+                                     {/* 2. Primary Action: Audit Pematuhan Selepas Dicuci */}
                                      <button
-                                         onClick={() => setShowExportModal(true)}
-                                         className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-sky-900/60 to-blue-900/60 border border-sky-500/50 hover:border-sky-400 hover:shadow-[0_0_15px_rgba(56,189,248,0.3)] rounded-lg text-xs font-bold uppercase transition-all text-sky-200 hover:text-white group"
-                                         title="Hantar dan kongsi laporan ke Telegram & Telegraph"
+                                         onClick={() => setShowAuditModal(true)}
+                                         className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 rounded-lg text-xs font-bold uppercase transition-all text-emerald-300"
+                                         title="Bandingkan Gambar Asal vs Gambar Sebenar Selepas Dicuci"
                                      >
-                                         <span className="text-sm group-hover:scale-110 transition-transform">✈️</span>
-                                         <span>{t('btn_export') || 'KONGSI KE TELEGRAM & TELEGRAPH'}</span>
+                                         <span>✅</span>
+                                         <span>
+                                           {result.complianceAudit
+                                             ? `AUDIT (${result.complianceAudit.complianceScore}%)`
+                                             : 'AUDIT PEMATUHAN'}
+                                         </span>
                                      </button>
 
-                                     {/* Print PDF Button */}
+                                     {/* 3. Primary Action: Print PDF */}
                                      <button
                                          onClick={handlePrint}
-                                         className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-slate-850 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-xs font-bold uppercase transition-all text-slate-200"
-                                         title="Cetak atau Muat Turun PDF"
+                                         className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-xs font-bold uppercase transition-all text-slate-200"
+                                         title="Cetak atau Muat Turun Laporan Rasmi PDF"
                                      >
                                          <span>🖨️</span>
-                                         <span className="hidden sm:inline">CETAK PDF</span>
+                                         <span>CETAK PDF</span>
                                      </button>
+
+                                     {/* 4. Unified Export & Share Dropdown */}
+                                     <div className="relative">
+                                         <button
+                                             onClick={() => setShowShareMenu(prev => !prev)}
+                                             className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-sky-950/80 hover:bg-sky-900 border border-sky-500/50 rounded-lg text-xs font-bold uppercase transition-all text-sky-200"
+                                             title="Menu Eksport Poster PNG, Telegram & Pautan Sesi"
+                                         >
+                                             <span>📤</span>
+                                             <span>{isGeneratingPoster ? 'MENJANA...' : 'EKSPORT & KONGSI'}</span>
+                                             <span className="text-[10px] opacity-80">▾</span>
+                                         </button>
+
+                                         {showShareMenu && (
+                                             <>
+                                                 <div className="fixed inset-0 z-30" onClick={() => setShowShareMenu(false)}></div>
+                                                 <div className="absolute right-0 bottom-full mb-2 w-64 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden z-40 py-1.5 text-left animate-fade-in">
+                                                     <div className="px-3 py-1.5 border-b border-slate-800 flex items-center justify-between">
+                                                         <span className="text-[10px] font-mono-sci uppercase tracking-widest text-slate-400">
+                                                             Saluran Eksport & Perkongsian
+                                                         </span>
+                                                         <button
+                                                             onClick={() => setShowShareMenu(false)}
+                                                             title="Tutup Menu"
+                                                             aria-label="Tutup Menu"
+                                                             className="w-5 h-5 rounded bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white flex items-center justify-center text-[10px] font-bold transition-colors"
+                                                         >
+                                                             ✕
+                                                         </button>
+                                                     </div>
+                                                     <button
+                                                         onClick={handleDownloadPoster}
+                                                         disabled={isGeneratingPoster}
+                                                         className="w-full px-3.5 py-2.5 text-xs font-bold text-slate-200 hover:bg-slate-800 flex items-center gap-2.5 transition-colors"
+                                                     >
+                                                         <span>🖼️</span>
+                                                         <div className="flex flex-col">
+                                                             <span>Muat Turun Poster (PNG)</span>
+                                                             <span className="text-[10px] font-normal text-slate-400">Infografik resolusi tinggi WhatsApp</span>
+                                                         </div>
+                                                     </button>
+                                                     <button
+                                                         onClick={() => { setShowShareMenu(false); setShowExportModal(true); }}
+                                                         className="w-full px-3.5 py-2.5 text-xs font-bold text-sky-300 hover:bg-slate-800 flex items-center gap-2.5 transition-colors"
+                                                     >
+                                                         <span>✈️</span>
+                                                         <div className="flex flex-col">
+                                                             <span>Telegram & Telegraph</span>
+                                                             <span className="text-[10px] font-normal text-slate-400">Hantar laporan rasmi ke saluran bot</span>
+                                                         </div>
+                                                     </button>
+                                                     <button
+                                                         onClick={handleCopySessionLink}
+                                                         className="w-full px-3.5 py-2.5 text-xs font-bold text-emerald-300 hover:bg-slate-800 flex items-center gap-2.5 transition-colors border-t border-slate-800/80"
+                                                     >
+                                                         <span>🔗</span>
+                                                         <div className="flex flex-col">
+                                                             <span>Salin Pautan Sesi Awan</span>
+                                                             <span className="text-[10px] font-normal text-slate-400">Buka rekod ini pada peranti lain</span>
+                                                         </div>
+                                                     </button>
+                                                 </div>
+                                             </>
+                                         )}
+                                     </div>
                                 </div>
+                            </div>
+
+                            <div className="p-3 border-t border-slate-800 bg-slate-950">
+                                <LarvicideCalculatorPanel risks={currentRisks} />
                             </div>
                             
                             {activeRisk && (
-                                <div ref={detailsPanelRef} className="p-6 bg-slate-950 border-t border-slate-700 space-y-5 scroll-mt-24">
-                                    <div>
-                                        <h4 className="text-emerald-400 font-extrabold text-sm font-sci-fi uppercase mb-2 tracking-wider">{t('label_analysis') || 'ANALISIS KESELAMATAN & KESIHATAN MAKANAN'}</h4>
-                                        <p className="text-slate-100 text-base md:text-lg leading-relaxed font-normal">{activeRisk.description}</p>
+                                <div ref={detailsPanelRef} className="p-6 bg-slate-950 border-t border-slate-700 space-y-5 scroll-mt-24 relative">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <h4 className="text-emerald-400 font-extrabold text-sm font-sci-fi uppercase mb-2 tracking-wider">{t('label_analysis') || 'ANALISIS KESELAMATAN & KESIHATAN MAKANAN'}</h4>
+                                            <p className="text-slate-100 text-base md:text-lg leading-relaxed font-normal">{activeRisk.description}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => setActiveRisk(null)}
+                                            title="Tutup Butiran Risiko"
+                                            aria-label="Tutup Butiran Risiko"
+                                            className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white flex items-center justify-center border border-slate-700 transition-colors font-bold text-xs shrink-0"
+                                        >
+                                            ✕
+                                        </button>
                                     </div>
                                     
                                     {(activeRisk.agent || activeRisk.microbiology || activeRisk.disease) && (
@@ -843,6 +990,7 @@ ${textPrompt}`;
       <SimulationResultModal isOpen={showCleanModal} onClose={() => setShowCleanModal(false)} originalImage={imageSrc} generatedImages={cleanImages} generatedPrompt={generatedSimPrompt} onRegenerate={handleRegenerateSimulation} onManualFallback={handleManualFallback} onAnalyzeSimulation={onAnalyzeGeneratedImage} />
       <ManualSimulationModal isOpen={showManualSimModal} onClose={() => setShowManualSimModal(false)} promptText={manualSimPrompt} onImagePasted={handleManualSimulationPasted} />
       <ExportModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} sessions={allSessions} />
+      <ComplianceAuditModal isOpen={showAuditModal} onClose={() => setShowAuditModal(false)} originalImageSrc={imageSrc} detectedRisks={currentRisks} existingAudit={result.complianceAudit} onSaveAudit={handleSaveAudit} language={language} />
       
       {/* THE HIDDEN PRINT MODULE */}
       <PrintLayout sessions={allSessions} />
@@ -941,14 +1089,27 @@ ${textPrompt}`;
                         <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center font-bold text-sm md:text-base border ${result.safetyLevel <= 2 ? 'border-blue-500 text-blue-400 bg-blue-950/30' : result.safetyLevel === 3 ? 'border-yellow-500 text-yellow-400 bg-yellow-950/30' : 'border-orange-500 text-orange-500 bg-orange-950/30'}`}>{result.safetyLevel || result.hygieneLevel}</div>
                     </div>
                  </div>
-                 {result.sensitivityUsed && (
-                    <div className="flex items-center gap-3">
-                       <span className="text-[10px] md:text-xs text-slate-500 font-mono-sci uppercase">{t('label_sensitivity')}</span>
-                       <span className={`text-[10px] md:text-xs px-2 py-1 rounded border font-bold ${result.sensitivityUsed === 'EXTREME' ? 'border-red-500 text-red-400 bg-red-950/30' : result.sensitivityUsed === 'HIGH' ? 'border-orange-500 text-orange-400 bg-orange-950/30' : 'border-slate-500 text-slate-400 bg-slate-900'}`}>
-                          {result.sensitivityUsed}
-                       </span>
-                    </div>
-                 )}
+                 <div className="flex items-center gap-3">
+                    {result.sensitivityUsed && (
+                       <div className="flex items-center gap-2">
+                          <span className="text-[10px] md:text-xs text-slate-500 font-mono-sci uppercase">{t('label_sensitivity')}</span>
+                          <span className={`text-[10px] md:text-xs px-2 py-1 rounded border font-bold ${result.sensitivityUsed === 'EXTREME' ? 'border-red-500 text-red-400 bg-red-950/30' : result.sensitivityUsed === 'HIGH' ? 'border-orange-500 text-orange-400 bg-orange-950/30' : 'border-slate-500 text-slate-400 bg-slate-900'}`}>
+                             {result.sensitivityUsed}
+                          </span>
+                       </div>
+                    )}
+                    {onClose && (
+                       <button
+                          onClick={onClose}
+                          title="Tutup Paparan Analisis"
+                          aria-label="Tutup Paparan Analisis"
+                          className="px-3 py-1.5 bg-slate-800 hover:bg-red-600 border border-slate-700 hover:border-red-400 rounded-lg text-slate-200 hover:text-white font-mono text-xs font-bold transition-all flex items-center gap-1.5"
+                       >
+                          <span>✕</span>
+                          <span>TUTUP</span>
+                       </button>
+                    )}
+                 </div>
             </div>
 
             {/* Direct Image Presentation (Before/After Slider or Annotator) */}
@@ -1006,9 +1167,9 @@ ${textPrompt}`;
                         </div>
                     </div>
 
-                    {/* Quick Action Toolbar: Simulation, Telegram/Telegraph, Print */}
-                    <div className="mt-3 pt-3 border-t border-slate-800/80 flex flex-wrap items-center gap-2">
-                        {/* Simulation Button */}
+                    {/* 2-Hierarchy Action Toolbar (Standard Mode) */}
+                    <div className="mt-3 pt-3 border-t border-slate-800/80 flex flex-wrap items-center gap-2 relative">
+                        {/* 1. Primary Action: Simulation Button */}
                         <button
                             onClick={handleOpenSimulation}
                             disabled={isCleaning}
@@ -1026,28 +1187,100 @@ ${textPrompt}`;
                             )}
                         </button>
 
-                        {/* Export / Share to Telegram & Telegraph */}
+                        {/* 2. Primary Action: Audit Pematuhan Selepas Dicuci */}
                         <button
-                            onClick={() => setShowExportModal(true)}
-                            className="flex-1 min-w-[170px] flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-sky-900/50 to-blue-900/50 border border-sky-500/50 hover:border-sky-400 hover:shadow-[0_0_15px_rgba(56,189,248,0.3)] rounded-lg text-xs font-bold uppercase transition-all text-sky-200 hover:text-white group"
-                            title="Kongsi laporan ke Telegram & Telegraph"
+                            onClick={() => setShowAuditModal(true)}
+                            className="flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 rounded-lg text-xs font-bold uppercase transition-all text-emerald-300"
+                            title="Bandingkan Gambar Asal vs Gambar Sebenar Selepas Dicuci"
                         >
-                            <span className="text-sm group-hover:scale-110 transition-transform">✈️</span>
-                            <span>{t('btn_export') || 'KONGSI KE TELEGRAM & TELEGRAPH'}</span>
+                            <span>✅</span>
+                            <span>
+                              {result.complianceAudit
+                                ? `AUDIT (${result.complianceAudit.complianceScore}%)`
+                                : 'AUDIT PEMATUHAN'}
+                            </span>
                         </button>
 
-                        {/* Print PDF Button */}
+                        {/* 3. Primary Action: Print PDF Button */}
                         <button
                             onClick={handlePrint}
                             className="flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-xs font-bold uppercase transition-all text-slate-200"
                             title="Cetak atau Muat Turun PDF"
                         >
                             <span>🖨️</span>
-                            <span className="hidden sm:inline">CETAK PDF</span>
+                            <span>CETAK PDF</span>
                         </button>
+
+                        {/* 4. Unified Export & Share Dropdown */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowShareMenu(prev => !prev)}
+                                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-sky-950/80 hover:bg-sky-900 border border-sky-500/50 rounded-lg text-xs font-bold uppercase transition-all text-sky-200"
+                                title="Menu Eksport Poster PNG, Telegram & Pautan Sesi"
+                            >
+                                <span>📤</span>
+                                <span>{isGeneratingPoster ? 'MENJANA...' : 'EKSPORT & KONGSI'}</span>
+                                <span className="text-[10px] opacity-80">▾</span>
+                            </button>
+
+                            {showShareMenu && (
+                                <>
+                                    <div className="fixed inset-0 z-30" onClick={() => setShowShareMenu(false)}></div>
+                                    <div className="absolute right-0 bottom-full mb-2 w-64 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden z-40 py-1.5 text-left animate-fade-in">
+                                        <div className="px-3 py-1.5 border-b border-slate-800 flex items-center justify-between">
+                                            <span className="text-[10px] font-mono-sci uppercase tracking-widest text-slate-400">
+                                                Saluran Eksport & Perkongsian
+                                            </span>
+                                            <button
+                                                onClick={() => setShowShareMenu(false)}
+                                                title="Tutup Menu"
+                                                aria-label="Tutup Menu"
+                                                className="w-5 h-5 rounded bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white flex items-center justify-center text-[10px] font-bold transition-colors"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                        <button
+                                            onClick={handleDownloadPoster}
+                                            disabled={isGeneratingPoster}
+                                            className="w-full px-3.5 py-2.5 text-xs font-bold text-slate-200 hover:bg-slate-800 flex items-center gap-2.5 transition-colors"
+                                        >
+                                            <span>🖼️</span>
+                                            <div className="flex flex-col">
+                                                <span>Muat Turun Poster (PNG)</span>
+                                                <span className="text-[10px] font-normal text-slate-400">Infografik resolusi tinggi WhatsApp</span>
+                                            </div>
+                                        </button>
+                                        <button
+                                            onClick={() => { setShowShareMenu(false); setShowExportModal(true); }}
+                                            className="w-full px-3.5 py-2.5 text-xs font-bold text-sky-300 hover:bg-slate-800 flex items-center gap-2.5 transition-colors"
+                                        >
+                                            <span>✈️</span>
+                                            <div className="flex flex-col">
+                                                <span>Telegram & Telegraph</span>
+                                                <span className="text-[10px] font-normal text-slate-400">Hantar laporan rasmi ke saluran bot</span>
+                                            </div>
+                                        </button>
+                                        <button
+                                            onClick={handleCopySessionLink}
+                                            className="w-full px-3.5 py-2.5 text-xs font-bold text-emerald-300 hover:bg-slate-800 flex items-center gap-2.5 transition-colors border-t border-slate-800/80"
+                                        >
+                                            <span>🔗</span>
+                                            <div className="flex flex-col">
+                                                <span>Salin Pautan Sesi Awan</span>
+                                                <span className="text-[10px] font-normal text-slate-400">Buka rekod ini pada peranti lain</span>
+                                            </div>
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
+
+            {/* KALKULATOR DOS LARVASID KKM (ABATE 1% SG & BTI) */}
+            <LarvicideCalculatorPanel risks={currentRisks} />
 
             <div className="grid grid-cols-1 gap-4 mt-4">
               {/* Only show lists if risks exist */}
@@ -1097,9 +1330,20 @@ ${textPrompt}`;
                 <div className={`relative flex-1 bg-slate-900/90 border border-slate-700 rounded-xl p-6 md:p-8 backdrop-blur-md shadow-2xl overflow-hidden flex flex-col transition-all duration-500`}>
                     <div className="relative z-10 flex-1 flex flex-col">
                         <div className="mb-6 md:mb-8 border-b border-slate-700/50 pb-6">
-                            <div className="flex items-center gap-3 mb-3">
-                                <span className={`px-2 py-0.5 rounded text-[10px] md:text-xs font-bold font-mono-sci uppercase tracking-widest ${activeRisk.category === 'HYGIENE' ? 'bg-amber-500 text-black' : activeRisk.category === 'SAFETY' ? 'bg-indigo-500 text-white' : 'bg-red-600 text-white'}`}>{activeRisk.category} {t('label_threat')}</span>
-                                <span className="text-slate-500 text-[10px] md:text-xs font-mono-sci">#{getRiskIndex(activeRisk).toString().padStart(2, '0')}</span>
+                            <div className="flex items-center justify-between gap-3 mb-3">
+                                <div className="flex items-center gap-3">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] md:text-xs font-bold font-mono-sci uppercase tracking-widest ${activeRisk.category === 'HYGIENE' ? 'bg-amber-500 text-black' : activeRisk.category === 'SAFETY' ? 'bg-indigo-500 text-white' : 'bg-red-600 text-white'}`}>{activeRisk.category} {t('label_threat')}</span>
+                                    <span className="text-slate-500 text-[10px] md:text-xs font-mono-sci">#{getRiskIndex(activeRisk).toString().padStart(2, '0')}</span>
+                                </div>
+                                <button
+                                    onClick={() => setActiveRisk(null)}
+                                    title="Tutup Tetingkap Butiran Risiko"
+                                    aria-label="Tutup Tetingkap Butiran Risiko"
+                                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white border border-slate-700 hover:border-red-400 font-mono text-xs font-bold transition-colors flex items-center gap-1"
+                                >
+                                    <span>✕</span>
+                                    <span>TUTUP</span>
+                                </button>
                             </div>
                             <h2 className="text-2xl md:text-3xl lg:text-4xl font-sci-fi font-bold text-white mb-2 leading-tight break-words">{activeRisk.label}</h2>
                             <div className="mt-2"><h3 className="text-slate-400 text-[10px] md:text-xs font-mono-sci tracking-widest uppercase mb-1">{t('label_agent')}</h3><p className="text-lg md:text-xl lg:text-2xl text-emerald-400 font-mono-sci italic break-words leading-tight">{activeRisk.agent}</p></div>

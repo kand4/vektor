@@ -20,7 +20,11 @@ interface Prediction {
     isRelative?: boolean;
 }
 
-const LarvaeScanner: React.FC = () => {
+interface LarvaeScannerProps {
+    onClose?: () => void;
+}
+
+const LarvaeScanner: React.FC<LarvaeScannerProps> = ({ onClose }) => {
     const { t, language } = useLanguage();
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [predictions, setPredictions] = useState<Prediction[] | null>(null);
@@ -199,6 +203,17 @@ const LarvaeScanner: React.FC = () => {
                                 <span className="text-[10px] uppercase tracking-widest text-slate-400">STATUS:</span>
                                 <span className="text-white text-base font-black">{predictions.length} LARVA DIKESAN</span>
                             </div>
+                        )}
+                        {onClose && (
+                            <button
+                                onClick={onClose}
+                                title="Tutup Tetingkap Pengimbas Larva"
+                                aria-label="Tutup Tetingkap Pengimbas Larva"
+                                className="px-3.5 py-2.5 bg-slate-800 hover:bg-red-600 border border-slate-700 hover:border-red-400 rounded-xl text-slate-200 hover:text-white font-mono text-xs font-bold transition-all flex items-center gap-1.5 shadow-md"
+                            >
+                                <span>✕</span>
+                                <span>TUTUP</span>
+                            </button>
                         )}
                     </div>
                 </div>

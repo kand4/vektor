@@ -30,9 +30,19 @@ export const SimulationConfigModal: React.FC<SimulationConfigModalProps> = ({ is
   return (
     <div className="fixed inset-0 z-[160] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in no-print">
         <div className="bg-slate-900 border border-cyan-500 rounded-xl p-6 w-full max-w-lg shadow-[0_0_50px_rgba(34,211,238,0.3)] max-h-[90vh] overflow-y-auto custom-scrollbar">
-            <h3 className="text-xl font-sci-fi font-bold text-white mb-6 flex items-center gap-2">
-               <span className="text-cyan-400">🧬 {t('sim_title')}</span>
-            </h3>
+            <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-3">
+               <h3 className="text-xl font-sci-fi font-bold text-white flex items-center gap-2">
+                  <span className="text-cyan-400">🧬 {t('sim_title')}</span>
+               </h3>
+               <button
+                  onClick={onClose}
+                  title="Tutup Tetingkap"
+                  aria-label="Tutup Tetingkap"
+                  className="w-9 h-9 rounded-lg bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white flex items-center justify-center border border-slate-700 transition-colors font-bold text-sm shrink-0"
+               >
+                  ✕
+               </button>
+            </div>
 
             <div className="space-y-6">
                 <div>

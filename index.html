@@ -52,6 +52,102 @@
         box-shadow: 0 0 10px #10b981;
       }
 
+      /* ======================================================================
+         MOD KLINIKAL CERAH (KKM INSTITUTIONAL LIGHT MODE)
+         Diaktifkan apabila html mempunyai kelas .light-clinical
+         ====================================================================== */
+      html.light-clinical body {
+        background-color: #f1f5f9 !important;
+        color: #0f172a !important;
+      }
+      html.light-clinical ::-webkit-scrollbar-track {
+        background: #e2e8f0;
+      }
+      html.light-clinical ::-webkit-scrollbar-thumb {
+        background: #94a3b8;
+        border: 1px solid #cbd5e1;
+      }
+      html.light-clinical .bg-slate-950,
+      html.light-clinical .bg-slate-950\/95,
+      html.light-clinical .bg-slate-950\/90,
+      html.light-clinical .bg-slate-950\/80,
+      html.light-clinical .bg-slate-950\/60,
+      html.light-clinical .bg-slate-950\/50 {
+        background-color: rgba(255, 255, 255, 0.96) !important;
+      }
+      html.light-clinical .bg-slate-900,
+      html.light-clinical .bg-slate-900\/95,
+      html.light-clinical .bg-slate-900\/90,
+      html.light-clinical .bg-slate-900\/80,
+      html.light-clinical .bg-slate-900\/70,
+      html.light-clinical .bg-slate-900\/60,
+      html.light-clinical .bg-slate-900\/50,
+      html.light-clinical .bg-slate-900\/40 {
+        background-color: #ffffff !important;
+        box-shadow: 0 4px 16px -4px rgba(15, 23, 42, 0.06) !important;
+      }
+      html.light-clinical .bg-slate-800,
+      html.light-clinical .bg-slate-800\/90,
+      html.light-clinical .bg-slate-800\/80,
+      html.light-clinical .bg-slate-800\/60 {
+        background-color: #f1f5f9 !important;
+      }
+      html.light-clinical .border-slate-800,
+      html.light-clinical .border-slate-800\/80,
+      html.light-clinical .border-slate-700,
+      html.light-clinical .border-slate-700\/50,
+      html.light-clinical .border-slate-600 {
+        border-color: #cbd5e1 !important;
+      }
+      html.light-clinical .text-white,
+      html.light-clinical .text-slate-100,
+      html.light-clinical .text-slate-200 {
+        color: #0f172a !important;
+      }
+      html.light-clinical .text-slate-300 {
+        color: #334155 !important;
+      }
+      html.light-clinical .text-slate-400,
+      html.light-clinical .text-slate-500 {
+        color: #475569 !important;
+      }
+      html.light-clinical .text-emerald-400,
+      html.light-clinical .text-emerald-300 {
+        color: #047857 !important;
+      }
+      html.light-clinical .text-cyan-400,
+      html.light-clinical .text-cyan-300 {
+        color: #0369a1 !important;
+      }
+      html.light-clinical .bg-emerald-950\/80,
+      html.light-clinical .bg-emerald-950\/60,
+      html.light-clinical .bg-emerald-950\/40,
+      html.light-clinical .bg-emerald-950\/30 {
+        background-color: #ecfdf5 !important;
+      }
+      html.light-clinical .bg-cyan-950\/80,
+      html.light-clinical .bg-cyan-950\/60,
+      html.light-clinical .bg-cyan-950\/40,
+      html.light-clinical .bg-cyan-950\/30 {
+        background-color: #f0f9ff !important;
+      }
+      /* Preserve white text on solid accent buttons in Clinical Light Mode */
+      html.light-clinical .bg-emerald-600,
+      html.light-clinical .bg-emerald-500,
+      html.light-clinical .bg-cyan-600,
+      html.light-clinical .bg-cyan-500,
+      html.light-clinical .bg-blue-600,
+      html.light-clinical .bg-red-600,
+      html.light-clinical .bg-amber-600 {
+        color: #ffffff !important;
+      }
+      html.light-clinical .bg-emerald-600 span,
+      html.light-clinical .bg-cyan-600 span,
+      html.light-clinical .bg-blue-600 span,
+      html.light-clinical .bg-red-600 span {
+        color: #ffffff !important;
+      }
+
       /* Animations */
       @keyframes float {
         0% { transform: translate(0, 0) rotate(0deg); }

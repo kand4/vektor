@@ -1585,13 +1585,23 @@ Format maklum balas WAJIB mengikut struktur JSON ini sahaja tanpa sebarang penje
             <h4 className="text-xl font-sci-fi font-bold text-white uppercase tracking-wider">
               {isMalay ? selectedSpot.name : selectedSpot.nameEn}
             </h4>
-            <span className={`font-mono text-[9px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0 transition border ${
-              isFound 
-                ? 'bg-emerald-950/50 border-emerald-500/30 text-emerald-400' 
-                : 'bg-red-950/50 border-red-500/30 text-red-400'
-            }`}>
-              {isMalay ? selectedSpot.disease : selectedSpot.diseaseEn}
-            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className={`font-mono text-[9px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0 transition border ${
+                isFound 
+                  ? 'bg-emerald-950/50 border-emerald-500/30 text-emerald-400' 
+                  : 'bg-red-950/50 border-red-500/30 text-red-400'
+              }`}>
+                {isMalay ? selectedSpot.disease : selectedSpot.diseaseEn}
+              </span>
+              <button
+                onClick={() => setSelectedSpot(null)}
+                title="Tutup Kad Maklumat"
+                aria-label="Tutup Kad Maklumat"
+                className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white flex items-center justify-center border border-slate-700 transition-colors text-xs font-bold"
+              >
+                ✕
+              </button>
+            </div>
           </div>
           <p className="text-[10px] text-amber-400 font-mono tracking-widest mt-1 uppercase flex items-center gap-1">
             <span>💀</span> {isMalay ? selectedSpot.hazard : selectedSpot.hazardEn}
@@ -1697,7 +1707,15 @@ Format maklum balas WAJIB mengikut struktur JSON ini sahaja tanpa sebarang penje
       
       {showSessionPrompt && sessionScenes.length > 0 && (
         <div className="absolute inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md rounded-3xl">
-           <div className="bg-slate-900 border border-emerald-500/50 p-6 sm:p-8 rounded-3xl max-w-xl text-center shadow-[0_0_50px_rgba(16,185,129,0.3)] animate-fade-in-up">
+           <div className="bg-slate-900 border border-emerald-500/50 p-6 sm:p-8 rounded-3xl max-w-xl text-center shadow-[0_0_50px_rgba(16,185,129,0.3)] animate-fade-in-up relative">
+             <button
+               onClick={() => setShowSessionPrompt(false)}
+               title="Tutup Tetingkap"
+               aria-label="Tutup Tetingkap"
+               className="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white flex items-center justify-center border border-slate-700 transition-colors font-bold text-sm"
+             >
+               ✕
+             </button>
              <div className="text-5xl mb-4 animate-bounce">🗂️</div>
              <h3 className="text-xl sm:text-2xl font-sci-fi font-bold text-emerald-400 mb-2 uppercase tracking-wide">
                 {isMalay ? 'KES DARI PAPAN BUKTI DIKESAN' : 'EVIDENCE BOARD SCANS DETECTED'}
@@ -2143,6 +2161,14 @@ Format maklum balas WAJIB mengikut struktur JSON ini sahaja tanpa sebarang penje
                   animate={{ opacity: 1, y: 0 }}
                   className="bg-emerald-950/45 border border-emerald-500 rounded-3xl p-5 text-center text-slate-100 flex flex-col items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.25)] relative overflow-hidden"
                 >
+                  <button
+                    onClick={() => setGameCompleted(false)}
+                    title="Tutup Kad Kemenangan"
+                    aria-label="Tutup Kad Kemenangan"
+                    className="absolute top-3 right-3 w-7 h-7 rounded-lg bg-slate-900/80 hover:bg-red-600 text-slate-300 hover:text-white flex items-center justify-center border border-slate-700 transition-colors text-xs font-bold z-10"
+                  >
+                    ✕
+                  </button>
                   {/* Clean sparkles visual backdrop */}
                   <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/10 to-transparent pointer-events-none"></div>
                   

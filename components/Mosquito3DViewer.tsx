@@ -40,9 +40,12 @@ const Mosquito3DViewer: React.FC<Mosquito3DViewerProps> = ({ onClose }) => {
                         {/* Close Button */}
                         <button 
                             onClick={onClose}
-                            className="pointer-events-auto bg-black/50 border border-red-500/50 text-red-500 hover:bg-red-900/50 hover:text-red-300 p-3 flex items-center justify-center transition-all duration-300 backdrop-blur-sm group rounded-md"
+                            title="Tutup Tetingkap 3D"
+                            aria-label="Tutup Tetingkap 3D"
+                            className="pointer-events-auto bg-slate-900/90 border border-red-500/70 text-red-400 hover:bg-red-600 hover:text-white px-4 py-2.5 flex items-center justify-center gap-2 transition-all duration-300 backdrop-blur-md group rounded-xl font-mono text-xs font-bold shadow-lg"
                         >
-                            <svg className="w-5 h-5 transform group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            <span>✕</span>
+                            <span>TUTUP 3D</span>
                         </button>
                     </div>
                 </div>

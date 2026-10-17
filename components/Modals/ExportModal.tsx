@@ -441,7 +441,18 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
             {toastMsg && <Toast message={toastMsg.msg} type={toastMsg.type} onClose={() => setToastMsg(null)} />}
             
             <div className="bg-slate-900 border border-blue-500/50 rounded-xl p-6 w-full max-w-lg shadow-[0_0_30px_rgba(59,130,246,0.3)] my-auto max-h-[90vh] overflow-y-auto animate-fade-in-up">
-                <h2 className="text-xl font-bold font-sci-fi text-blue-400 mb-2">🚀 EKSPORT TELEGRAM & TELEGRAPH</h2>
+                <div className="flex justify-between items-start gap-3 mb-2">
+                    <h2 className="text-xl font-bold font-sci-fi text-blue-400">🚀 EKSPORT TELEGRAM & TELEGRAPH</h2>
+                    <button
+                        onClick={onClose}
+                        disabled={isExporting}
+                        title="Tutup Tetingkap"
+                        aria-label="Tutup Tetingkap"
+                        className="w-9 h-9 rounded-lg bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white flex items-center justify-center border border-slate-700 transition-colors font-bold text-sm shrink-0 disabled:opacity-50"
+                    >
+                        ✕
+                    </button>
+                </div>
                 <p className="text-xs text-slate-400 mb-6 font-mono">Laporkan hasil analisis (gambar berserta maklumat json diagnostik) secara berpusat dan bebas had saiz fail dengan chunking automatik.</p>
 
                 <div className="space-y-4">

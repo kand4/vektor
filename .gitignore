@@ -33,6 +33,15 @@ firebase_applet_config.xml
 .serverless/
 .turbo/
 
+# Local runtime uploads, user session data & AI Studio history (Prevent accidental data leaks)
+uploads/
+data/
+*.sqlite
+*.sqlite3
+*.db
+.aistudio/
+migrated_prompt_history/
+
 # ==========================================
 # DEPENDENCIES & RUNTIMES
 # ==========================================

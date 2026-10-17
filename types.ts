@@ -88,6 +88,21 @@ export interface EpidemicTrend {
   totalCasesLastWeek: number;
 }
 
+export interface ComplianceAuditItem {
+  riskLabel: string;
+  status: 'RESOLVED' | 'PARTIAL' | 'UNRESOLVED';
+  comment: string;
+}
+
+export interface ComplianceAuditResult {
+  complianceScore: number; // 0 - 100
+  verdict: 'LULUS' | 'BERSYARAT' | 'GAGAL';
+  summary: string;
+  verifiedAt: number;
+  afterImageSrc: string;
+  items: ComplianceAuditItem[];
+}
+
 export interface AnalysisResponse {
   risks: RiskDetection[];
   generalAdvice: string;
@@ -105,6 +120,7 @@ export interface AnalysisResponse {
   iDengueIntel?: iDengueData;
   regionalIntel?: RegionalDengueData;
   detected_keywords?: string[]; // New field for logic watchdog
+  complianceAudit?: ComplianceAuditResult;
 }
 
 export interface AnalysisSession {
@@ -119,6 +135,7 @@ export interface AnalysisSession {
   mode?: AnalysisMode;
   createdAt?: number;
 }
+
 
 export interface ChatMessage {
   role: 'user' | 'model';
