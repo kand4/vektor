@@ -1,7 +1,6 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
-import { createServer as createViteServer } from "vite";
 import cors from "cors";
 import { GoogleGenAI } from "@google/genai";
 
@@ -111,7 +110,7 @@ async function sanitizeGeminiContents(contents: any): Promise<any> {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // Middleware
   app.use(cors());
@@ -685,8 +684,12 @@ async function startServer() {
 
   // Local uploads directory & static serving
   const uploadsDir = path.join(process.cwd(), "uploads");
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
+  try {
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+  } catch (dirErr) {
+    console.warn("⚠️ Could not create local uploads directory:", dirErr);
   }
   app.use("/uploads", express.static(uploadsDir));
 
@@ -736,7 +739,11 @@ async function startServer() {
 
       // 1. Simpan salinan tempatan di pelayan
       const localFilePath = path.join(uploadsDir, filename);
-      fs.writeFileSync(localFilePath, buffer);
+      try {
+        fs.writeFileSync(localFilePath, buffer);
+      } catch (writeErr) {
+        console.warn("⚠️ Failed to write local upload:", writeErr);
+      }
       const localUrl = `/uploads/${filename}`;
 
       // 2. Muat naik ke Litterbox (Catbox) / Tmpfiles sebagai cermin awan HTTPS
@@ -821,18 +828,28 @@ async function startServer() {
     }
   });
 
-  // Vite middleware for development
+  // Serve static dist files if built, or use Vite middleware in development
+  const distPath = path.join(process.cwd(), "dist");
+  const isProd = process.env.NODE_ENV === "production" || fs.existsSync(path.join(distPath, "index.html")) && process.env.NODE_ENV !== "development";
+
   if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
+    try {
+      const { createServer: createViteServer } = await import("vite");
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } catch (viteErr) {
+      console.warn("⚠️ Vite dev server not available, falling back to static dist:", viteErr);
+      app.use(express.static(distPath));
+      app.use((req, res) => {
+        res.sendFile(path.join(distPath, "index.html"));
+      });
+    }
   } else {
-    const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    // Using simple * for Express 4, fallback to index.html for SPA routing
-    app.get("*all", (req, res) => {
+    app.use((req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
