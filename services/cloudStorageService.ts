@@ -60,7 +60,7 @@ export const fetchSharedSessionsFromServer = async (): Promise<AnalysisSession[]
 
 export const deleteSharedSessionFromServer = async (sessionId: string): Promise<boolean> => {
   try {
-    const res = await fetch(`/api/shared-sessions/${encodeURIComponent(sessionId)}`, {
+    const res = await fetch(`/api/shared-sessions?id=${encodeURIComponent(sessionId)}`, {
       method: 'DELETE'
     });
     return res.ok;

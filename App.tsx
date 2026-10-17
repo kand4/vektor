@@ -17,8 +17,7 @@ import LarvaeScanner from './components/LarvaeScanner';
 import AdultMosquitoScanner from './components/AdultMosquitoScanner';
 import { SimulationGallery } from './components/SimulationGallery';
 import { ManualSimulationPage } from './components/ManualSimulationPage';
-import { fetchNationalDengueTrend } from './services/dataGovService';
-import { fetchLatestIDengueStats, fetchRegionalDengueStats, analyzeLandscape, resolveImageBase64 } from './services/geminiService';
+import { fetchLatestIDengueStats, fetchRegionalDengueStats, analyzeLandscape, resolveImageBase64, getAIClient, getPreferredModelForText } from './services/geminiService';
 import { resizeAndCompressImage } from './utils/imageUtils';
 import { dbGet, dbSet, dbClear } from './utils/db';
 import { Toast } from './components/Toast';
@@ -176,13 +175,13 @@ const App: React.FC = () => {
 
   const resolveLocality = async (lat: number, lng: number) => {
     try {
-        const ai = (await import('./services/geminiService')).getAIClient();
+        const ai = getAIClient();
         const prompt = `Based on these coordinates: Latitude ${lat}, Longitude ${lng}, identify the State and District in Malaysia. 
         Include only Malaysia states like Pahang, Selangor, Johor, etc. 
         Output JSON only: { "state": "State Name", "district": "District Name" }`;
         
         const response = await ai.models.generateContent({
-            model: (await import('./services/geminiService')).getPreferredModelForText('gemini-3.8-flash'),
+            model: getPreferredModelForText('gemini-3.8-flash'),
             contents: { parts: [{ text: prompt }] }
         });
         
@@ -228,11 +227,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Data is now fetched manually to preserve API limits
-  useEffect(() => {
-    // Intentionally left empty
-  }, []);
-
   const handleFilesSelected = async (files: File[]) => {
     try {
       const filePromises = files.map(async (file, index) => {
@@ -265,21 +259,26 @@ const App: React.FC = () => {
         setIsGalleryExpanded(true);
 
         // Upload original images to cloud & sync session across devices in background
-        newSessions.forEach(async (sess) => {
-          try {
-            const hostedOrig = await uploadImageToCloud(sess.imageSrc, `orig_${sess.id}`);
-            setSessions(prev => {
-              const updated = prev.map(s => s.id === sess.id ? { ...s, imageSrc: hostedOrig } : s);
-              const target = updated.find(s => s.id === sess.id);
-              if (target) {
-                syncSessionToServer(target);
+        for (const sess of newSessions) {
+          (async () => {
+            try {
+              const hostedOrig = await uploadImageToCloud(sess.imageSrc, `orig_${sess.id}`);
+              let syncedSession: AnalysisSession | undefined;
+              setSessions(prev => prev.map(s => {
+                if (s.id === sess.id) {
+                  syncedSession = { ...s, imageSrc: hostedOrig };
+                  return syncedSession;
+                }
+                return s;
+              }));
+              if (syncedSession) {
+                await syncSessionToServer(syncedSession);
               }
-              return updated;
-            });
-          } catch (e) {
-            console.warn("Upload error:", e);
-          }
-        });
+            } catch (e) {
+              console.warn("Upload error:", e);
+            }
+          })();
+        }
       }
     } catch (error) {
        console.error("Error batch processing files:", error);
@@ -287,36 +286,41 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    const processNext = async () => {
-        const analyzingCount = sessions.filter(s => s.status === 'ANALYZING').length;
-        if (analyzingCount < 2) {
-            const pendingSession = sessions.find(s => s.status === 'PENDING');
-            if (pendingSession) {
-                // Enforce minimum 4 seconds between processing to respect 15 RPM free tier limits
-                await new Promise(resolve => setTimeout(resolve, 4000));
-                triggerAnalysis(pendingSession.id);
-            }
-        }
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    const analyzingCount = sessions.filter(s => s.status === 'ANALYZING').length;
+    if (analyzingCount < 2) {
+      const pendingSession = sessions.find(s => s.status === 'PENDING');
+      if (pendingSession) {
+        // Enforce minimum 4 seconds between processing to respect 15 RPM free tier limits
+        timerId = setTimeout(() => {
+          triggerAnalysis(pendingSession.id);
+        }, 4000);
+      }
+    }
+    return () => {
+      if (timerId) clearTimeout(timerId);
     };
-    processNext();
   }, [sessions]);
 
   const triggerAnalysis = async (sessionId: string) => {
-      setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'ANALYZING' } : s));
       const session = sessions.find(s => s.id === sessionId);
-      if (!session) return;
+      if (!session || session.status !== 'PENDING') return;
+      setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'ANALYZING' } : s));
       try {
           // 'DETAILED' mode now implies 32k token budget deep scan
           const cleanBase64 = await resolveImageBase64(session.imageSrc);
           const result = await analyzeLandscape(cleanBase64, session.mimeType, 'DETAILED', language, sensitivity, session.mode || analysisMode);
-          setSessions(prev => {
-            const updated = prev.map(s => s.id === sessionId ? { ...s, status: 'SUCCESS' as const, result: result } : s);
-            const target = updated.find(s => s.id === sessionId);
-            if (target) {
-              syncSessionToServer(target);
+          let syncedTarget: AnalysisSession | undefined;
+          setSessions(prev => prev.map(s => {
+            if (s.id === sessionId) {
+              syncedTarget = { ...s, status: 'SUCCESS' as const, result };
+              return syncedTarget;
             }
-            return updated;
-          });
+            return s;
+          }));
+          if (syncedTarget) {
+            await syncSessionToServer(syncedTarget);
+          }
       } catch (error: any) {
           setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'ERROR', error: error.message } : s));
       }
@@ -329,14 +333,17 @@ const App: React.FC = () => {
       // 2. Upload to cloud and sync to server so all other devices see it
       try {
         const hostedSimUrl = await uploadImageToCloud(image, `sim_${sessionId}`);
-        setSessions(prev => {
-          const updated = prev.map(s => s.id === sessionId ? { ...s, simulationImage: hostedSimUrl } : s);
-          const target = updated.find(s => s.id === sessionId);
-          if (target) {
-            syncSessionToServer(target);
+        let syncedTarget: AnalysisSession | undefined;
+        setSessions(prev => prev.map(s => {
+          if (s.id === sessionId) {
+            syncedTarget = { ...s, simulationImage: hostedSimUrl };
+            return syncedTarget;
           }
-          return updated;
-        });
+          return s;
+        }));
+        if (syncedTarget) {
+          await syncSessionToServer(syncedTarget);
+        }
       } catch (e) {
         console.warn("Ralat muat naik imej simulasi:", e);
       }

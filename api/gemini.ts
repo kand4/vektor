@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { GoogleGenAI } from "@google/genai";
+import { isSafeExternalImageUrl } from "./image-proxy";
 
 // OpSec sanitizer: redact any API keys or tokens from outgoing error messages
 function sanitizeErrorMessage(msg: string): string {
@@ -33,8 +34,8 @@ async function sanitizeGeminiContents(contents: any): Promise<any> {
         }
       }
 
-      // 2. If it's an HTTP/HTTPS URL
-      if (rawData.startsWith("http://") || rawData.startsWith("https://")) {
+      // 2. If it's an HTTP/HTTPS URL (SSRF-guarded)
+      if ((rawData.startsWith("http://") || rawData.startsWith("https://")) && isSafeExternalImageUrl(rawData)) {
         try {
           const fetchRes = await fetch(rawData, { signal: AbortSignal.timeout(15000) });
           if (fetchRes.ok) {
@@ -79,8 +80,6 @@ async function sanitizeGeminiContents(contents: any): Promise<any> {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS Headers support
-  res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,PATCH,DELETE,POST,PUT");
   res.setHeader(
@@ -88,7 +87,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
   );
 
-  // Preflight request
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
@@ -102,7 +100,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     let apiKey = process.env.GEMINI_API_KEY;
     
-    // Auth from client headers
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const clientKey = authHeader.substring(7).trim();
@@ -134,12 +131,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: { message: "Model dan prompt diperlukan untuk generateImages." } });
       }
       console.log(`🎨 [Vercel API] Backend calling Imagen model: ${model}`);
-      const response = await ai.models.generateImages({
+      const imagenFallbackList = Array.from(new Set([
         model,
-        prompt,
-        config
+        "imagen-3.0-generate-002",
+        "imagen-3.0-fast-generate-001",
+        "imagen-3.0-generate-001"
+      ]));
+
+      let lastImagenError: any = null;
+      for (const targetImagenModel of imagenFallbackList) {
+        try {
+          const response = await ai.models.generateImages({
+            model: targetImagenModel,
+            prompt,
+            config
+          });
+          return res.json(response);
+        } catch (err: any) {
+          console.warn(`⚠️ [Vercel API] Imagen model ${targetImagenModel} failed:`, err?.message || err);
+          lastImagenError = err;
+        }
+      }
+
+      return res.status(404).json({
+        error: {
+          message: sanitizeErrorMessage(lastImagenError?.message || "Penjana imej Imagen tidak disokong pada API Key ini.")
+        }
       });
-      return res.json(response);
     } else {
       if (!model || !contents) {
         return res.status(400).json({ 
@@ -150,24 +168,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       
       const sanitizedContents = await sanitizeGeminiContents(contents);
       
-      // Safe and approved fallback models list in order of preference (excluding deprecated models like 1.5 and 2.0)
       const safeFallbacks = [
         "gemini-3.8-flash",
         "gemini-flash-latest",
         "gemini-3.7-flash",
         "gemini-2.5-flash",
         "gemini-2.5-flash-lite",
-        "gemini-3.1-flash-lite"
+        "gemini-2.5-pro",
+        "gemini-3.1-flash-lite",
+        "gemini-3.1-pro-preview"
       ];
 
-      const modelFallbackList = [model];
-      for (const fallback of safeFallbacks) {
-        if (!modelFallbackList.includes(fallback)) {
-          modelFallbackList.push(fallback);
-        }
-      }
-
-      const uniqueModels = Array.from(new Set(modelFallbackList));
+      const uniqueModels = Array.from(new Set([model, ...safeFallbacks]));
       let response = null;
       let lastError: any = null;
 
@@ -177,18 +189,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             console.log(`🔄 [Vercel API] Attempting fallback model: ${targetModel} due to issues on ${model}`);
           }
 
-          // Protect from thinkingConfig on non-supported models
           let activeConfig = config;
           if (activeConfig) {
             const isGemini3 = targetModel.includes("gemini-3");
             if (!isGemini3) {
               activeConfig = { ...activeConfig };
-              if (activeConfig.thinkingConfig) {
-                delete activeConfig.thinkingConfig;
-              }
-              if (activeConfig.thinkingLevel) {
-                delete activeConfig.thinkingLevel;
-              }
+              delete activeConfig.thinkingConfig;
+              delete activeConfig.thinkingLevel;
             }
           }
 
@@ -197,7 +204,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             contents: sanitizedContents,
             config: activeConfig
           });
-          break; // Success
+          break;
         } catch (err: any) {
           lastError = err;
           const errStatus = err?.status || err?.code || 500;

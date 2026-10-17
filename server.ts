@@ -806,9 +806,12 @@ async function startServer() {
     }
   });
 
-  app.delete("/api/shared-sessions/:id", (req, res) => {
+  app.delete(["/api/shared-sessions", "/api/shared-sessions/:id"], (req, res) => {
     try {
-      const { id } = req.params;
+      const id = (req.params.id || req.query.id || "").toString().trim();
+      if (!id) {
+        return res.status(400).json({ error: "ID sesi diperlukan untuk pemadaman." });
+      }
       const current = loadSharedSessions();
       const filtered = current.filter((s: any) => s.id !== id);
       saveSharedSessions(filtered);
