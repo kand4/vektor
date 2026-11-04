@@ -105,7 +105,7 @@ export const SimulationArchivePage: React.FC<SimulationArchivePageProps> = ({
   const totalSimulations = sessions.filter(s => !!s.simulationImage).length;
   const totalRisksDetected = sessions.reduce((acc, s) => acc + (s.result?.risks.length || 0), 0);
 
-  // Security action triggers
+  // Security action triggers (no window.confirm — sandboxed iframes block native confirm dialogs)
   const handleTriggerDelete = (sessionId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
 
@@ -115,11 +115,9 @@ export const SimulationArchivePage: React.FC<SimulationArchivePageProps> = ({
       return;
     }
 
-    if (window.confirm('Adakah anda pasti ingin memadam rekod ini dari pangkalan data?')) {
-      onDeleteSession(sessionId);
-      if (selectedSessionId === sessionId) {
-        setSelectedSessionId(null);
-      }
+    onDeleteSession(sessionId);
+    if (selectedSessionId === sessionId) {
+      setSelectedSessionId(null);
     }
   };
 
@@ -130,12 +128,10 @@ export const SimulationArchivePage: React.FC<SimulationArchivePageProps> = ({
       return;
     }
 
-    if (window.confirm('AMARAN PEMILIK: Anda pasti ingin mengosongkan SEMUA rekod analisis dan simulasi?')) {
-      if (onClearAllSessions) {
-        onClearAllSessions();
-      }
-      setSelectedSessionId(null);
+    if (onClearAllSessions) {
+      onClearAllSessions();
     }
+    setSelectedSessionId(null);
   };
 
   const handleAuthSuccess = () => {
@@ -170,8 +166,7 @@ export const SimulationArchivePage: React.FC<SimulationArchivePageProps> = ({
           language={language}
           onBack={() => setSelectedSessionId(null)}
           onDeleteSession={(id) => {
-            onDeleteSession(id);
-            setSelectedSessionId(null);
+            handleTriggerDelete(id);
           }}
           onDeleteSimulationOnly={(id) => {
             onDeleteSimulationOnly(id);
@@ -238,16 +233,29 @@ export const SimulationArchivePage: React.FC<SimulationArchivePageProps> = ({
               </div>
             </div>
 
-            <button
-              onClick={handleToggleOwnerLock}
-              className={`px-3 py-2 rounded-xl text-xs font-mono font-bold transition-all border ${
-                isOwner
-                  ? 'bg-slate-900 text-slate-400 hover:text-white border-slate-700 hover:border-slate-600'
-                  : 'bg-red-950/60 hover:bg-red-900 text-red-300 border-red-500/40 hover:border-red-400'
-              }`}
-            >
-              {isOwner ? 'Kunci Semula Pelawat' : 'Buka Kunci Pemilik'}
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              {onClearAllSessions && sessions.length > 0 && (
+                <button
+                  onClick={handleTriggerClearAll}
+                  className="px-3 py-2 rounded-xl text-xs font-mono font-bold transition-all bg-red-600 hover:bg-red-500 text-white border border-red-400 shadow-lg shadow-red-950/50 active:scale-95 flex items-center gap-1.5"
+                  title="Padam semua rekod terdahulu serta-merta"
+                >
+                  <span>🗑️</span>
+                  <span>Padam Semua ({sessions.length})</span>
+                </button>
+              )}
+
+              <button
+                onClick={handleToggleOwnerLock}
+                className={`px-3 py-2 rounded-xl text-xs font-mono font-bold transition-all border ${
+                  isOwner
+                    ? 'bg-slate-900 text-slate-400 hover:text-white border-slate-700 hover:border-slate-600'
+                    : 'bg-red-950/60 hover:bg-red-900 text-red-300 border-red-500/40 hover:border-red-400'
+                }`}
+              >
+                {isOwner ? 'Kunci Semula Pelawat' : 'Buka Kunci Pemilik'}
+              </button>
+            </div>
 
             <button
               onClick={() => {

@@ -1,23 +1,39 @@
+const ALLOWED_IMAGE_MIMES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/bmp'
+]);
+
+/**
+ * Resizes, compresses, and re-encodes uploaded images through an HTML5 Canvas.
+ * PRIVACY GUARANTEE: Canvas re-encoding strips all embedded camera EXIF metadata
+ * (including exact GPS coordinates, device serial numbers, and capture timestamps).
+ */
 export const resizeAndCompressImage = (file: File): Promise<{ base64: string, mimeType: string, preview: string }> => {
   return new Promise((resolve) => {
+    if (!file || (file.type && !ALLOWED_IMAGE_MIMES.has(file.type.toLowerCase()))) {
+      resolve({ base64: '', mimeType: 'image/jpeg', preview: '' });
+      return;
+    }
+
     const reader = new FileReader();
     reader.onerror = () => {
       resolve({ base64: '', mimeType: 'image/jpeg', preview: '' });
     };
     reader.onload = (e) => {
       const result = e.target?.result as string || '';
-      let mimeType = file.type || 'image/jpeg';
-      if (result.startsWith('data:')) {
-        const part = result.split(';')[0];
-        if (part && part.includes(':')) {
-          mimeType = part.split(':')[1] || mimeType;
-        }
+      if (!result.startsWith('data:image/')) {
+        resolve({ base64: '', mimeType: 'image/jpeg', preview: '' });
+        return;
       }
 
       const img = new Image();
       img.onerror = () => {
-        const base64 = result.includes(',') ? result.split(',')[1] : '';
-        resolve({ base64, mimeType, preview: result });
+        // Never return raw un-reencoded FileReader data on error (prevents EXIF leak or malformed image payload)
+        resolve({ base64: '', mimeType: 'image/jpeg', preview: '' });
       };
       img.onload = () => {
         const canvas = document.createElement('canvas');
@@ -41,12 +57,12 @@ export const resizeAndCompressImage = (file: File): Promise<{ base64: string, mi
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
-          const compressedResult = canvas.toDataURL('image/jpeg', 0.8);
+          // Re-encoding to JPEG strips all EXIF / GPS / camera metadata
+          const compressedResult = canvas.toDataURL('image/jpeg', 0.82);
           const base64 = compressedResult.split(',')[1] || '';
           resolve({ base64, mimeType: 'image/jpeg', preview: compressedResult });
         } else {
-          const base64 = result.includes(',') ? result.split(',')[1] : '';
-          resolve({ base64, mimeType, preview: result });
+          resolve({ base64: '', mimeType: 'image/jpeg', preview: '' });
         }
       };
       img.src = result;

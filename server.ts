@@ -17,6 +17,70 @@ function sanitizeOpSecError(error: any): string {
   return msg;
 }
 
+// SSRF Protection: Block private IPs, loopback, cloud metadata services, and internal hostnames
+const BLOCKED_HOST_PATTERNS = [
+  /^localhost$/i,
+  /^127\./,
+  /^10\./,
+  /^192\.168\./,
+  /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
+  /^169\.254\./,
+  /^100\.100\.100\.200$/,
+  /^0\./,
+  /^0\.0\.0\.0$/,
+  /^::1$/,
+  /^\[::1\]$/,
+  /^\[?fe80:/i,
+  /^\[?fc00:/i,
+  /^\[?fd[0-9a-f]{2}:/i,
+  /^\[?::ffff:(127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|169\.254\.)/i,
+  /^metadata\.google\.internal$/i,
+  /^metadata$/i,
+  /\.internal$/i,
+  /\.local$/i
+];
+
+function isSafeExternalImageUrl(rawUrl: string): boolean {
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return false;
+    }
+    if (parsed.username || parsed.password) {
+      return false;
+    }
+    const hostname = parsed.hostname.toLowerCase();
+    for (const pattern of BLOCKED_HOST_PATTERNS) {
+      if (pattern.test(hostname)) {
+        return false;
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// LFI / Path Traversal Protection: Ensure local upload paths stay strictly inside /uploads and only target safe image extensions
+const ALLOWED_UPLOAD_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);
+
+function resolveSafeUploadPath(rawInput: string): string | null {
+  try {
+    const uploadsRoot = path.resolve(process.cwd(), "uploads");
+    const cleanInput = rawInput.trim().replace(/^\/+/, "");
+    if (!cleanInput.startsWith("uploads/")) return null;
+    const fileName = path.basename(cleanInput);
+    if (!fileName || fileName.includes("..") || fileName.startsWith(".")) return null;
+    const ext = path.extname(fileName).toLowerCase();
+    if (!ALLOWED_UPLOAD_EXTENSIONS.has(ext)) return null;
+    const resolved = path.resolve(uploadsRoot, fileName);
+    if (!resolved.startsWith(uploadsRoot + path.sep)) return null;
+    return resolved;
+  } catch {
+    return null;
+  }
+}
+
 // Convert any URLs, data URLs, or local file paths in inlineData to pure base64
 async function sanitizeGeminiContents(contents: any): Promise<any> {
   if (!contents) return contents;
@@ -42,40 +106,47 @@ async function sanitizeGeminiContents(contents: any): Promise<any> {
         }
       }
       
-      // 2. If it's an HTTP/HTTPS URL (e.g. litterbox, catbox, cloud storage)
+      // 2. If it's an HTTP/HTTPS URL (Protected against SSRF)
       if (rawData.startsWith("http://") || rawData.startsWith("https://")) {
-        try {
-          console.log(`📥 Server downloading image from URL for Gemini inlineData: ${rawData}`);
-          const fetchRes = await fetch(rawData, { signal: AbortSignal.timeout(15000) });
-          if (fetchRes.ok) {
-            const contentType = fetchRes.headers.get("content-type");
-            if (contentType && !contentType.includes("text")) {
-              inlineData.mimeType = contentType.split(";")[0].trim();
+        if (!isSafeExternalImageUrl(rawData)) {
+          console.warn(`🛑 Blocked unsafe SSRF image URL in Gemini inlineData`);
+          rawData = "";
+        } else {
+          try {
+            const fetchRes = await fetch(rawData, { signal: AbortSignal.timeout(15000) });
+            if (fetchRes.url && !isSafeExternalImageUrl(fetchRes.url)) {
+              console.warn(`🛑 Blocked unsafe SSRF redirect URL in Gemini inlineData`);
+              rawData = "";
+            } else if (fetchRes.ok) {
+              const contentType = fetchRes.headers.get("content-type");
+              if (contentType && !contentType.includes("text")) {
+                inlineData.mimeType = contentType.split(";")[0].trim();
+              }
+              const arrayBuf = await fetchRes.arrayBuffer();
+              if (arrayBuf.byteLength <= 15 * 1024 * 1024) {
+                rawData = Buffer.from(arrayBuf).toString("base64");
+              }
             }
-            const arrayBuf = await fetchRes.arrayBuffer();
-            rawData = Buffer.from(arrayBuf).toString("base64");
-            console.log(`✅ Successfully converted URL to base64 (${rawData.length} chars)`);
-          } else {
-            console.warn(`⚠️ Gagal muat turun imej dari URL (${fetchRes.status}): ${rawData}`);
+          } catch (fetchErr) {
+            console.warn(`⚠️ Ralat memuat turun URL imej untuk Gemini inlineData:`, sanitizeOpSecError(fetchErr));
           }
-        } catch (fetchErr) {
-          console.warn(`⚠️ Ralat memuat turun URL imej untuk Gemini inlineData:`, fetchErr);
         }
       } else if (rawData.startsWith("/uploads/") || rawData.startsWith("uploads/")) {
-        // 3. Local uploaded file
-        try {
-          const relPath = rawData.startsWith("/") ? rawData.slice(1) : rawData;
-          const localPath = path.join(process.cwd(), relPath);
-          if (fs.existsSync(localPath)) {
-            const buf = fs.readFileSync(localPath);
+        // 3. Local uploaded file (Protected against LFI / Path Traversal)
+        const safeLocalPath = resolveSafeUploadPath(rawData);
+        if (safeLocalPath && fs.existsSync(safeLocalPath)) {
+          try {
+            const buf = fs.readFileSync(safeLocalPath);
             rawData = buf.toString("base64");
-            const ext = path.extname(localPath).toLowerCase();
+            const ext = path.extname(safeLocalPath).toLowerCase();
             if (ext === ".png") inlineData.mimeType = "image/png";
             else if (ext === ".webp") inlineData.mimeType = "image/webp";
             else inlineData.mimeType = "image/jpeg";
+          } catch (readErr) {
+            console.warn(`⚠️ Ralat membaca fail imej tempatan untuk Gemini inlineData`);
           }
-        } catch (readErr) {
-          console.warn(`⚠️ Ralat membaca fail imej tempatan untuk Gemini inlineData:`, readErr);
+        } else {
+          rawData = "";
         }
       }
       
@@ -112,27 +183,58 @@ async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
 
-  // Middleware
+  // Hide Express server fingerprint
+  app.disable("x-powered-by");
+
+  // In-memory sliding window rate limiter per IP for API protection
+  const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+  const apiRateLimiter = (maxRequests: number, windowMs: number) => {
+    return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+      const clientIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
+      const key = `${clientIp}:${req.baseUrl || req.path}`;
+      const now = Date.now();
+      const entry = rateLimitMap.get(key);
+      if (!entry || now > entry.resetAt) {
+        rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
+        return next();
+      }
+      entry.count += 1;
+      if (entry.count > maxRequests) {
+        res.setHeader("Retry-After", String(Math.ceil((entry.resetAt - now) / 1000)));
+        return res.status(429).json({
+          error: { message: "Terlalu banyak permintaan dalam masa singkat (Rate Limit Protection). Sila tunggu sebentar." }
+        });
+      }
+      return next();
+    };
+  };
+
+  // Security Headers & CORS Middleware
   app.use(cors());
   app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+    // Defensive HTTP Security Headers (preserving AI Studio preview iframe compatibility)
+    res.header("X-Content-Type-Options", "nosniff");
+    res.header("Referrer-Policy", "strict-origin-when-cross-origin");
+    res.header("X-DNS-Prefetch-Control", "off");
+    res.header("Permissions-Policy", "geolocation=(self), camera=(self), microphone=()");
     if (req.method === "OPTIONS") {
       return res.sendStatus(200);
     }
     next();
   });
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+  app.use(express.json({ limit: "25mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
   // Health check endpoint
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", defaultModel: "gemini-3.8-flash" });
   });
 
-  // API proxy route for Google Gemini
-  app.post("/api/gemini", async (req, res) => {
+  // API proxy route for Google Gemini (Protected by Rate Limiter)
+  app.post("/api/gemini", apiRateLimiter(45, 60_000), async (req, res) => {
     try {
       let apiKey = process.env.GEMINI_API_KEY;
       
@@ -284,10 +386,10 @@ async function startServer() {
     }
   });
 
-  // API proxy route for Telegram
-  app.all(["/api/telegram/send", "/api/telegram/send/"], async (req, res) => {
+  // API proxy route for Telegram (Restricted to POST so Bot Tokens are never exposed in GET URL logs)
+  app.post(["/api/telegram/send", "/api/telegram/send/"], apiRateLimiter(20, 60_000), async (req, res) => {
     try {
-      const payload = (req.method === 'GET' ? req.query : req.body) || {};
+      const payload = req.body || {};
       const { text, mediaUrls, rawImages, clientBotToken, clientChatId } = payload;
       const botToken = (clientBotToken || process.env.TELEGRAM_BOT_TOKEN || '').toString().trim();
       const chatId = (clientChatId || process.env.TELEGRAM_CHAT_ID || '').toString().trim();
@@ -503,11 +605,11 @@ async function startServer() {
   });
 
   // API proxy route for Telegraph Upload with Multi-Provider Fallbacks
-  app.all(["/api/telegraph/upload", "/api/telegraph/upload/"], async (req, res) => {
+  app.post(["/api/telegraph/upload", "/api/telegraph/upload/"], apiRateLimiter(25, 60_000), async (req, res) => {
     try {
-      const payload = (req.method === 'GET' ? req.query : req.body) || {};
+      const payload = req.body || {};
       const { image } = payload;
-      if (!image) {
+      if (!image || typeof image !== "string") {
         return res.status(400).json({ error: "Tiada imej diberikan." });
       }
 
@@ -515,6 +617,9 @@ async function startServer() {
       const type = matches ? matches[1] : 'image/jpeg';
       const base64Data = matches ? matches[2] : image;
       const buffer = Buffer.from(base64Data, 'base64');
+      if (buffer.byteLength > 15 * 1024 * 1024) {
+        return res.status(413).json({ error: "Saiz imej melebihi had keselamatan 15MB." });
+      }
       const ext = type.includes('png') ? 'png' : 'jpg';
 
       // 1. Primary: Litterbox (Catbox) - High speed, 72h retention, reliable for Telegraph embedding
@@ -559,36 +664,39 @@ async function startServer() {
           }
         }
       } catch (tmpErr: any) {
-        console.warn("⚠️ Tmpfiles upload failed, trying Freeimage:", tmpErr?.message || tmpErr);
+        console.warn("⚠️ Tmpfiles upload failed:", tmpErr?.message || tmpErr);
       }
 
-      // 3. Tertiary: Freeimage.host with direct timeout guard
-      try {
-        const fdFree = new FormData();
-        fdFree.append('source', new Blob([buffer], { type }), `image.${ext}`);
-        fdFree.append('type', 'file');
-        fdFree.append('action', 'upload');
-        fdFree.append('format', 'json');
-        fdFree.append('key', '6d207e02198a847aa98d0a2a901485a5');
+      // 3. Tertiary: Freeimage.host (Only if FREEIMAGE_API_KEY is configured in environment variables - no hardcoded keys)
+      const freeImageKey = (process.env.FREEIMAGE_API_KEY || "").trim();
+      if (freeImageKey) {
+        try {
+          const fdFree = new FormData();
+          fdFree.append('source', new Blob([buffer], { type }), `image.${ext}`);
+          fdFree.append('type', 'file');
+          fdFree.append('action', 'upload');
+          fdFree.append('format', 'json');
+          fdFree.append('key', freeImageKey);
 
-        const freeRes = await fetch('https://freeimage.host/api/1/upload', {
-          method: 'POST',
-          body: fdFree,
-          signal: AbortSignal.timeout(8000)
-        });
+          const freeRes = await fetch('https://freeimage.host/api/1/upload', {
+            method: 'POST',
+            body: fdFree,
+            signal: AbortSignal.timeout(8000)
+          });
 
-        if (freeRes.ok) {
-          const freeData = await freeRes.json();
-          if (freeData?.image?.url) {
-            return res.json({ url: freeData.image.url });
+          if (freeRes.ok) {
+            const freeData = await freeRes.json();
+            if (freeData?.image?.url) {
+              return res.json({ url: freeData.image.url });
+            }
           }
-        }
-      } catch (freeErr) {}
+        } catch (freeErr) {}
+      }
 
       throw new Error("Semua pelayan hos imej sementara gagal. Sila cuba sebentar lagi.");
     } catch (error: any) {
-      console.error("Image upload proxy error:", error);
-      res.status(500).json({ error: error?.message || String(error) });
+      console.error("Image upload proxy error:", sanitizeOpSecError(error));
+      res.status(500).json({ error: sanitizeOpSecError(error) });
     }
   });
 
@@ -646,8 +754,8 @@ async function startServer() {
     }
   });
 
-  // API proxy route for images (CORS bypass for client canvas/fetch)
-  app.get("/api/image-proxy", async (req, res) => {
+  // API proxy route for images (CORS bypass for client canvas/fetch - Protected against SSRF & LFI)
+  app.get("/api/image-proxy", apiRateLimiter(60, 60_000), async (req, res) => {
     try {
       const imageUrl = (req.query.url as string || "").trim();
       if (!imageUrl) {
@@ -655,34 +763,60 @@ async function startServer() {
       }
 
       if (imageUrl.startsWith("/uploads/") || imageUrl.startsWith("uploads/")) {
-        const relPath = imageUrl.startsWith("/") ? imageUrl.slice(1) : imageUrl;
-        const localPath = path.join(process.cwd(), relPath);
-        if (fs.existsSync(localPath)) {
-          return res.sendFile(localPath);
+        const safeLocalPath = resolveSafeUploadPath(imageUrl);
+        if (safeLocalPath && fs.existsSync(safeLocalPath)) {
+          res.setHeader("X-Content-Type-Options", "nosniff");
+          res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
+          return res.sendFile(safeLocalPath);
         }
+        return res.status(403).send("Laluan fail tempatan tidak sah atau disekat (Path Traversal Protection).");
       }
 
-      if (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {
-        return res.status(400).send("URL imej mestilah bermula dengan http:// atau https://");
+      if (!isSafeExternalImageUrl(imageUrl)) {
+        return res.status(400).send("URL imej tidak sah atau disekat atas faktor keselamatan (SSRF Protection).");
       }
 
-      const response = await fetch(imageUrl, { signal: AbortSignal.timeout(15000) });
+      const response = await fetch(imageUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; VectorGuardProxy/3.5)",
+          "Accept": "image/*,*/*"
+        },
+        redirect: "follow",
+        signal: AbortSignal.timeout(12000)
+      });
+
+      if (response.url && !isSafeExternalImageUrl(response.url)) {
+        return res.status(403).send("Ubahan hala (redirect) URL disekat atas faktor keselamatan (SSRF Protection).");
+      }
+
       if (!response.ok) {
         return res.status(response.status).send("Gagal mengambil imej dari sumber asal");
       }
 
-      const contentType = response.headers.get("content-type") || "image/jpeg";
+      const contentType = (response.headers.get("content-type") || "image/jpeg").toLowerCase();
+      const safeImageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/bmp"];
+      const matchedType = safeImageTypes.find(t => contentType.startsWith(t));
+      if (!matchedType && !contentType.includes("octet-stream")) {
+        return res.status(415).send("Sumber bukan fail imej yang sah.");
+      }
+
       const arrayBuffer = await response.arrayBuffer();
-      res.setHeader("Content-Type", contentType);
+      if (arrayBuffer.byteLength > 15 * 1024 * 1024) {
+        return res.status(413).send("Saiz imej melebihi had maksimum 15MB.");
+      }
+
+      res.setHeader("Content-Type", matchedType || "image/jpeg");
       res.setHeader("Cache-Control", "public, max-age=86400");
       res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
       res.send(Buffer.from(arrayBuffer));
     } catch (err: any) {
-      res.status(500).send(err.message || "Ralat memproses proksi imej");
+      res.status(500).send("Ralat memproses proksi imej");
     }
   });
 
-  // Local uploads directory & static serving
+  // Local uploads directory & static serving (with nosniff & dotfiles denied)
   const uploadsDir = path.join(process.cwd(), "uploads");
   try {
     if (!fs.existsSync(uploadsDir)) {
@@ -691,7 +825,13 @@ async function startServer() {
   } catch (dirErr) {
     console.warn("⚠️ Could not create local uploads directory:", dirErr);
   }
-  app.use("/uploads", express.static(uploadsDir));
+  app.use("/uploads", express.static(uploadsDir, {
+    dotfiles: "deny",
+    setHeaders: (res) => {
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Content-Security-Policy", "default-src 'none'");
+    }
+  }));
 
   // Shared sessions storage
   const SESSIONS_FILE = path.join(uploadsDir, "shared_sessions.json");
@@ -717,89 +857,103 @@ async function startServer() {
     }
   };
 
-  // Endpoint to upload and host images (Cloud + Server mirror)
-  app.post("/api/upload-image", async (req, res) => {
+  // Helper to validate session image integrity on the server
+  const isServerSessionImageValid = (src: unknown): boolean => {
+    if (!src || typeof src !== "string") return false;
+    const trimmed = src.trim();
+    if (!trimmed || trimmed.startsWith("blob:")) return false;
+    if (trimmed.includes("catbox.moe") || trimmed.includes("tmpfiles.org")) return false;
+    if (trimmed.startsWith("/uploads/") || trimmed.startsWith("uploads/")) {
+      const safeLocalPath = resolveSafeUploadPath(trimmed);
+      return Boolean(safeLocalPath && fs.existsSync(safeLocalPath));
+    }
+    return trimmed.startsWith("data:image/") || (isSafeExternalImageUrl(trimmed));
+  };
+
+  const SAFE_SESSION_ID_REGEX = /^[a-zA-Z0-9_.-]{1,120}$/;
+
+  const sanitizeServerSessionPayload = (raw: any): any | null => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+    const id = typeof raw.id === "string" ? raw.id.trim() : "";
+    if (!id || !SAFE_SESSION_ID_REGEX.test(id)) return null;
+    if (!isServerSessionImageValid(raw.imageSrc)) return null;
+
+    // Strip prototype pollution keys & unexpected fields
+    const clean: Record<string, any> = Object.create(null);
+    const allowedTopKeys = [
+      "id", "fileName", "imageSrc", "mimeType", "status",
+      "result", "error", "simulationImage", "mode", "createdAt"
+    ];
+    for (const key of allowedTopKeys) {
+      if (Object.prototype.hasOwnProperty.call(raw, key) && key !== "__proto__" && key !== "constructor" && key !== "prototype") {
+        clean[key] = raw[key];
+      }
+    }
+    clean.id = id;
+    if (typeof clean.fileName === "string") {
+      clean.fileName = clean.fileName.replace(/[<>:"/\\|?*\x00-\x1F]/g, "_").slice(0, 180);
+    }
+    return JSON.parse(JSON.stringify(clean));
+  };
+
+  // Endpoint to upload and host images (returns reliable self-contained Data URI to prevent broken images)
+  app.post("/api/upload-image", apiRateLimiter(30, 60_000), async (req, res) => {
     try {
-      const { image, name } = req.body || {};
+      const { image } = req.body || {};
       if (!image || typeof image !== "string") {
         return res.status(400).json({ error: "Tiada imej dibekalkan." });
       }
 
+      if (image.startsWith("data:image/")) {
+        return res.json({ url: image });
+      }
+
       if (image.startsWith("http://") || image.startsWith("https://")) {
+        if (!isSafeExternalImageUrl(image)) {
+          return res.status(400).json({ error: "URL imej tidak sah atau disekat." });
+        }
         return res.json({ url: image });
       }
 
       const matches = image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
       const type = matches ? matches[1] : "image/jpeg";
       const base64Data = matches ? matches[2] : image;
-      const buffer = Buffer.from(base64Data, "base64");
-      const ext = type.includes("png") ? "png" : type.includes("webp") ? "webp" : "jpg";
-      const safePrefix = (name || "vg").replace(/[^a-zA-Z0-9_-]/g, "_").substring(0, 20);
-      const filename = `${safePrefix}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
+      const dataUri = `data:${type};base64,${base64Data}`;
 
-      // 1. Simpan salinan tempatan di pelayan
-      const localFilePath = path.join(uploadsDir, filename);
-      try {
-        fs.writeFileSync(localFilePath, buffer);
-      } catch (writeErr) {
-        console.warn("⚠️ Failed to write local upload:", writeErr);
-      }
-      const localUrl = `/uploads/${filename}`;
-
-      // 2. Muat naik ke Litterbox (Catbox) / Tmpfiles sebagai cermin awan HTTPS
-      let cloudUrl = localUrl;
-      try {
-        const fd = new FormData();
-        fd.append("reqtype", "fileupload");
-        fd.append("time", "72h");
-        fd.append("fileToUpload", new Blob([buffer], { type }), filename);
-
-        const catboxRes = await fetch("https://litterbox.catbox.moe/resources/internals/api.php", {
-          method: "POST",
-          body: fd,
-          signal: AbortSignal.timeout(6000)
-        });
-
-        if (catboxRes.ok) {
-          const directUrl = (await catboxRes.text()).trim();
-          if (directUrl.startsWith("http")) {
-            cloudUrl = directUrl;
-          }
-        }
-      } catch (mirrorErr) {
-        console.warn("⚠️ Cermin awan gagal, menggunakan hos pelayan tempatan:", mirrorErr);
-      }
-
-      return res.json({ url: cloudUrl, localUrl });
+      return res.json({ url: dataUri });
     } catch (err: any) {
-      console.error("Ralat /api/upload-image:", err);
-      return res.status(500).json({ error: err.message || "Gagal memproses imej" });
+      console.error("Ralat /api/upload-image:", sanitizeOpSecError(err));
+      return res.status(500).json({ error: "Gagal memproses imej" });
     }
   });
 
   // Endpoints for shared sessions across all devices
   app.get("/api/shared-sessions", (req, res) => {
-    const sessions = loadSharedSessions();
-    return res.json({ sessions });
+    const rawSessions = loadSharedSessions();
+    const validSessions = rawSessions.filter((s: any) => s && s.id && isServerSessionImageValid(s.imageSrc));
+    if (validSessions.length !== rawSessions.length) {
+      saveSharedSessions(validSessions);
+    }
+    return res.json({ sessions: validSessions });
   });
 
   app.get("/api/shared-sessions/:id", (req, res) => {
     const { id } = req.params;
     const sessions = loadSharedSessions();
-    const found = sessions.find((s: any) => s.id === id);
+    const found = sessions.find((s: any) => s.id === id && isServerSessionImageValid(s.imageSrc));
     if (found) {
       return res.json({ session: found });
     }
     return res.status(404).json({ error: "Sesi tidak ditemui" });
   });
 
-  app.post("/api/shared-sessions", (req, res) => {
+  app.post("/api/shared-sessions", apiRateLimiter(30, 60_000), (req, res) => {
     try {
-      const session = req.body;
-      if (!session || !session.id) {
-        return res.status(400).json({ error: "Sesi tidak sah" });
+      const session = sanitizeServerSessionPayload(req.body);
+      if (!session) {
+        return res.status(400).json({ error: "Sesi atau imej tidak sah" });
       }
-      const current = loadSharedSessions();
+      const current = loadSharedSessions().filter((s: any) => s && s.id && isServerSessionImageValid(s.imageSrc));
       const existingIdx = current.findIndex((s: any) => s.id === session.id);
       if (existingIdx >= 0) {
         current[existingIdx] = { ...current[existingIdx], ...session };
@@ -809,13 +963,33 @@ async function startServer() {
       saveSharedSessions(current);
       return res.json({ success: true, count: current.length });
     } catch (err: any) {
-      return res.status(500).json({ error: err.message || "Gagal menyimpan sesi" });
+      return res.status(500).json({ error: "Gagal menyimpan sesi" });
     }
   });
 
   app.delete(["/api/shared-sessions", "/api/shared-sessions/:id"], (req, res) => {
     try {
+      const purgeAll = req.query.all === "true" || req.query.purge === "true";
       const id = (req.params.id || req.query.id || "").toString().trim();
+
+      if (purgeAll || id === "all" || id === "__ALL__") {
+        saveSharedSessions([]);
+        // Clean up any leftover image files in uploadsDir
+        try {
+          if (fs.existsSync(uploadsDir)) {
+            const files = fs.readdirSync(uploadsDir);
+            for (const f of files) {
+              if (f !== "shared_sessions.json") {
+                try {
+                  fs.unlinkSync(path.join(uploadsDir, f));
+                } catch (_) {}
+              }
+            }
+          }
+        } catch (_) {}
+        return res.json({ success: true, count: 0, purgedAll: true });
+      }
+
       if (!id) {
         return res.status(400).json({ error: "ID sesi diperlukan untuk pemadaman." });
       }

@@ -611,6 +611,17 @@ ${textPrompt}`;
                             </div>
                         </div>
                     )}
+                    {onDeleteSession && (
+                        <button
+                            onClick={onDeleteSession}
+                            title="Padam Sesi Ini Dari Papan Bukti"
+                            aria-label="Padam Sesi Ini"
+                            className="no-print px-3 py-2 bg-red-950/70 hover:bg-red-600 border border-red-500/40 hover:border-red-400 rounded-lg text-red-300 hover:text-white font-mono text-xs font-bold transition-all flex items-center gap-1.5 shadow-md"
+                        >
+                            <span>🗑️</span>
+                            <span>PADAM</span>
+                        </button>
+                    )}
                     {onClose && (
                         <button
                             onClick={onClose}
@@ -1097,6 +1108,17 @@ ${textPrompt}`;
                              {result.sensitivityUsed}
                           </span>
                        </div>
+                    )}
+                    {onDeleteSession && (
+                       <button
+                          onClick={onDeleteSession}
+                          title="Padam Sesi Ini Dari Papan Bukti"
+                          aria-label="Padam Sesi Ini"
+                          className="px-3 py-1.5 bg-red-950/70 hover:bg-red-600 border border-red-500/40 hover:border-red-400 rounded-lg text-red-300 hover:text-white font-mono text-xs font-bold transition-all flex items-center gap-1.5"
+                       >
+                          <span>🗑️</span>
+                          <span>PADAM</span>
+                       </button>
                     )}
                     {onClose && (
                        <button

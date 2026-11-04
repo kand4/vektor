@@ -1,13 +1,105 @@
-# ==========================================
-# OPSEC & SECURITY HARDENING: SECRETS & KEYS
-# ==========================================
-# Dotenv environment variables and local secret files
+# ============================================================================
+# 1. OPSEC & KESELAMATAN UTAMA: FAIL PERSEKITARAN (.ENV) & KONFIGURASI RAHSIA
+# ============================================================================
 .env
 .env.*
 *.env
+*.env.*
+.envrc
 !.env.example
 
-# Private keys, certificates, and credentials
+# Konfigurasi tempatan yang berisiko menyimpan API Key secara tidak sengaja
+config.local.*
+settings.local.*
+local.settings.json
+appsettings.Development.json
+secrets.json
+secrets.yaml
+secrets.yml
+secrets.toml
+.secrets
+.secrets.*
+
+# ============================================================================
+# 2. PERLINDUNGAN KHUSUS FAIL API KEY, TOKEN & KUNCI RAHSIA
+# ============================================================================
+*apikey*.txt
+*apikey*.json
+*apikey*.env
+*api_key*.txt
+*api_key*.json
+*api_key*.env
+*api-key*.txt
+*api-key*.json
+*api-key*.env
+*gemini_key*
+*roboflow_key*
+*telegram_token*
+*bot_token*
+*freeimage_key*
+*secret*.txt
+*secret*.json
+*secret*.key
+*token*.txt
+*token*.json
+*private_key*
+*master_key*
+*owner_pin*
+passkey*.txt
+password*.txt
+
+# ============================================================================
+# 3. KREDENSIAL CLOUD, GOOGLE, FIREBASE, VERCEL & INFRASTRUKTUR
+# ============================================================================
+service-account*.json
+*service_account*.json
+*credentials*.json
+client_secret*.json
+google-services.json
+GoogleService-Info.plist
+firebase-applet-config.json
+firebase_applet_config.xml
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+
+# Platform Hosting & Serverless (Simpanan Token Deployment)
+.vercel
+.vercel/
+.netlify
+.netlify/
+.serverless/
+.wrangler/
+wrangler.toml
+fly.toml
+.turbo/
+
+# Kredensial Penyedia Awan & Terraform State (Mengandungi Kunci Mentah)
+.aws/
+.gcp/
+.azure/
+*.tfvars
+*.tfvars.json
+*.tfstate
+*.tfstate.*
+kubeconfig*
+
+# ============================================================================
+# 4. TOKEN PENGURUS PAKEJ, REGISTRI & GIT AUTH
+# ============================================================================
+.npmrc
+.yarnrc
+.yarnrc.yml
+.pypirc
+.netrc
+.git-credentials
+.gem/credentials
+.docker/
+
+# ============================================================================
+# 5. KUNCI KRIPTOGRAFI, SIJIL SSL & SSH PRIVATE KEYS
+# ============================================================================
 *.pem
 *.key
 *.cert
@@ -15,36 +107,64 @@
 *.p12
 *.pfx
 *.pkcs12
+*.der
+*.csr
+*.jks
+*.keystore
 id_rsa*
+id_dsa*
+id_ecdsa*
 id_ed25519*
+*.ppk
+known_hosts
 
-# Cloud, Firebase, and OAuth credential files
-service-account*.json
-*credentials*.json
-client_secret*.json
-google-services.json
-GoogleService-Info.plist
-firebase-applet-config.json
-firebase_applet_config.xml
+# ============================================================================
+# 6. CACHE EDITOR AI & SEJARAH PROMPT (MENGELAK KEBOCORAN API KEY DALAM LOG)
+# ============================================================================
+.aistudio/
+migrated_prompt_history/
+.gemini/
+.claude/
+.claude.json
+.cursor/
+.cursorrules.local
+.windsurf/
+.aider*
+.copilot/
 
-# Vercel, serverless, and deployment state
-.vercel
-.vercel/
-.serverless/
-.turbo/
-
-# Local runtime uploads, user session data & AI Studio history (Prevent accidental data leaks)
+# ============================================================================
+# 7. DATA RUNTIME, MUAT NAIK PENGGUNA & PANGKALAN DATA TEMPATAN
+# ============================================================================
 uploads/
+uploads/*
+*shared_sessions*.json
 data/
 *.sqlite
 *.sqlite3
 *.db
-.aistudio/
-migrated_prompt_history/
+*.rdb
+*.dump
 
-# ==========================================
-# DEPENDENCIES & RUNTIMES
-# ==========================================
+# ============================================================================
+# 8. FAIL SANDARAN (BACKUP), SEMENTARA & CRASH DUMP
+# ============================================================================
+*.bak
+*.backup
+*.old
+*.orig
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+*.heapsnapshot
+*.cpuprofile
+core.*
+test-skfb*.html
+
+# ============================================================================
+# 9. KEBERGANTUNGAN (DEPENDENCIES) & RUNTIME
+# ============================================================================
 node_modules/
 jspm_packages/
 bower_components/
@@ -53,14 +173,17 @@ bower_components/
 .pnp
 .pnp.js
 
-# ==========================================
-# BUILD OUTPUTS & CACHES
-# ==========================================
+# ============================================================================
+# 10. HASIL BINAAN (BUILD OUTPUTS), SOURCE MAPS & CACHE
+# ============================================================================
 dist
 dist/
 dist-ssr/
 build/
 build/Release
+*.js.map
+*.cjs.map
+*.mjs.map
 .cache
 .cache/
 .vite/
@@ -70,9 +193,9 @@ build/Release
 coverage/
 lib-cov/
 
-# ==========================================
-# LOGS & DIAGNOSTICS
-# ==========================================
+# ============================================================================
+# 11. LOG SISTEM & DIAGNOSTIK
+# ============================================================================
 logs/
 *.log
 npm-debug.log*
@@ -85,9 +208,9 @@ pids/
 *.seed
 *.pid.lock
 
-# ==========================================
-# OPERATING SYSTEM & IDEs
-# ==========================================
+# ============================================================================
+# 12. SISTEM PENGOPERASIAN (OS) & IDE
+# ============================================================================
 .DS_Store
 .DS_Store?
 ._*
@@ -100,6 +223,7 @@ desktop.ini
 .idea/
 .vscode/*
 !.vscode/extensions.json
+!.github/**
 *.sublime-workspace
 *.sublime-project
 *.suo

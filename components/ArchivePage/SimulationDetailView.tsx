@@ -21,6 +21,7 @@ export const SimulationDetailView: React.FC<SimulationDetailViewProps> = ({
   session,
   language = 'ms',
   onBack,
+  onDeleteSession,
   onUpdateSession
 }) => {
   // Chat follow-up state
@@ -256,6 +257,18 @@ export const SimulationDetailView: React.FC<SimulationDetailViewProps> = ({
               </>
             )}
           </div>
+
+          {onDeleteSession && (
+            <button
+              onClick={() => onDeleteSession(session.id)}
+              title="Padam Rekod Ini"
+              aria-label="Padam Rekod Ini"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-mono font-bold transition-all bg-red-950/70 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/40 hover:border-red-400"
+            >
+              <span>🗑️</span>
+              <span>Padam</span>
+            </button>
+          )}
 
           <button
             onClick={onBack}

@@ -2,41 +2,86 @@ import { AnalysisSession } from '../types';
 
 export const OWNER_EMAIL = 'Pentadbir Berdaftar';
 const OWNER_STORAGE_KEY = 'vectorguard_owner_auth_v1';
-const OWNER_CUSTOM_PIN_KEY = 'vectorguard_owner_custom_pin';
+const OWNER_AUTH_TS_KEY = 'vectorguard_owner_auth_ts_v1';
+const OWNER_CUSTOM_PIN_HASH_KEY = 'vectorguard_owner_pin_hash_v1';
+const OWNER_LEGACY_PIN_KEY = 'vectorguard_owner_custom_pin';
+const OWNER_SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours session TTL for shared device safety
+
+// Deterministic salted digest (FNV-1a 64-bit style dual pass) so PINs are never stored in plaintext in localStorage
+const computeSaltedDigest = (raw: string): string => {
+  const normalized = `vg_opsec_salt_2026::${raw.trim().toLowerCase()}`;
+  let h1 = 0xdeadbeef ^ normalized.length;
+  let h2 = 0x41c6ce57 ^ normalized.length;
+  for (let i = 0; i < normalized.length; i++) {
+    const ch = normalized.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return `vgh1_${(h2 >>> 0).toString(16).padStart(8, '0')}${(h1 >>> 0).toString(16).padStart(8, '0')}`;
+};
+
+// Precomputed salted digests for default owner passkeys ('2026', 'admin2026', 'vectorguard')
+const RECOGNIZED_DIGESTS = new Set([
+  computeSaltedDigest('2026'),
+  computeSaltedDigest('admin2026'),
+  computeSaltedDigest('vectorguard')
+]);
 
 export const isOwnerAuthorized = (): boolean => {
   if (typeof window === 'undefined') return false;
-  return localStorage.getItem(OWNER_STORAGE_KEY) === 'true';
+  const isAuth = localStorage.getItem(OWNER_STORAGE_KEY) === 'true';
+  if (!isAuth) return false;
+
+  const tsRaw = localStorage.getItem(OWNER_AUTH_TS_KEY);
+  if (tsRaw) {
+    const ts = Number(tsRaw);
+    if (!isNaN(ts) && Date.now() - ts > OWNER_SESSION_TTL_MS) {
+      localStorage.removeItem(OWNER_STORAGE_KEY);
+      localStorage.removeItem(OWNER_AUTH_TS_KEY);
+      return false;
+    }
+  }
+  return true;
 };
 
 export const setOwnerAuthorized = (authorized: boolean): void => {
   if (typeof window === 'undefined') return;
   if (authorized) {
     localStorage.setItem(OWNER_STORAGE_KEY, 'true');
+    localStorage.setItem(OWNER_AUTH_TS_KEY, String(Date.now()));
   } else {
     localStorage.removeItem(OWNER_STORAGE_KEY);
+    localStorage.removeItem(OWNER_AUTH_TS_KEY);
   }
 };
 
 export const verifyOwnerPasskey = (input: string): boolean => {
-  const sanitized = input.trim().toLowerCase();
-  const customPin = typeof window !== 'undefined' ? localStorage.getItem(OWNER_CUSTOM_PIN_KEY) : null;
-  
-  if (customPin && input.trim() === customPin.trim()) return true;
+  if (!input || typeof input !== 'string') return false;
+  const inputDigest = computeSaltedDigest(input);
 
-  // Recognized default owner credentials (anonymized for OpSec)
-  const validKeys = [
-    '2026',
-    'admin2026',
-    'vectorguard'
-  ];
+  if (typeof window !== 'undefined') {
+    // Migrate legacy plaintext PIN to salted hash automatically if present
+    const legacyPlainPin = localStorage.getItem(OWNER_LEGACY_PIN_KEY);
+    if (legacyPlainPin) {
+      localStorage.setItem(OWNER_CUSTOM_PIN_HASH_KEY, computeSaltedDigest(legacyPlainPin));
+      localStorage.removeItem(OWNER_LEGACY_PIN_KEY);
+    }
 
-  return validKeys.includes(sanitized);
+    const customPinHash = localStorage.getItem(OWNER_CUSTOM_PIN_HASH_KEY);
+    if (customPinHash && inputDigest === customPinHash) {
+      return true;
+    }
+  }
+
+  return RECOGNIZED_DIGESTS.has(inputDigest);
 };
 
 export const setCustomOwnerPin = (newPin: string): void => {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(OWNER_CUSTOM_PIN_KEY, newPin.trim());
+  if (typeof window === 'undefined' || !newPin.trim()) return;
+  localStorage.setItem(OWNER_CUSTOM_PIN_HASH_KEY, computeSaltedDigest(newPin));
+  localStorage.removeItem(OWNER_LEGACY_PIN_KEY);
 };
 
 /**

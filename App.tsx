@@ -28,7 +28,39 @@ import { MobileBottomNav } from './components/MobileBottomNav';
 import { SimulationArchivePage } from './components/ArchivePage/SimulationArchivePage';
 import { getDefaultArchiveSessions } from './utils/defaultArchiveData';
 import { getSessionTimestamp } from './utils/archiveHelpers';
-import { uploadImageToCloud, syncSessionToServer, fetchSharedSessionsFromServer, deleteSharedSessionFromServer } from './services/cloudStorageService';
+import { uploadImageToCloud, syncSessionToServer, fetchSharedSessionsFromServer, deleteSharedSessionFromServer, purgeAllSharedSessionsFromServer } from './services/cloudStorageService';
+
+const PURGED_AT_STORAGE_KEY = 'vg_purged_at';
+const USER_PURGED_ALL_KEY = 'vg_user_purged_all';
+const DELETED_IDS_STORAGE_KEY = 'vg_deleted_session_ids';
+
+const isValidSessionImage = (src?: string): boolean => {
+  if (!src || typeof src !== 'string') return false;
+  const trimmed = src.trim();
+  if (trimmed.length < 50) return false;
+  if (trimmed.startsWith('blob:')) return false;
+  if (trimmed.includes('catbox.moe') || trimmed.includes('tmpfiles.org')) return false;
+  if (trimmed.startsWith('/uploads/') || trimmed.startsWith('uploads/')) return false;
+  return trimmed.startsWith('data:image/');
+};
+
+const getStoredDeletedIds = (): Set<string> => {
+  try {
+    const raw = localStorage.getItem(DELETED_IDS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return new Set(parsed);
+    }
+  } catch (_) {}
+  return new Set();
+};
+
+const saveStoredDeletedIds = (ids: Set<string>) => {
+  try {
+    const arr = Array.from(ids).slice(-500);
+    localStorage.setItem(DELETED_IDS_STORAGE_KEY, JSON.stringify(arr));
+  } catch (_) {}
+};
 
 const MANUAL_SIMULATION_DEFAULT_PROMPT = `Sila gunakan tool penjana imej (Imagen / Image FX) untuk mengubah imej ini dengan MEMATUHI ARAHAN STRICT PERSPEKTIF BERIKUT:
 
@@ -54,19 +86,42 @@ const App: React.FC = () => {
   const [sessions, setSessions] = useState<AnalysisSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [dbLoaded, setDbLoaded] = useState(false);
-  const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
+  const [autoCleanBoard, setAutoCleanBoard] = useState<boolean>(() => {
+    return localStorage.getItem('vg_auto_clean_board') !== 'false';
+  });
+
+  const purgeEpochRef = React.useRef<number>(0);
+  const deletedIdsRef = React.useRef<Set<string>>(getStoredDeletedIds());
 
   // Load from IndexedDB and sync with cloud server on startup
   useEffect(() => {
     const loadFromDb = async () => {
       try {
+        const userPurgedAll = localStorage.getItem(USER_PURGED_ALL_KEY) === 'true' || (await dbGet<boolean>(USER_PURGED_ALL_KEY)) === true;
+        const purgedAt = Number(localStorage.getItem(PURGED_AT_STORAGE_KEY) || (await dbGet<number>(PURGED_AT_STORAGE_KEY)) || 0);
+        const deletedSet = deletedIdsRef.current;
+
+        if (userPurgedAll) {
+          // Ensure both IndexedDB and server are completely clean if user previously purged all
+          await dbSet('sessions', []);
+          await dbSet('activeSessionId', null);
+          purgeAllSharedSessionsFromServer().catch(() => {});
+          setSessions([]);
+          setActiveSessionId(null);
+          setDbLoaded(true);
+          return;
+        }
+
         const cachedSessions = await dbGet<AnalysisSession[]>('sessions');
-        const cachedActiveId = await dbGet<string | null>('activeSessionId');
         let currentList: AnalysisSession[] = [];
 
-        if (cachedSessions && cachedSessions.length > 0) {
+        if (cachedSessions && Array.isArray(cachedSessions) && cachedSessions.length > 0) {
           const defaultRef = getDefaultArchiveSessions();
-          currentList = cachedSessions.map(s => {
+          for (const s of cachedSessions) {
+            if (!s || !s.id || deletedSet.has(s.id)) continue;
+            const createdTs = s.createdAt || getSessionTimestamp(s);
+            if (purgedAt > 0 && createdTs <= purgedAt) continue;
+
             let imageSrc = s.imageSrc;
             let simulationImage = s.simulationImage;
             if (imageSrc && imageSrc.includes('data:image/svg+xml;utf8')) {
@@ -76,30 +131,50 @@ const App: React.FC = () => {
                 simulationImage = matched.simulationImage || simulationImage;
               }
             }
-            if (!simulationImage) {
-              const matched = defaultRef.find(d => d.id === s.id || d.fileName === s.fileName);
-              if (matched?.simulationImage) {
-                simulationImage = matched.simulationImage;
-              }
+            if (simulationImage && !isValidSessionImage(simulationImage)) {
+              simulationImage = undefined;
             }
-            return {
+            if (!isValidSessionImage(imageSrc)) {
+              // Automatically purge corrupted/broken image sessions
+              deletedSet.add(s.id);
+              deleteSharedSessionFromServer(s.id).catch(() => {});
+              continue;
+            }
+            currentList.push({
               ...s,
               imageSrc,
               simulationImage,
-              createdAt: s.createdAt || getSessionTimestamp(s)
-            };
-          });
-        } else {
-          currentList = getDefaultArchiveSessions();
+              createdAt: createdTs
+            });
+          }
         }
 
-        // Fetch shared sessions from cloud server to sync cross-device
+        // Fetch shared sessions from cloud server to sync cross-device (only valid, non-deleted, post-purge sessions)
         try {
           const serverSessions = await fetchSharedSessionsFromServer();
           if (serverSessions && serverSessions.length > 0) {
             const map = new Map<string, AnalysisSession>();
-            // Server sessions take priority
-            serverSessions.forEach(s => map.set(s.id, s));
+            for (const s of serverSessions) {
+              if (!s || !s.id || deletedSet.has(s.id)) {
+                if (s?.id) deleteSharedSessionFromServer(s.id).catch(() => {});
+                continue;
+              }
+              const createdTs = s.createdAt || getSessionTimestamp(s);
+              if (purgedAt > 0 && createdTs <= purgedAt) {
+                deleteSharedSessionFromServer(s.id).catch(() => {});
+                continue;
+              }
+              if (!isValidSessionImage(s.imageSrc)) {
+                deletedSet.add(s.id);
+                deleteSharedSessionFromServer(s.id).catch(() => {});
+                continue;
+              }
+              map.set(s.id, {
+                ...s,
+                simulationImage: isValidSessionImage(s.simulationImage) ? s.simulationImage : undefined,
+                createdAt: createdTs
+              });
+            }
             currentList.forEach(s => {
               if (!map.has(s.id)) {
                 map.set(s.id, s);
@@ -111,26 +186,24 @@ const App: React.FC = () => {
           console.warn("Could not sync shared sessions on mount:", srvErr);
         }
 
+        saveStoredDeletedIds(deletedSet);
         setSessions(currentList);
+        await dbSet('sessions', currentList);
 
-        // Check if user came in via shared direct link: ?session=ID
+        // Only auto-open a session if user explicitly came via shared direct link: ?session=ID
         const urlParams = new URLSearchParams(window.location.search);
         const sharedId = urlParams.get('session');
 
         if (sharedId && currentList.some(s => s.id === sharedId)) {
           setActiveSessionId(sharedId);
-        } else if (cachedActiveId && currentList.some(s => s.id === cachedActiveId)) {
-          setActiveSessionId(cachedActiveId);
+          setCurrentHomeSubView('FORENSIC');
         } else {
-          // Default to latest session that has a simulation image so sliding is displayed immediately!
-          const withSim = currentList.find(s => !!s.simulationImage);
-          setActiveSessionId(withSim ? withSim.id : (currentList[0]?.id || null));
+          setActiveSessionId(null);
         }
       } catch (err) {
         console.error("Error loading history from IndexedDB:", err);
-        const initialSessions = getDefaultArchiveSessions();
-        setSessions(initialSessions);
-        setActiveSessionId(initialSessions[0].id);
+        setSessions([]);
+        setActiveSessionId(null);
       } finally {
         setDbLoaded(true);
       }
@@ -159,7 +232,7 @@ const App: React.FC = () => {
   const [showSimulationGallery, setShowSimulationGallery] = useState(false);
   const [showBypassModal, setShowBypassModal] = useState(false);
   const [emptyAlertType, setEmptyAlertType] = useState<'imbasan' | 'simulasi' | null>(null);
-  const [isGalleryExpanded, setIsGalleryExpanded] = useState(true);
+  const [isGalleryExpanded, setIsGalleryExpanded] = useState(false);
   const [toastMsg, setToastMsg] = useState<{ msg: string; type: 'error' | 'success' } | null>(null);
   
   const [sensitivity, setSensitivity] = useState<SensitivityLevel>('STANDARD');
@@ -176,7 +249,11 @@ const App: React.FC = () => {
   const resolveLocality = async (lat: number, lng: number) => {
     try {
         const ai = getAIClient();
-        const prompt = `Based on these coordinates: Latitude ${lat}, Longitude ${lng}, identify the State and District in Malaysia. 
+        // Privacy Hardening (Data Minimization): Round GPS coordinates to 2 decimal places (~1.1km district precision)
+        // so exact house/premise coordinates are never transmitted to external LLM APIs
+        const safeLat = Math.round(lat * 100) / 100;
+        const safeLng = Math.round(lng * 100) / 100;
+        const prompt = `Based on these coarse district-level coordinates: Latitude ${safeLat}, Longitude ${safeLng}, identify the State and District in Malaysia. 
         Include only Malaysia states like Pahang, Selangor, Johor, etc. 
         Output JSON only: { "state": "State Name", "district": "District Name" }`;
         
@@ -227,12 +304,24 @@ const App: React.FC = () => {
     }
   };
 
-  const handleFilesSelected = async (files: File[]) => {
+  const resetFileInputs = () => {
+    const fileInput = document.getElementById('fileInput') as HTMLInputElement | null;
+    if (fileInput) fileInput.value = '';
+    const addMoreInput = document.getElementById('add-more-input') as HTMLInputElement | null;
+    if (addMoreInput) addMoreInput.value = '';
+  };
+
+  const handleFilesSelected = async (files: File[], appendToBoard: boolean = false) => {
     try {
+      const currentEpoch = purgeEpochRef.current;
+      // Clear userPurgedAll flag since user is actively creating a new scan
+      localStorage.setItem(USER_PURGED_ALL_KEY, 'false');
+      dbSet(USER_PURGED_ALL_KEY, false);
+
       const filePromises = files.map(async (file, index) => {
         try {
           const { base64, mimeType, preview } = await resizeAndCompressImage(file);
-          if (!preview || !base64) return null;
+          if (!preview || !base64 || !isValidSessionImage(preview)) return null;
           return {
             id: `session-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 9)}`,
             fileName: file.name,
@@ -251,34 +340,28 @@ const App: React.FC = () => {
       const newSessions = (await Promise.all(filePromises))
         .filter((s): s is NonNullable<typeof s> => s !== null);
 
-      if (newSessions.length > 0) {
-        setSessions(prev => [...prev, ...newSessions]);
-        if (!activeSessionId) {
-          setActiveSessionId(newSessions[0].id);
-        }
-        setIsGalleryExpanded(true);
+      if (currentEpoch !== purgeEpochRef.current) return;
 
-        // Upload original images to cloud & sync session across devices in background
-        for (const sess of newSessions) {
-          (async () => {
-            try {
-              const hostedOrig = await uploadImageToCloud(sess.imageSrc, `orig_${sess.id}`);
-              let syncedSession: AnalysisSession | undefined;
-              setSessions(prev => prev.map(s => {
-                if (s.id === sess.id) {
-                  syncedSession = { ...s, imageSrc: hostedOrig };
-                  return syncedSession;
-                }
-                return s;
-              }));
-              if (syncedSession) {
-                await syncSessionToServer(syncedSession);
-              }
-            } catch (e) {
-              console.warn("Upload error:", e);
-            }
-          })();
+      if (newSessions.length > 0) {
+        if (!appendToBoard && autoCleanBoard) {
+          // Clean previous finished/error transient scan cache from Papan Bukti so old scans don't pile up
+          setSessions(prev => {
+            const removed = prev.filter(s => s.status === 'SUCCESS' || s.status === 'ERROR');
+            removed.forEach(r => {
+              deletedIdsRef.current.add(r.id);
+              deleteSharedSessionFromServer(r.id).catch(() => {});
+            });
+            saveStoredDeletedIds(deletedIdsRef.current);
+            const activePending = prev.filter(s => s.status === 'PENDING' || s.status === 'ANALYZING');
+            return [...activePending, ...newSessions];
+          });
+        } else {
+          setSessions(prev => [...prev, ...newSessions]);
         }
+
+        setActiveSessionId(newSessions[0].id);
+        setIsGalleryExpanded(newSessions.length > 1);
+        resetFileInputs();
       }
     } catch (error) {
        console.error("Error batch processing files:", error);
@@ -291,10 +374,10 @@ const App: React.FC = () => {
     if (analyzingCount < 2) {
       const pendingSession = sessions.find(s => s.status === 'PENDING');
       if (pendingSession) {
-        // Enforce minimum 4 seconds between processing to respect 15 RPM free tier limits
+        // Trigger analysis promptly while respecting rate limits
         timerId = setTimeout(() => {
           triggerAnalysis(pendingSession.id);
-        }, 4000);
+        }, 600);
       }
     }
     return () => {
@@ -303,45 +386,57 @@ const App: React.FC = () => {
   }, [sessions]);
 
   const triggerAnalysis = async (sessionId: string) => {
+      const currentEpoch = purgeEpochRef.current;
       const session = sessions.find(s => s.id === sessionId);
-      if (!session || session.status !== 'PENDING') return;
+      if (!session || session.status !== 'PENDING' || deletedIdsRef.current.has(sessionId)) return;
       setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'ANALYZING' } : s));
       try {
-          // 'DETAILED' mode now implies 32k token budget deep scan
           const cleanBase64 = await resolveImageBase64(session.imageSrc);
           const result = await analyzeLandscape(cleanBase64, session.mimeType, 'DETAILED', language, sensitivity, session.mode || analysisMode);
-          let syncedTarget: AnalysisSession | undefined;
-          setSessions(prev => prev.map(s => {
-            if (s.id === sessionId) {
-              syncedTarget = { ...s, status: 'SUCCESS' as const, result };
-              return syncedTarget;
+
+          // Abort if purged or deleted while analysis was in flight
+          if (currentEpoch !== purgeEpochRef.current || deletedIdsRef.current.has(sessionId)) {
+            return;
+          }
+
+          const completedSession: AnalysisSession = {
+            ...session,
+            status: 'SUCCESS',
+            result
+          };
+
+          setSessions(prev => {
+            if (deletedIdsRef.current.has(sessionId)) return prev;
+            const next = prev.map(s => s.id === sessionId ? completedSession : s);
+            const stillPending = next.some(s => s.status === 'PENDING' || s.status === 'ANALYZING');
+            if (!stillPending) {
+              // Automatically collapse Papan Bukti thumbnail tray once scan finishes so cache strip doesn't clutter screen
+              setIsGalleryExpanded(false);
             }
-            return s;
-          }));
-          if (syncedTarget) {
-            await syncSessionToServer(syncedTarget);
+            return next;
+          });
+
+          if (!deletedIdsRef.current.has(sessionId) && currentEpoch === purgeEpochRef.current) {
+            await syncSessionToServer(completedSession);
           }
       } catch (error: any) {
+          if (currentEpoch !== purgeEpochRef.current || deletedIdsRef.current.has(sessionId)) return;
           setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'ERROR', error: error.message } : s));
       }
   };
 
   const handleSimulationSave = async (sessionId: string, image: string) => {
-      // 1. Immediately update UI so slider works instantly
+      if (deletedIdsRef.current.has(sessionId)) return;
+      // 1. Immediately update UI with self-contained image so slider works instantly and never breaks
       setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, simulationImage: image } : s));
       
-      // 2. Upload to cloud and sync to server so all other devices see it
+      // 2. Sync to server
       try {
         const hostedSimUrl = await uploadImageToCloud(image, `sim_${sessionId}`);
-        let syncedTarget: AnalysisSession | undefined;
-        setSessions(prev => prev.map(s => {
-          if (s.id === sessionId) {
-            syncedTarget = { ...s, simulationImage: hostedSimUrl };
-            return syncedTarget;
-          }
-          return s;
-        }));
-        if (syncedTarget) {
+        const target = sessions.find(s => s.id === sessionId);
+        if (target && !deletedIdsRef.current.has(sessionId)) {
+          const syncedTarget: AnalysisSession = { ...target, simulationImage: hostedSimUrl };
+          setSessions(prev => prev.map(s => s.id === sessionId ? syncedTarget : s));
           await syncSessionToServer(syncedTarget);
         }
       } catch (e) {
@@ -422,26 +517,42 @@ const App: React.FC = () => {
 
   const handleDeleteSession = (sessionId: string, e?: React.MouseEvent) => {
       if (e) e.stopPropagation();
-      setSessions(prev => prev.filter(s => s.id !== sessionId));
+      deletedIdsRef.current.add(sessionId);
+      saveStoredDeletedIds(deletedIdsRef.current);
+
+      setSessions(prev => {
+        const next = prev.filter(s => s.id !== sessionId);
+        dbSet('sessions', next).catch(() => {});
+        if (next.length === 0) {
+          const now = Date.now();
+          localStorage.setItem(USER_PURGED_ALL_KEY, 'true');
+          localStorage.setItem(PURGED_AT_STORAGE_KEY, String(now));
+          dbSet(USER_PURGED_ALL_KEY, true).catch(() => {});
+          dbSet(PURGED_AT_STORAGE_KEY, now).catch(() => {});
+          purgeAllSharedSessionsFromServer().catch(() => {});
+        }
+        return next;
+      });
       if (activeSessionId === sessionId) {
           setActiveSessionId(null);
+          dbSet('activeSessionId', null).catch(() => {});
       }
-      deleteSharedSessionFromServer(sessionId);
+      deleteSharedSessionFromServer(sessionId).catch(() => {});
+      setToastMsg({ msg: "Rekod telah berjaya dipadamkan sepenuhnya.", type: 'success' });
   };
 
   const handleLiveAnalysisCapture = (capturedResult: AnalysisResponse, capturedImageSrc: string) => {
     setIsLiveMode(false);
+    localStorage.setItem(USER_PURGED_ALL_KEY, 'false');
+    dbSet(USER_PURGED_ALL_KEY, false);
     const newSession: AnalysisSession = { id: `live-${Date.now()}`, fileName: 'AR_CAPTURE.jpg', imageSrc: capturedImageSrc, mimeType: 'image/jpeg', status: 'SUCCESS', result: capturedResult, mode: 'VECTOR_CONTROL', createdAt: Date.now() };
-    setSessions(prev => [newSession, ...prev]);
+    setSessions(prev => autoCleanBoard ? [newSession] : [newSession, ...prev]);
     setActiveSessionId(newSession.id);
-    setIsGalleryExpanded(true);
+    setIsGalleryExpanded(false);
     // Background cloud sync
     (async () => {
       try {
-        const hosted = await uploadImageToCloud(capturedImageSrc, `live_${newSession.id}`);
-        const updated = { ...newSession, imageSrc: hosted };
-        setSessions(prev => prev.map(s => s.id === newSession.id ? updated : s));
-        syncSessionToServer(updated);
+        syncSessionToServer(newSession);
       } catch (err) {
         console.warn("Live capture cloud sync error:", err);
       }
@@ -449,14 +560,47 @@ const App: React.FC = () => {
   };
 
   const resetApp = async () => {
-    setSessions([]);
+    purgeEpochRef.current += 1;
+    const now = Date.now();
+
+    setSessions(prev => {
+      prev.forEach(s => deletedIdsRef.current.add(s.id));
+      ['default-kkm-session-1', 'default-kkm-session-2', 'default-kkm-session-3'].forEach(id =>
+        deletedIdsRef.current.add(id)
+      );
+      saveStoredDeletedIds(deletedIdsRef.current);
+      return [];
+    });
+
+    localStorage.setItem(USER_PURGED_ALL_KEY, 'true');
+    localStorage.setItem(PURGED_AT_STORAGE_KEY, String(now));
+
     setActiveSessionId(null);
-    await dbClear();
-    setToastMsg({ msg: "Semua rekod dan simulasi telah dipadamkan sepenuhnya!", type: 'success' });
+    setIsGalleryExpanded(false);
+    resetFileInputs();
+    setToastMsg({ msg: "Semua rekod terdahulu, cache Papan Bukti & storan telah dipadamkan sepenuhnya!", type: 'success' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    try {
+      await dbClear();
+      await dbSet('sessions', []);
+      await dbSet('activeSessionId', null);
+      await dbSet(USER_PURGED_ALL_KEY, true);
+      await dbSet(PURGED_AT_STORAGE_KEY, now);
+    } catch (e) {
+      console.warn("IndexedDB purge warning:", e);
+    }
+
+    try {
+      await purgeAllSharedSessionsFromServer();
+    } catch (e) {
+      console.warn("Server purge warning:", e);
+    }
   };
   
   const handleSaveManualSimulation = async (originalImageBase64: string, simulatedImageBase64: string) => {
+    localStorage.setItem(USER_PURGED_ALL_KEY, 'false');
+    dbSet(USER_PURGED_ALL_KEY, false);
     const tempId = `manual-sim-${Date.now()}`;
     const newSession: AnalysisSession = {
       id: tempId,
@@ -477,13 +621,8 @@ const App: React.FC = () => {
     setSessions(prev => [newSession, ...prev]);
     setActiveSessionId(newSession.id);
 
-    // Sync both images to cloud host in background
     try {
-      const hostedOrig = await uploadImageToCloud(originalImageBase64, `orig_${tempId}`);
-      const hostedSim = await uploadImageToCloud(simulatedImageBase64, `sim_${tempId}`);
-      const syncedSession = { ...newSession, imageSrc: hostedOrig, simulationImage: hostedSim };
-      setSessions(prev => prev.map(s => s.id === tempId ? syncedSession : s));
-      await syncSessionToServer(syncedSession);
+      await syncSessionToServer(newSession);
     } catch (err) {
       console.warn("Manual sim cloud sync error:", err);
     }
@@ -493,7 +632,7 @@ const App: React.FC = () => {
     try {
       navigator.clipboard.writeText(MANUAL_SIMULATION_DEFAULT_PROMPT);
       setToastMsg({ msg: "Prompt disalin secara automatik! Membuka halaman simulasi khas & Gemini Web...", type: 'success' });
-      window.open("https://gemini.google.com/app", "_blank");
+      window.open("https://gemini.google.com/app", "_blank", "noopener,noreferrer");
       setCurrentView('MANUAL_SIMULATION');
     } catch (err) {
       console.error(err);
@@ -544,7 +683,7 @@ const App: React.FC = () => {
           sessions={sessions} 
           onClose={() => setShowSimulationGallery(false)} 
           onDeleteSimulation={(sessionId) => {
-            setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, simulationImage: undefined } : s));
+            handleDeleteSession(sessionId);
           }}
           onRegenerate={async (sessionId) => {
             const sessionToRegen = sessions.find(s => s.id === sessionId);
@@ -648,9 +787,13 @@ const App: React.FC = () => {
                 onClearAllSessions={resetApp}
                 onLoadDefaultArchive={() => {
                     const defaultSessions = getDefaultArchiveSessions();
+                    defaultSessions.forEach(s => deletedIdsRef.current.delete(s.id));
+                    saveStoredDeletedIds(deletedIdsRef.current);
+                    localStorage.setItem(USER_PURGED_ALL_KEY, 'false');
+                    dbSet(USER_PURGED_ALL_KEY, false).catch(() => {});
                     setSessions(defaultSessions);
                     setActiveSessionId(defaultSessions[0].id);
-                    dbSet('sessions', defaultSessions);
+                    dbSet('sessions', defaultSessions).catch(() => {});
                     setToastMsg({ msg: "3 Rekod Penanda Aras KKM mengikut tarikh telah berjaya dimuatkan!", type: 'success' });
                 }}
             />
@@ -711,6 +854,16 @@ const App: React.FC = () => {
                                             <span>🗂️</span>
                                             <span>ARKIB TARIKH ({sessions.length})</span>
                                         </button>
+                                        {sessions.length > 0 && (
+                                            <button
+                                                onClick={() => resetApp()}
+                                                title="Padam Semua Rekod Terdahulu Serta-Merta"
+                                                className="flex-1 sm:flex-none bg-red-950/80 hover:bg-red-600 border border-red-500/50 hover:border-red-400 text-red-300 hover:text-white font-mono-sci font-bold text-xs px-4 py-3 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-95"
+                                            >
+                                                <span>🗑️</span>
+                                                <span>PADAM SEMUA ({sessions.length})</span>
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
 
@@ -1049,53 +1202,58 @@ const App: React.FC = () => {
             </>
         )}
 
-        {sessions.length > 0 && (
+        {currentView === 'HOME' && (currentHomeSubView === 'FORENSIC' || activeSessionId !== null) && sessions.length > 0 && (
            <div id="evidence-board" className="space-y-4 md:space-y-6 mt-8 mb-8 z-50">
               <div className="bg-slate-900/80 border border-slate-700 rounded-lg backdrop-blur-md overflow-hidden animate-fade-in-up shadow-xl transition-all duration-300">
-                 <div className="flex justify-between items-center bg-slate-950/50 p-3 md:p-4 cursor-pointer group/header select-none border-b border-slate-800 hover:bg-slate-900 transition-colors" onClick={() => setIsGalleryExpanded(!isGalleryExpanded)}>
+                 <div className="flex flex-wrap justify-between items-center gap-2 bg-slate-950/50 p-3 md:p-4 cursor-pointer group/header select-none border-b border-slate-800 hover:bg-slate-900 transition-colors" onClick={() => setIsGalleryExpanded(!isGalleryExpanded)}>
                     <div className="flex items-center gap-2 md:gap-3">
                         <div className={`transition-transform duration-300 text-emerald-500 ${isGalleryExpanded ? 'rotate-180' : 'rotate-0'}`}><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3 md:w-4 md:h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg></div>
                         <h3 className="font-sci-fi font-bold text-white flex items-center gap-2 text-xs md:text-base">{t('evidence_board')} <span className="text-slate-500 text-[10px] md:text-sm">[{completedCount} DONE]</span></h3>
                     </div>
-                    <div className="flex gap-2 items-center" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex flex-wrap gap-2 items-center" onClick={(e) => e.stopPropagation()}>
+                       <button
+                          onClick={() => {
+                            const nextVal = !autoCleanBoard;
+                            setAutoCleanBoard(nextVal);
+                            localStorage.setItem('vg_auto_clean_board', String(nextVal));
+                          }}
+                          className={`text-[10px] px-2.5 py-1.5 rounded border font-mono-sci transition-colors flex items-center gap-1 ${
+                            autoCleanBoard
+                              ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300 hover:bg-emerald-900/80'
+                              : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                          }`}
+                          title="Apabila aktif, cache imbasan lama dibersihkan secara automatik selepas imbasan ditutup atau imbasan baru dimulakan"
+                       >
+                          <span>🧹</span>
+                          <span className="hidden sm:inline">AUTO-PURGE CACHE:</span>
+                          <span>{autoCleanBoard ? 'ON' : 'OFF'}</span>
+                       </button>
                        <button onClick={() => document.getElementById('add-more-input')?.click()} className="text-[10px] bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded border border-slate-600 font-mono-sci flex items-center gap-1"><span>+</span> <span className="hidden sm:inline">{t('btn_add')}</span></button>
-                       <input id="add-more-input" type="file" multiple accept="image/*" className="hidden" onChange={(e) => e.target.files && handleFilesSelected(Array.from(e.target.files))} />
-                       {!showPurgeConfirm ? (
-                          <button 
-                             onClick={() => setShowPurgeConfirm(true)} 
-                             className="text-[10px] bg-red-950/85 hover:bg-red-900 text-red-400 px-3 py-1.5 rounded border border-red-900 hover:border-red-600 font-mono-sci transition-colors flex items-center gap-1"
-                             title="Padam (Purge) Semua Rekod Sejarah"
-                          >
-                             ☣️ PURGE ALL
-                          </button>
-                       ) : (
-                          <div className="flex gap-1 animate-pulse items-center">
-                             <button 
-                                onClick={() => {
-                                   setShowPurgeConfirm(false);
-                                   resetApp();
-                                }} 
-                                className="text-[10px] bg-red-600 hover:bg-red-500 text-white font-bold px-2 py-1 rounded border border-red-400 whitespace-nowrap"
-                             >
-                                YA, PADAMKAN SEMUA!
-                             </button>
-                             <button 
-                                onClick={() => setShowPurgeConfirm(false)} 
-                                className="text-[10px] bg-slate-850 hover:bg-slate-750 text-slate-300 px-2 py-1 rounded border border-slate-600"
-                             >
-                                X
-                             </button>
-                          </div>
-                       )}
+                       <input id="add-more-input" type="file" multiple accept="image/*" className="hidden" onChange={(e) => e.target.files && handleFilesSelected(Array.from(e.target.files), true)} />
+                       <button 
+                          onClick={() => resetApp()} 
+                          className="text-[10px] bg-red-600/90 hover:bg-red-500 text-white font-bold px-3 py-1.5 rounded border border-red-400 font-mono-sci transition-all flex items-center gap-1 shadow-md active:scale-95"
+                          title="Padam (Purge) Semua Cache Papan Bukti & Storan Serta-Merta"
+                       >
+                          ☣️ PURGE ALL
+                       </button>
                     </div>
                  </div>
                  <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isGalleryExpanded ? 'max-h-[300px] opacity-100' : 'max-h-0 opacity-0'}`}>
                     <div className="p-3 md:p-4 flex gap-2 md:gap-3 overflow-x-auto pb-4 custom-scrollbar snap-x">
                         <button onClick={() => document.getElementById('add-more-input')?.click()} className="flex-shrink-0 w-16 h-16 md:w-28 md:h-28 rounded-lg border-2 border-dashed border-slate-700 hover:border-emerald-500/50 flex flex-col items-center justify-center gap-2 text-slate-600 hover:text-emerald-500 transition bg-slate-900/50"><span className="text-xl">+</span></button>
-                        {sessions.map((session, idx) => (
+                        {sessions.map((session) => (
                         <div key={session.id} className="relative flex-shrink-0 w-16 h-16 md:w-28 md:h-28 snap-center group">
                           <button onClick={() => { setActiveSessionId(session.id); setIsGalleryExpanded(false); }} className={`relative w-full h-full rounded-lg overflow-hidden border-2 transition-all duration-300 ${activeSessionId === session.id ? 'border-emerald-400 scale-105 shadow-[0_0_15px_rgba(52,211,153,0.5)] z-10' : 'border-slate-700 opacity-70 hover:opacity-100 hover:border-slate-500'}`}>
-                              <img src={session.imageSrc} className="w-full h-full object-cover" alt="thumbnail" />
+                              <img
+                                src={session.imageSrc}
+                                className="w-full h-full object-cover"
+                                alt="thumbnail"
+                                onError={() => {
+                                  // Immediately purge any corrupted/broken image cache item so broken image icons never appear
+                                  handleDeleteSession(session.id);
+                                }}
+                              />
                               <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
                                   {session.status === 'PENDING' && <span className="text-[8px] font-mono-sci text-slate-300 bg-black/60 px-1 rounded backdrop-blur-sm">Q</span>}
                                   {session.status === 'ANALYZING' && (<div className="absolute inset-0 bg-emerald-900/80 flex flex-col items-center justify-center backdrop-blur-[2px]"><div className="w-4 h-4 md:w-6 md:h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mb-1"></div></div>)}
@@ -1106,7 +1264,7 @@ const App: React.FC = () => {
                                    <div className="absolute bottom-1 left-1 bg-cyan-900/80 text-[10px] border border-cyan-400 p-0.5 rounded shadow-lg backdrop-blur-sm z-20 tooltip tooltip-right hover:scale-110 transition-transform" data-tip="Simulasi Tersedia">✨</div>
                               )}
                           </button>
-                          <button onClick={(e) => handleDeleteSession(session.id, e)} className="absolute -top-2 -right-2 bg-red-600/90 text-white w-5 h-5 md:w-6 md:h-6 rounded-full z-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity print:hidden shadow-lg border border-red-400 hover:bg-red-500 hover:scale-110">✖</button>
+                          <button onClick={(e) => handleDeleteSession(session.id, e)} title="Padam Sesi Ini" className="absolute -top-2 -right-2 bg-red-600/90 text-white w-5 h-5 md:w-6 md:h-6 rounded-full z-20 flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity print:hidden shadow-lg border border-red-400 hover:bg-red-500 hover:scale-110">✖</button>
                         </div>
                         ))}
                     </div>
@@ -1118,9 +1276,9 @@ const App: React.FC = () => {
                     {getActiveSession()!.status === 'PENDING' && (
                        <div className="relative bg-slate-900/50 border border-slate-700 p-8 md:p-12 rounded-lg text-center min-h-[300px] flex flex-col items-center justify-center">
                           <button
-                             onClick={() => { setActiveSessionId(null); setIsGalleryExpanded(true); }}
-                             title="Tutup Tetingkap Sesi"
-                             aria-label="Tutup Tetingkap Sesi"
+                             onClick={() => handleDeleteSession(activeSessionId!)}
+                             title="Batal & Padam Sesi"
+                             aria-label="Batal & Padam Sesi"
                              className="absolute top-3 right-3 px-2.5 py-1.5 bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors flex items-center gap-1 text-xs font-bold font-mono-sci"
                           >
                              <span>✕</span>
@@ -1136,9 +1294,9 @@ const App: React.FC = () => {
                     {getActiveSession()!.status === 'ANALYZING' && (
                        <div className="relative bg-emerald-950/20 border border-emerald-500/50 p-8 md:p-12 rounded-lg text-center min-h-[300px] flex flex-col items-center justify-center">
                           <button
-                             onClick={() => { setActiveSessionId(null); setIsGalleryExpanded(true); }}
-                             title="Tutup Tetingkap Sesi"
-                             aria-label="Tutup Tetingkap Sesi"
+                             onClick={() => handleDeleteSession(activeSessionId!)}
+                             title="Batal & Padam Sesi"
+                             aria-label="Batal & Padam Sesi"
                              className="absolute top-3 right-3 px-2.5 py-1.5 bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors flex items-center gap-1 text-xs font-bold font-mono-sci"
                           >
                              <span>✕</span>
@@ -1154,9 +1312,9 @@ const App: React.FC = () => {
                     {getActiveSession()!.status === 'ERROR' && (
                        <div className="relative bg-red-950/20 border border-red-500/50 p-6 md:p-10 rounded-xl text-center min-h-[300px] flex flex-col items-center justify-center max-w-lg mx-auto">
                           <button
-                             onClick={() => { setActiveSessionId(null); setIsGalleryExpanded(true); }}
-                             title="Tutup Tetingkap Ralat"
-                             aria-label="Tutup Tetingkap Ralat"
+                             onClick={() => handleDeleteSession(activeSessionId!)}
+                             title="Padam & Tutup Ralat"
+                             aria-label="Padam & Tutup Ralat"
                              className="absolute top-3 right-3 px-2.5 py-1.5 bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors flex items-center gap-1 text-xs font-bold font-mono-sci"
                           >
                              <span>✕</span>
@@ -1189,8 +1347,13 @@ const App: React.FC = () => {
                              onUpdateResult={(newResult) => handleUpdateSessionResult(activeSessionId!, newResult)}
                              onOpenBypass={() => setShowBypassModal(true)}
                              onClose={() => {
-                               setActiveSessionId(null);
-                               setIsGalleryExpanded(true);
+                               const currentActive = getActiveSession();
+                               if (autoCleanBoard && currentActive && !currentActive.simulationImage && !currentActive.result?.complianceAudit) {
+                                 handleDeleteSession(currentActive.id);
+                               } else {
+                                 setActiveSessionId(null);
+                                 setIsGalleryExpanded(false);
+                               }
                              }}
                              onDeleteSession={() => {
                                if (activeSessionId) {
