@@ -23,7 +23,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       const storedKey = localStorage.getItem('gemini_api_key') || '';
       const storedKey2 = localStorage.getItem('gemini_api_key_2') || '';
       const storedKey3 = localStorage.getItem('gemini_api_key_3') || '';
-      const storedModel = localStorage.getItem('gemini_model_preference') || 'gemini-2.5-flash';
+      const rawModel = localStorage.getItem('gemini_model_preference') || 'gemini-4-hydrogen';
+      const legacyModels = new Set(['gemini-3.7-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro', 'gemini-flash-latest', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash', 'gemini-pro']);
+      const storedModel = legacyModels.has(rawModel) ? 'gemini-4-hydrogen' : rawModel;
       const storedRoboflowKey = localStorage.getItem('roboflow_api_key') || '';
       const storedRoboflowModel = localStorage.getItem('roboflow_model') || 'aegypti-larvae-detection/1';
       setApiKey(storedKey);
@@ -60,7 +62,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                     },
                     body: JSON.stringify({
                         method: 'generateContent',
-                        model: geminiModel || 'gemini-2.5-flash',
+                        model: geminiModel || 'gemini-4-hydrogen',
                         contents: { parts: [{ text: 'Test connection. Reply OK.' }] }
                     })
                 });
@@ -223,12 +225,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               value={geminiModel}
               onChange={(e) => setGeminiModel(e.target.value)}
             >
-              <option value="gemini-2.5-flash">Gemini 2.5 Flash (Pantas, Stabil &amp; Disyorkan)</option>
-              <option value="gemini-flash-latest">Gemini Flash Latest (Auto-Kemaskini)</option>
+              <option value="gemini-4-hydrogen">Gemini 4 Hydrogen (Disyorkan / Terkini &amp; Pantas)</option>
+              <option value="gemini-3.8-flash">Gemini 3.8 Flash (Sandaran Teras &amp; Penaakulan Agentik)</option>
               <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite (Ultra Pantas)</option>
               <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Analisis Forensik Kompleks)</option>
               {geminiModel &&
-                !['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite', 'gemini-3.1-pro-preview'].includes(geminiModel) && (
+                !['gemini-4-hydrogen', 'gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-3.1-pro-preview'].includes(geminiModel) && (
                   <option value={geminiModel}>{geminiModel} (Tetapan Tersuai)</option>
                 )}
             </select>

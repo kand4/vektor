@@ -233,7 +233,7 @@ const LarvaeScanner: React.FC<LarvaeScannerProps> = ({ onClose }) => {
                         <span className="text-2xl">💡</span>
                         <div>
                             <p className="font-bold mb-1 uppercase tracking-wider text-amber-300">Tiada pengesanan melalui model konvensional.</p>
-                            <p className="text-amber-200/80 mb-2 leading-relaxed text-xs">Model Roboflow bergantung kepada dataset standard. Sila gunakan <strong>Analisa Mendalam (Gemini 3.7 Flash)</strong> untuk mengekstrak ciri morfologi kompleks dan orientasi melengkung.</p>
+                            <p className="text-amber-200/80 mb-2 leading-relaxed text-xs">Model Roboflow bergantung kepada dataset standard. Sila gunakan <strong>Analisa Mendalam (Gemini 4 Hydrogen)</strong> untuk mengekstrak ciri morfologi kompleks dan orientasi melengkung.</p>
                             <p className="text-cyan-300 bg-cyan-950/60 p-2 rounded-xl border border-cyan-500/30 inline-block font-mono tracking-wide text-xs">{t('larvae_scanner_tip')}</p>
                         </div>
                     </div>
@@ -452,12 +452,12 @@ const LarvaeScanner: React.FC<LarvaeScannerProps> = ({ onClose }) => {
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                             </svg>
-                                            ANALISIS GEMINI 3.7...
+                                            ANALISIS GEMINI 4...
                                         </>
                                     ) : (
                                         <>
                                             <span>✨</span>
-                                            <span>ANALISIS FORENSIK (GEMINI 3.7)</span>
+                                            <span>ANALISIS FORENSIK (GEMINI 4)</span>
                                         </>
                                     )}
                                 </button>
@@ -534,7 +534,7 @@ const LarvaeScanner: React.FC<LarvaeScannerProps> = ({ onClose }) => {
                                             <h4 className="text-emerald-400 font-bold font-sci-fi tracking-widest text-xs uppercase">
                                                 LAPORAN SAINTIFIK AI
                                             </h4>
-                                            <p className="text-[8px] text-slate-500 font-mono uppercase">Enjin Gemini 3.7 Flash</p>
+                                            <p className="text-[8px] text-slate-500 font-mono uppercase">Enjin Gemini 4 Hydrogen</p>
                                         </div>
                                     </div>
 

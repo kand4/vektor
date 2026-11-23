@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Toast } from './Toast';
 import { resizeAndCompressImage } from '../utils/imageUtils';
+import { generateCleanSimulation, SimulationConfig } from '../services/geminiService';
 
 interface ManualSimulationPageProps {
   onBack: () => void;
@@ -13,6 +14,8 @@ export const ManualSimulationPage: React.FC<ManualSimulationPageProps> = ({ onBa
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [simulatedImage, setSimulatedImage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [activeEngineLabel, setActiveEngineLabel] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   
   // Customization parameters for the prompt
@@ -62,13 +65,57 @@ ${additionalDirectives ? `6. ARAHAN TAMBAHAN PENGGUNA: ${additionalDirectives}\n
 
   const currentPrompt = generatePromptText();
 
-  const handleCopyAndOpen = async () => {
+  const handleGenerateInApp = async (engine: 'GEMINI_IMAGEN' | 'POLLINATIONS') => {
+    if (!originalImage) {
+      setToastMsg({ msg: "Sila muat naik atau tampal IMEJ ASAL terlebih dahulu sebelum menjana simulasi.", type: 'error' });
+      return;
+    }
+
+    setIsGenerating(true);
+    setActiveEngineLabel(engine === 'GEMINI_IMAGEN' ? 'Nano Banana 2.1' : 'Flux (Pollinations)');
+    try {
+      const simMode: SimulationConfig['mode'] =
+        cleanlinessLevel === 'STERILE'
+          ? 'SANITIZE_ONLY'
+          : cleanlinessLevel === 'MODERN_CLEAN'
+          ? 'UPGRADE_FURNITURE'
+          : 'FULL_RECONSTRUCTION';
+
+      const simLighting: SimulationConfig['lighting'] =
+        lighting === 'NEON_SURGICAL' ? 'CLINICAL_BLUE' : 'NATURAL';
+
+      const simConfig: SimulationConfig = {
+        mode: simMode,
+        humans: keepPeople ? 'KEEP_PROTECTED' : 'REMOVE',
+        lighting: simLighting,
+        engine,
+        customPrompt: additionalDirectives.trim() || undefined
+      };
+
+      const { imageUrl } = await generateCleanSimulation(originalImage, 'image/jpeg', simConfig);
+      setSimulatedImage(imageUrl);
+      setToastMsg({
+        msg: `Imej simulasi kebersihan berjaya dijana terus menggunakan ${engine === 'GEMINI_IMAGEN' ? 'Nano Banana 2.1' : 'Flux'}!`,
+        type: 'success'
+      });
+    } catch (err: any) {
+      console.error('In-app simulation failed:', err);
+      setToastMsg({
+        msg: err?.message || 'Gagal menjana imej simulasi dalam aplikasi. Semak API Key di Tetapan Sistem.',
+        type: 'error'
+      });
+    } finally {
+      setIsGenerating(false);
+      setActiveEngineLabel(null);
+    }
+  };
+
+  const handleCopyPromptOnly = async () => {
     try {
       await navigator.clipboard.writeText(currentPrompt);
       setCopied(true);
-      setToastMsg({ msg: "Prompt Manual disalin! Membuka gemini.google.com/app...", type: 'success' });
+      setToastMsg({ msg: "Prompt berjaya disalin ke clipboard.", type: 'success' });
       setTimeout(() => setCopied(false), 2000);
-      window.open("https://gemini.google.com/app", "_blank", "noopener,noreferrer");
     } catch (err) {
       console.error(err);
       setToastMsg({ msg: "Gagal menyalin secara automatik. Sila salin prompt secara manual.", type: 'error' });
@@ -171,7 +218,7 @@ ${additionalDirectives ? `6. ARAHAN TAMBAHAN PENGGUNA: ${additionalDirectives}\n
           <div>
             <span className="text-[10px] text-cyan-400 font-mono-sci uppercase tracking-[0.2em] block mb-1">PRO-GRADE SANITATION LAB</span>
             <h1 className="text-2xl font-bold text-white font-sci-fi tracking-wide flex items-center gap-2">
-              ✨ MENU SIMULASI MANUAL <span className="text-xs bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded font-mono">DEDICATED PAGE</span>
+              ✨ SIMULATOR REMEDIASI KEBERSIHAN <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-mono">NANO BANANA IN-APP</span>
             </h1>
           </div>
         </div>
@@ -221,13 +268,13 @@ ${additionalDirectives ? `6. ARAHAN TAMBAHAN PENGGUNA: ${additionalDirectives}\n
             <p className="text-[10px] text-slate-400 font-mono">Metadata EXIF/GPS dibersihkan automatik</p>
           </div>
         </div>
-        <div className={`p-3 rounded-xl border flex items-center gap-3 transition-colors ${copied ? 'bg-emerald-950/30 border-emerald-500/40' : 'bg-slate-900/60 border-slate-800'}`}>
-          <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${copied ? 'bg-emerald-600 text-white' : 'bg-indigo-600 text-white'}`}>
-            {copied ? '✓' : '2'}
+        <div className={`p-3 rounded-xl border flex items-center gap-3 transition-colors ${simulatedImage ? 'bg-emerald-950/30 border-emerald-500/40' : 'bg-slate-900/60 border-slate-800'}`}>
+          <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${simulatedImage ? 'bg-emerald-600 text-white' : 'bg-indigo-600 text-white'}`}>
+            {simulatedImage ? '✓' : '2'}
           </span>
           <div>
-            <p className="text-xs font-bold text-white">Salin Prompt & Jana di Gemini Web</p>
-            <p className="text-[10px] text-slate-400 font-mono">Laraskan tahap steriliti & pencahayaan</p>
+            <p className="text-xs font-bold text-white">Jana Terus Dalam Aplikasi (Nano Banana)</p>
+            <p className="text-[10px] text-slate-400 font-mono">Sunting gambar asal terus di sini tanpa keluar ke aplikasi luar</p>
           </div>
         </div>
         <div className={`p-3 rounded-xl border flex items-center gap-3 transition-colors ${simulatedImage && originalImage ? 'bg-emerald-950/30 border-emerald-500/40' : 'bg-slate-900/60 border-slate-800'}`}>
@@ -330,22 +377,59 @@ ${additionalDirectives ? `6. ARAHAN TAMBAHAN PENGGUNA: ${additionalDirectives}\n
             </div>
           </div>
 
-          {/* STEP 2: Prepared Copy Prompter */}
+          {/* STEP 2: Direct In-App AI Generation + Prompt Preview */}
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl backdrop-blur-md">
             <div>
-              <h3 className="text-xs font-bold text-indigo-400 font-mono-sci uppercase tracking-[0.15em] mb-1">
-                Prompt Terkompilasi
+              <h3 className="text-xs font-bold text-emerald-400 font-mono-sci uppercase tracking-[0.15em] mb-1">
+                Penjana Imej Simulasi Terus (In-App)
               </h3>
               <p className="text-[10px] text-slate-400 leading-relaxed font-mono">
-                Sistem menyatukan parameter di atas menjadi set arahan yang optimum dan memahami struktur perniagaan tempatan.
+                Jana imej bersih terus di dalam aplikasi menggunakan Nano Banana 2.1 (kunci API Pro/BYOK anda) tanpa perlu membuka aplikasi Gemini di luar.
               </p>
+            </div>
+
+            <div className="space-y-2.5">
+              <button
+                onClick={() => handleGenerateInApp('GEMINI_IMAGEN')}
+                disabled={isGenerating}
+                className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 disabled:opacity-60 text-slate-950 font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.25)] hover:shadow-[0_0_25px_rgba(16,185,129,0.45)] uppercase tracking-wider text-xs border border-emerald-300/40"
+              >
+                {isGenerating && activeEngineLabel?.includes('Nano Banana') ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
+                    <span>MENJANA DENGAN NANO BANANA 2.1...</span>
+                  </>
+                ) : (
+                  <span>🍌 JANA TERUS DALAM APLIKASI (NANO BANANA 2.1)</span>
+                )}
+              </button>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => handleGenerateInApp('POLLINATIONS')}
+                  disabled={isGenerating}
+                  className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 font-bold rounded-lg border border-slate-700 transition-all text-[11px] font-mono uppercase flex items-center justify-center gap-1.5"
+                >
+                  {isGenerating && activeEngineLabel?.includes('Flux') ? (
+                    <span>⏳ MENJANA FLUX...</span>
+                  ) : (
+                    <span>🌸 JANA DGN FLUX (PERCUMA)</span>
+                  )}
+                </button>
+                <button
+                  onClick={handleCopyPromptOnly}
+                  className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-cyan-300 font-bold rounded-lg border border-slate-700 transition-all text-[11px] font-mono uppercase flex items-center justify-center gap-1.5"
+                >
+                  <span>{copied ? '✓ DISALIN' : '📋 SALIN PROMPT'}</span>
+                </button>
+              </div>
             </div>
 
             <div className="relative">
               <textarea
                 readOnly
                 value={currentPrompt}
-                className="w-full h-44 bg-slate-950/80 border border-slate-850 rounded-xl p-3 text-[10px] font-mono text-slate-300 focus:outline-none custom-scrollbar resize-none leading-relaxed select-all"
+                className="w-full h-36 bg-slate-950/80 border border-slate-850 rounded-xl p-3 text-[10px] font-mono text-slate-300 focus:outline-none custom-scrollbar resize-none leading-relaxed select-all"
               />
               <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
                 <span className="text-[9px] text-slate-500 font-mono bg-slate-900/80 px-2 py-0.5 rounded border border-slate-800">
@@ -353,13 +437,6 @@ ${additionalDirectives ? `6. ARAHAN TAMBAHAN PENGGUNA: ${additionalDirectives}\n
                 </span>
               </div>
             </div>
-
-            <button
-              onClick={handleCopyAndOpen}
-              className="w-full py-3.5 bg-gradient-to-r from-cyan-500 to-indigo-500 hover:from-cyan-400 hover:to-indigo-400 text-slate-950 font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(34,211,238,0.25)] hover:shadow-[0_0_25px_rgba(34,211,238,0.45)] uppercase tracking-wider text-xs border border-cyan-400/30"
-            >
-              <span>🚀 {copied ? 'TELAH DISALIN! MEMBUKA GEMINI...' : 'SALIN PROMPT & BUKA GEMINI WEB'}</span>
-            </button>
           </div>
         </div>
 
@@ -550,20 +627,20 @@ ${additionalDirectives ? `6. ARAHAN TAMBAHAN PENGGUNA: ${additionalDirectives}\n
           {/* DUST ADVICE WORKFLOW */}
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 space-y-3.5 shadow-xl backdrop-blur-md">
             <h4 className="text-xs font-bold text-yellow-500 font-mono-sci uppercase tracking-[0.1em] flex items-center gap-1.5">
-              ⚠️ PANDUAN PENTING & AMALAN TERBAIK
+              💡 CARA PENJANAAN TERUS DALAM APLIKASI
             </h4>
             <ul className="text-xs text-slate-400 space-y-2 list-inside list-decimal leading-relaxed">
               <li>
-                Pastikan anda memuat naik <span className="text-cyan-400 font-bold">IMEJ ASAL</span> terlebih dahulu di panel sebelah kiri di Google Gemini Web.
+                Muat naik atau tampal <span className="text-cyan-400 font-bold">IMEJ ASAL</span> di kotak sebelah kiri.
               </li>
               <li>
-                Klik butang pink <span className="text-indigo-400 font-bold">"SALIN PROMPT & BUKA GEMINI"</span> di atas bagi membolehkan prompt kami dimuatkan ke clipboard anda sebelum tab dibuka.
+                Laraskan tahap kebersihan, pencahayaan, dan arahan tambahan di panel kiri, kemudian klik <span className="text-emerald-400 font-bold">"🍌 JANA TERUS DALAM APLIKASI (NANO BANANA 2.1)"</span>.
               </li>
               <li>
-                Di Gemini Web, tampal prompt tersebut dan hantar bersama foto tersebut. Gemini AI akan melancarkan <span className="text-cyan-400">Imagen 4</span> di belakang tab dan mengembalikan hasil gambar yang bersih secara otomatik.
+                Sistem akan menggunakan kunci API BYOK anda di pelayar untuk menyunting imej secara langsung dan memaparkannya pada slider perbandingan di atas.
               </li>
               <li>
-                Menerusi Gemini Web, klik butang muat turun gambarnya atau salin imej tersebut dan tampal kembali di bahagian <span className="text-emerald-400 font-bold">IMEJ SIMULASI</span> di atas.
+                Anda juga boleh memuat naik hasil suntingan secara manual di kotak <span className="text-emerald-400 font-bold">IMEJ SIMULASI</span> jika mahu, kemudian klik <span className="text-emerald-400 font-bold">Simpan Rekod</span>.
               </li>
             </ul>
           </div>

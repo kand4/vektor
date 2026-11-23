@@ -354,13 +354,7 @@ ${textPrompt}`;
               setShowCleanModal(true);
           }
       } catch (error: any) {
-          setToastMsg({ msg: `Simulasi Gagal: ${error.message}. API Limit/Quota dicapai. Sila cuba kaedah manual.`, type: 'error' });
-          // If automatic fails, we fallback to manual seamlessly or ask user via toast.
-          // Since the user is asked to use button, they can click "✨ LIHAT SIMULASI LEPAS" then click the manual button if we left cleanImages intact...
-          // Wait, if cleanImages is empty, they can't open the modal! We should auto trigger flow.
-          if (cleanImages.length === 0) {
-              handleManualFallback();
-          }
+          setToastMsg({ msg: `Simulasi Gagal: ${error.message}`, type: 'error' });
       } finally {
           setIsCleaning(false);
       }

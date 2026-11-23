@@ -99,7 +99,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 <div className="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center text-lg shrink-0">✨</div>
                 <div>
                   <span className="block text-xs font-bold font-sci-fi text-white">
-                    {isMalay ? 'SIMULATOR REMEDIASI (IMAGEN 3)' : 'REMEDIATION SIMULATOR'}
+                    {isMalay ? 'SIMULATOR REMEDIASI (AI)' : 'REMEDIATION SIMULATOR'}
                   </span>
                 </div>
               </button>

@@ -412,7 +412,7 @@ DO NOT include markdown tags like \`\`\`json or backticks. Return the json objec
               <>
                 <p>1. Buka <a href="https://aistudio.google.com" target="_blank" rel="noreferrer" className="text-cyan-400 font-bold hover:underline">Google AI Studio</a> (Percuma & Tiada Had).</p>
                 <p>2. Muatkan imej anda, salin membimbing arahan prompt di bawah.</p>
-                <p>3. Pilih model <b>Gemini 2.5 Flash atau Gemini 3.1 Pro</b> lalu tekan Run.</p>
+                <p>3. Pilih model <b>Gemini 4 Hydrogen atau Gemini 3.1 Pro</b> lalu tekan Run.</p>
               </>
             )}
             {activePlatform === 'LMSYS' && (

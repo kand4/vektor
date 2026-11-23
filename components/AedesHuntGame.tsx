@@ -1311,7 +1311,7 @@ Format maklum balas WAJIB mengikut struktur JSON ini sahaja tanpa sebarang penje
 }`;
 
       const textResponse = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: 'gemini-4-hydrogen',
         contents: [
           {
             role: 'user',

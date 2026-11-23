@@ -230,7 +230,7 @@ async function startServer() {
 
   // Health check endpoint
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", defaultModel: "gemini-2.5-flash" });
+    res.json({ status: "ok", defaultModel: "gemini-4-hydrogen" });
   });
 
   let cachedWorkingTextModel: { model: string; expiresAt: number } | null = null;
@@ -306,46 +306,91 @@ async function startServer() {
             error: { message: "Model dan kandungan (contents) diperlukan." } 
           });
         }
-        console.log(`🤖 Backend calling Gemini model: ${model}`);
+        const normalizeModel = (m: string): string => {
+          const clean = (m || "").trim();
+          const legacyInvalid = new Set([
+            "gemini-3.7-flash",
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-pro",
+            "gemini-flash-latest",
+            "gemini-1.5-flash",
+            "gemini-1.5-pro",
+            "gemini-pro",
+            "gemini-2.0-flash",
+            "gemini-2.0-pro",
+            "gemini-2.0-flash-thinking"
+          ]);
+          if (!clean || legacyInvalid.has(clean)) return "gemini-4-hydrogen";
+          return clean;
+        };
+
+        const requestedModel = normalizeModel(model);
+        console.log(`🤖 Backend calling Gemini model: ${requestedModel}`);
         
         // Ensure all inline image data are valid base64 (not raw URLs or file paths)
         const sanitizedContents = await sanitizeGeminiContents(contents);
 
-        // Safe and approved fallback models list in order of preference (prioritizing active supported models)
-        const safeFallbacks = [
-          "gemini-2.5-flash",
-          "gemini-flash-latest",
-          "gemini-3.1-flash-lite",
-          "gemini-2.5-flash-lite",
-          "gemini-3.1-pro-preview",
-          "gemini-2.5-pro"
-        ];
+        const isImageGenModel = /banana|flash-lite-image|pro-image|-image$/i.test(requestedModel);
+
+        // Safe and approved fallback models list in order of preference
+        const safeFallbacks = isImageGenModel
+          ? [
+              requestedModel,
+              "gemini-nano-banana-2.1",
+              "gemini-3.1-flash-lite-image",
+              "gemini-3-pro-image"
+            ]
+          : [
+              "gemini-4-hydrogen",
+              "gemini-3.8-flash",
+              "gemini-3.1-flash-lite"
+            ];
 
         const cached =
-          cachedWorkingTextModel && Date.now() < cachedWorkingTextModel.expiresAt
+          !isImageGenModel && cachedWorkingTextModel && Date.now() < cachedWorkingTextModel.expiresAt
             ? [cachedWorkingTextModel.model]
             : [];
 
-        const uniqueModels = Array.from(new Set([...cached, model, ...safeFallbacks]));
+        const uniqueModels = Array.from(new Set([...cached, requestedModel, ...safeFallbacks]));
         let response = null;
+        let extractedImage: { data: string; mimeType: string } | null = null;
+        let extractedImageText = "";
+        let usedModel = requestedModel;
         let lastError: any = null;
 
         for (const targetModel of uniqueModels) {
           try {
-            if (targetModel !== model) {
-              console.log(`🔄 Attempting fallback model: ${targetModel} due to high demand or failure on previous attempt`);
+            if (targetModel !== requestedModel) {
+              console.log(`🔄 Attempting fallback model: ${targetModel}`);
             }
 
-            // Protect from thinkingConfig on non-supported models
+            // Adapt config cleanly per model capability
             let activeConfig = config;
             if (activeConfig) {
-              const isGemini3 = targetModel.includes("gemini-3");
-              if (!isGemini3) {
-                activeConfig = { ...activeConfig };
-                if (activeConfig.thinkingConfig) {
-                  delete activeConfig.thinkingConfig;
+              activeConfig = { ...activeConfig };
+              if (isImageGenModel) {
+                delete activeConfig.responseMimeType;
+                delete activeConfig.responseSchema;
+                delete activeConfig.thinkingConfig;
+                delete activeConfig.thinkingLevel;
+                if (targetModel === "gemini-3.1-flash-lite-image" && activeConfig.imageConfig?.imageSize) {
+                  activeConfig.imageConfig = { ...activeConfig.imageConfig };
+                  delete activeConfig.imageConfig.imageSize;
                 }
-                if (activeConfig.thinkingLevel) {
+              } else {
+                const isGemini4 = targetModel.includes("gemini-4");
+                const isGemini3 = targetModel.includes("gemini-3");
+                if (isGemini4 || isGemini3) {
+                  if (activeConfig.thinkingConfig && typeof activeConfig.thinkingConfig.thinkingBudget === "number") {
+                    const budget = activeConfig.thinkingConfig.thinkingBudget;
+                    activeConfig.thinkingConfig = {
+                      thinkingLevel: budget >= 16000 ? "HIGH" : "LOW"
+                    };
+                  }
+                  delete activeConfig.thinkingLevel;
+                } else {
+                  delete activeConfig.thinkingConfig;
                   delete activeConfig.thinkingLevel;
                 }
               }
@@ -356,30 +401,108 @@ async function startServer() {
               contents: sanitizedContents,
               config: activeConfig
             });
-            cachedWorkingTextModel = { model: targetModel, expiresAt: Date.now() + 10 * 60_000 };
-            break; // Success! Break out of the loop
+            usedModel = targetModel;
+
+            if (isImageGenModel) {
+              const parts = response?.candidates?.[0]?.content?.parts ?? [];
+              let foundData: string | null = null;
+              let foundMime = "image/png";
+              let textBuf = "";
+              for (const part of parts) {
+                if (part?.inlineData?.data && !foundData) {
+                  foundData = part.inlineData.data;
+                  foundMime = part.inlineData.mimeType || "image/png";
+                } else if (part?.text) {
+                  textBuf += (textBuf ? "\n" : "") + part.text;
+                }
+              }
+              if (!foundData) {
+                throw new Error(`Model ${targetModel} tidak memulangkan data imej dalam respons.`);
+              }
+              extractedImage = { data: foundData, mimeType: foundMime };
+              extractedImageText = textBuf;
+              break;
+            } else {
+              cachedWorkingTextModel = { model: targetModel, expiresAt: Date.now() + 10 * 60_000 };
+              break; // Success! Break out of the loop
+            }
           } catch (err: any) {
             lastError = err;
-            const errStatus = err?.status || err?.code || 500;
+            response = null;
+            const errStatus = Number(err?.status || err?.code) || 500;
             const errMsg = sanitizeOpSecError(err);
             console.log(`ℹ️ Model ${targetModel} attempt failed (Status ${errStatus}): ${errMsg}`);
+
+            // Stop hammering remaining models when the API key itself lacks permission or is invalid
+            const isPermissionOrAuthError =
+              errStatus === 401 ||
+              errStatus === 403 ||
+              /PERMISSION_DENIED|ACCESS_DENIED|API_KEY_INVALID|Permission denied on the service/i.test(errMsg);
+            if (isPermissionOrAuthError) {
+              if (!isImageGenModel) cachedWorkingTextModel = null;
+              break;
+            }
+
+            // Fail fast on image models when API key is on Free Tier (limit: 0)
+            const isFreeTierZeroQuota =
+              errStatus === 429 && /limit:\s*0|free_tier|RESOURCE_EXHAUSTED/i.test(errMsg);
+            if (isImageGenModel && isFreeTierZeroQuota) {
+              break;
+            }
           }
         }
 
+        if (isImageGenModel) {
+          if (!extractedImage) {
+            throw lastError || new Error(`Penjanaan imej Nano Banana (${requestedModel}) gagal.`);
+          }
+          return res.json({
+            text: extractedImageText,
+            imageBase64: extractedImage.data,
+            mimeType: extractedImage.mimeType,
+            imageUrl: `data:${extractedImage.mimeType};base64,${extractedImage.data}`,
+            modelUsed: usedModel
+          });
+        }
+
         if (!response) {
-          throw lastError || new Error(`Sistem gagal mengakses model Gemini ${model} dan semua fallback dialiri ralat.`);
+          throw lastError || new Error(`Sistem gagal mengakses model Gemini ${requestedModel}.`);
         }
 
         return res.json({ text: response.text });
       }
     } catch (error: any) {
-      console.error("Gemini server proxy error:", error);
-      const statusCode = error?.status || 500;
+      const rawCode = Number(error?.status || error?.code);
+      const statusCode = Number.isInteger(rawCode) && rawCode >= 400 && rawCode < 600 ? rawCode : 500;
+      const sanitizedMsg = sanitizeOpSecError(error);
+      if (statusCode === 401 || statusCode === 403 || /PERMISSION_DENIED|ACCESS_DENIED/i.test(sanitizedMsg)) {
+        console.log("Gemini API permission/auth rejected (403):", sanitizedMsg);
+        return res.status(statusCode === 401 ? 401 : 403).json({
+          error: {
+            message: "Ralat Kebenaran Gemini API (403 PERMISSION_DENIED): Kunci API semasa tidak dibenarkan mengakses perkhidmatan Generative Language. Sila semak GEMINI_API_KEY anda di panel Settings > Secrets atau buang/tukar kunci tersuai di Tetapan aplikasi.",
+            status: "PERMISSION_DENIED",
+            code: statusCode === 401 ? 401 : 403
+          }
+        });
+      }
+      if (statusCode === 429 || /RESOURCE_EXHAUSTED|quota/i.test(sanitizedMsg)) {
+        const isFreeZero = /limit:\s*0|free_tier/i.test(sanitizedMsg);
+        return res.status(429).json({
+          error: {
+            message: isFreeZero
+              ? "Kuota API Percuma Tidak Menyokong Model Ini (429 Free Tier, limit: 0): Kunci API anda belum mengaktifkan Billing berbayar di Google AI Studio untuk Nano Banana / Pro. Aktifkan Billing pada projek API Key anda di aistudio.google.com atau guna 🌸 Flux (Pollinations)."
+              : "Had Kuota API Gemini Dicapai (429 RESOURCE_EXHAUSTED): Sila tunggu sebentar sebelum mencuba semula atau tukar ke kunci API lain di Tetapan.",
+            status: "RESOURCE_EXHAUSTED",
+            code: 429
+          }
+        });
+      }
+      console.log("Gemini server proxy error:", sanitizedMsg);
       res.status(statusCode).json({
         error: {
-          message: sanitizeOpSecError(error),
+          message: sanitizedMsg,
           status: error?.status,
-          code: error?.code || statusCode
+          code: statusCode
         }
       });
     }

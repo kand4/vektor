@@ -261,16 +261,51 @@ Ancaman Kesihatan Utama:
   }
 };
 
-export const getPreferredModel = (defaultModel: string = 'gemini-2.5-flash') => {
-    return localStorage.getItem('gemini_model_preference') || defaultModel;
+const LEGACY_INVALID_MODELS = new Set([
+  'gemini-3.7-flash',
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-2.5-pro',
+  'gemini-flash-latest',
+  'gemini-1.5-flash',
+  'gemini-1.5-pro',
+  'gemini-pro',
+  'gemini-2.0-flash',
+  'gemini-2.0-pro',
+  'gemini-2.0-flash-thinking'
+]);
+
+const normalizeGeminiModel = (modelName?: string | null, fallback: string = 'gemini-4-hydrogen'): string => {
+  const clean = (modelName || '').trim();
+  if (!clean || LEGACY_INVALID_MODELS.has(clean)) {
+    return fallback;
+  }
+  return clean;
 };
 
-export const getPreferredModelForScan = (defaultModel: string = 'gemini-2.5-flash') => {
-    return localStorage.getItem('gemini_model_preference') || defaultModel;
+const isAuthOrPermissionError = (error: any): boolean => {
+  const status = Number(error?.status || error?.code);
+  const msg = String(error?.message || error || '');
+  return (
+    status === 401 ||
+    status === 403 ||
+    /PERMISSION_DENIED|ACCESS_DENIED|API_KEY_INVALID|Tiada API Key|403|Permission denied/i.test(msg)
+  );
 };
 
-export const getPreferredModelForText = (defaultModel: string = 'gemini-2.5-flash') => {
-    return localStorage.getItem('gemini_model_preference') || defaultModel;
+export const getPreferredModel = (defaultModel: string = 'gemini-4-hydrogen') => {
+    const stored = typeof window !== 'undefined' ? localStorage.getItem('gemini_model_preference') : null;
+    return normalizeGeminiModel(stored, defaultModel);
+};
+
+export const getPreferredModelForScan = (defaultModel: string = 'gemini-4-hydrogen') => {
+    const stored = typeof window !== 'undefined' ? localStorage.getItem('gemini_model_preference') : null;
+    return normalizeGeminiModel(stored, defaultModel);
+};
+
+export const getPreferredModelForText = (defaultModel: string = 'gemini-4-hydrogen') => {
+    const stored = typeof window !== 'undefined' ? localStorage.getItem('gemini_model_preference') : null;
+    return normalizeGeminiModel(stored, defaultModel);
 };
 
 let activeKeyIndex = 0;
@@ -304,17 +339,26 @@ export const getAIClient = (): any => {
                 let lastError = null;
                 const arg = args[0] || {};
                 
-                for (let i = 0; i < poolSize; i++) {
-                  const currentIndex = keys.length > 0 ? (activeKeyIndex + i) % poolSize : 0;
-                  const key = keys.length > 0 ? keys[currentIndex] : null;
+                // Attempt client BYOK keys first, then fall back once to the server-managed GEMINI_API_KEY if client keys failed with 403/401
+                const candidateKeys: (string | null)[] = keys.length > 0 ? [...keys, null] : [null];
+                const totalAttempts = candidateKeys.length;
+
+                for (let i = 0; i < totalAttempts; i++) {
+                  const key = candidateKeys[i];
+                  const isServerFallbackAfterClientKeys = keys.length > 0 && key === null;
+                  if (isServerFallbackAfterClientKeys && lastError && !isAuthOrPermissionError(lastError)) {
+                    break;
+                  }
+                  const currentIndex = key !== null ? (activeKeyIndex + i) % Math.max(1, keys.length) : 0;
+                  const resolvedKey = key !== null ? keys[currentIndex] : null;
                   
                   try {
-                    console.log(`🤖 [Attempt ${i + 1}/${poolSize}] Proxying ${String(modelsProp)} through server... Key Slot: ${key ? currentIndex + 1 : 'Default Server Key'}`);
+                    console.log(`🤖 [Attempt ${i + 1}/${totalAttempts}] Proxying ${String(modelsProp)} through server... Key Slot: ${resolvedKey ? currentIndex + 1 : 'Server Secret Key'}`);
                     const headers: Record<string, string> = {
                       'Content-Type': 'application/json'
                     };
-                    if (key) {
-                      headers['Authorization'] = `Bearer ${key}`;
+                    if (resolvedKey) {
+                      headers['Authorization'] = `Bearer ${resolvedKey}`;
                     }
 
                     const bodyPayload = {
@@ -344,18 +388,20 @@ export const getAIClient = (): any => {
                       } catch (e) {
                         errMessage = errText || errMessage;
                       }
-                      throw new Error(errMessage);
+                      const proxyErr = new Error(errMessage) as Error & { status?: number };
+                      proxyErr.status = res.status;
+                      throw proxyErr;
                     }
 
                     const data = await res.json();
                     
-                    if (keys.length > 0) {
-                      activeKeyIndex = (currentIndex + 1) % poolSize;
+                    if (keys.length > 0 && resolvedKey) {
+                      activeKeyIndex = (currentIndex + 1) % keys.length;
                     }
                     return data;
                   } catch (error: any) {
                     const errMsg = error?.message || String(error);
-                    console.warn(`⚠️ [Key Slot ${key ? currentIndex + 1 : 'Default Server Key'}] failed:`, errMsg);
+                    console.warn(`⚠️ [Key Slot ${resolvedKey ? currentIndex + 1 : 'Server Secret Key'}] failed:`, errMsg);
                     lastError = error;
                   }
                 }
@@ -418,7 +464,7 @@ export const fetchLatestIDengueStats = async (): Promise<iDengueData> => {
       Output JSON Structure: { "cumulativeCases": number, "cumulativeDeaths": number, "activeHotspots": number, "topState": string, "epidemiologicalWeek": string, "lastUpdated": string }`;
 
       const response = await ai.models.generateContent({
-        model: getPreferredModelForText('gemini-3.8-flash'), 
+        model: getPreferredModelForText('gemini-4-hydrogen'), 
         contents: { parts: [{ text: prompt }] },
         config: {
           tools: [{ googleSearch: {} }]
@@ -457,7 +503,7 @@ export const fetchRegionalDengueStats = async (state: string, district: string):
         Output JSON: { "stateName": "${state}", "districtName": "${district}", "stateCases": number, "districtCases": number, "districtHotspots": number, "districtRiskLevel": "LOW"|"MEDIUM"|"HIGH"|"EXTREME", "localAdvice": string, "epidemiologicalWeek": string }`;
 
         const response = await ai.models.generateContent({
-          model: getPreferredModelForText('gemini-3.8-flash'),
+          model: getPreferredModelForText('gemini-4-hydrogen'),
           contents: { parts: [{ text: prompt }] },
           config: {
             tools: [{ googleSearch: {} }]
@@ -589,16 +635,20 @@ const compressImage = async (imageInput: string, maxWidth = 1600, quality = 0.9)
 export const prettifyErrorMessage = (error: any): string => {
   const msg = error?.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
   
-  if (msg.includes("PERMISSION_DENIED") || msg.includes("does not have permission") || msg.includes("403")) {
-    return "Ralat Kebenaran (API Permission Denied): Kunci API Gemini yang anda gunakan tidak mempunyai kebenaran untuk membuat panggilan ini. Sila pastikan: (1) Kunci API Gemini tidak disekat (restricted) di Google Cloud Console, (2) 'Generative Language API' dibenarkan pada kunci tersebut, (3) Jika guna akaun syarikat/ Workspace, admin mungkin melarang akses Gemini. Sila gunakan akaun Google peribadi untuk menjana API Key percuma baharu di Google AI Studio.";
+  if (msg.includes("PERMISSION_DENIED") || msg.includes("ACCESS_DENIED") || msg.includes("does not have permission") || msg.includes("403")) {
+    return "Ralat Kebenaran (API Permission Denied 403): Kunci API Gemini semasa tidak mempunyai kebenaran mengakses perkhidmatan AI. Sila semak GEMINI_API_KEY di panel Settings > Secrets AI Studio, pastikan 'Generative Language API' diaktifkan, dan buang sebarang API Key lama dalam Tetapan aplikasi.";
+  }
+
+  if (/limit:\s*0|free tier|Free Tier/i.test(msg)) {
+    return "Kuota Free Tier Tidak Menyokong Model Ini (429, limit: 0): Kunci API tersebut berada pada pelan Percuma dan belum mengaktifkan Billing berbayar di Google AI Studio. Aktifkan Billing pada projek API Key anda untuk Nano Banana / Pro, atau pilih 🌸 Flux (Pollinations) secara percuma.";
   }
 
   if (msg.includes("429") || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED")) {
-    return "Had Kuota API Gemini telah dicapai (Quota Exceeded) atau terlalu banyak permintaan (Rate Limit). Sila tunggu sebentar (kira-kira 1 minit), atau pergi ke Tetapan (Settings) > Masukkan API Key Google Gemini anda sendiri.";
+    return "Had Kuota API Gemini telah dicapai (Quota Exceeded) atau terlalu banyak permintaan (Rate Limit). Sila tunggu sebentar (kira-kira 1 minit), atau semak kunci API dalam Tetapan / Settings > Secrets.";
   }
 
-  if (msg.includes("API Key tiada")) {
-    return "Tiada API Key dijumpai. Sila masukkan sekurang-kurangnya satu API Key di ruangan Tetapan (Settings).";
+  if (msg.includes("API Key tiada") || msg.includes("Tiada API Key")) {
+    return "Tiada API Key ditemui. Sila tetapkan GEMINI_API_KEY di panel Settings > Secrets atau masukkan kunci dalam Tetapan.";
   }
 
   return msg;
@@ -610,10 +660,15 @@ const retryWithBackoff = async <T>(fn: () => Promise<T>, retries = 2, delay = 20
     } catch (error: any) {
         saveLog(`Retry Failure (Retries left: ${retries}): ${error?.message || error}`, { error });
         const msg = (error?.message || String(error) || "").toLowerCase();
+
+        // Fail fast on permanent auth/permission errors instead of retrying 3x
+        if (isAuthOrPermissionError(error)) {
+            throw error;
+        }
         
-        // Hard Quota Error - no point in retrying aggressively
-        if (msg.includes("exceeded your current quota") || msg.includes("resource_exhausted") || msg.includes("429")) {
-            if (retries <= 0) throw new Error("Had Kuota API telah dicapai (Too Many Requests / 429). Sila tunggu sebentar (60s) atau guna API Key sendiri di Tetapan.");
+        // Hard Quota Error - fail fast when Free Tier limit: 0 or permanent quota exhausted
+        if (msg.includes("limit: 0") || msg.includes("free tier") || msg.includes("exceeded your current quota") || msg.includes("resource_exhausted") || msg.includes("429")) {
+            throw error;
         }
         
         // Server Overload Error
@@ -622,9 +677,6 @@ const retryWithBackoff = async <T>(fn: () => Promise<T>, retries = 2, delay = 20
              delay = Math.max(delay, 5000); // Wait longer for 503
         }
 
-        const isRateLimitError = msg.includes("429") || msg.includes("503") || msg.includes("overloaded");
-        const isJsonParsingError = error instanceof SyntaxError || msg.includes("json") || msg.includes("parse");
-        
         if (retries > 0) {
             await new Promise(resolve => setTimeout(resolve, delay));
             return retryWithBackoff(fn, retries - 1, delay * 2);
@@ -647,8 +699,8 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
   const targetLang = langMap[language] || 'Bahasa Melayu';
   const optimizedImage = await compressImage(base64Image);
   
-  // Use preferred model or Flash model for higher spatial intelligence and free API compatibility
-  const modelId = getPreferredModelForScan("gemini-3.8-flash");
+  // Use preferred model or Gemini 4 Hydrogen for fast multimodal compatibility
+  const modelId = getPreferredModelForScan("gemini-4-hydrogen");
 
   let thinkingBudget = 4000; 
   let engineerPersona = "";
@@ -1003,7 +1055,7 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
           const risks = parsedResult.risks || [];
           const hygieneLevel = parsedResult.hygieneLevel || 3;
 
-          const sections = sectionsText.map(sec => {
+          const sections = sectionsText.map((sec, idx) => {
               const violations: string[] = [];
               risks.forEach((r: any) => {
                   const desc = (r.description || '').toLowerCase();
@@ -1017,9 +1069,12 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
               let demeritReceived = 0;
               if (violations.length > 0) {
                   demeritReceived = Math.min(sec.max, violations.length * 3);
-              } else if (hygieneLevel > 2 && Math.random() > 0.6) {
-                  demeritReceived = Math.min(sec.max, Math.floor(Math.random() * 2) + 1);
-                  violations.push("Pemerhatian kebersihan kurang memuaskan secara tidak langsung.");
+              } else if (hygieneLevel >= 4 && idx % 3 === 0) {
+                  demeritReceived = Math.min(sec.max, 2);
+                  violations.push("Pemerhatian kebersihan kurang memuaskan berdasarkan skor risiko keseluruhan.");
+              } else if (hygieneLevel >= 3 && idx % 4 === 0) {
+                  demeritReceived = Math.min(sec.max, 1);
+                  violations.push("Pemerhatian kebersihan memerlukan penyelenggaraan berkala.");
               }
 
               totalDemerit += demeritReceived;
@@ -1073,6 +1128,9 @@ export const analyzeLandscape = async (base64Image: string, mimeType: string, mo
       return parsedResult;
 
   } catch (error: any) {
+      if (isAuthOrPermissionError(error)) {
+          throw new Error(prettifyErrorMessage(error));
+      }
       console.warn("⚠️ API error encountered dlm analyzeLandscape. Seamless fallback to offline simulation triggered:", error);
       saveLog(`Analysis API Fallback Triggered: ${error?.message || error}`, { error, mode: analysisMode });
       return getSimulatedLandscapeResponse(analysisMode, sensitivity);
@@ -1114,8 +1172,8 @@ export const analyzeManualRegion = async (base64Image: string, mimeType: string,
         const result = await retryWithBackoff(async () => {
             const ai = getAIClient();
             const resp = await ai.models.generateContent({
-                // Using Flash model with high spatial intelligence and coordinate handling
-                model: getPreferredModelForText("gemini-3.8-flash"), 
+                // Using active Gemini Flash model
+                model: getPreferredModelForText("gemini-4-hydrogen"), 
                 contents: { parts: [{ inlineData: { mimeType: 'image/jpeg', data: optimizedImage } }, { text: prompt }] },
                 config: { responseMimeType: "application/json" }
             });
@@ -1163,6 +1221,9 @@ export const analyzeManualRegion = async (base64Image: string, mimeType: string,
         
         return result;
     } catch (error: any) {
+        if (isAuthOrPermissionError(error)) {
+            throw new Error(prettifyErrorMessage(error));
+        }
         console.warn("⚠️ API Manual Region Error: Falling back to computed simulation for ROI:", error);
         return {
             id: `manual-sim-${Date.now()}`,
@@ -1239,7 +1300,7 @@ export const generateSimulationPrompt = async (base64Image: string, config: Simu
 
     const promptGeneration = async () => {
         const resp = await ai.models.generateContent({
-            model: getPreferredModelForText('gemini-3.8-flash'),
+            model: getPreferredModelForText('gemini-4-hydrogen'),
             contents: {
                 parts: [
                     { inlineData: { data: optimizedImage, mimeType: 'image/jpeg' } },
@@ -1363,30 +1424,50 @@ export const generateCleanSimulation = async (base64Image: string, mimeType: str
 
     if (config.engine === 'GEMINI_IMAGEN') {
         const ai = getAIClient();
-        
-        // Try Imagen 3.0 Generate if available
+        const optimizedInputBase64 = await compressImage(base64Image, 1280, 0.85);
+        const editInstruction = `Edit the provided photograph directly into a fully sanitized, spotless, dry, hygienic version while STRICTLY preserving the exact camera angle, perspective, spatial layout, furniture, stoves, sinks, walls, and object placements from the original image.\n\n${finalPrompt}`;
+
+        const parts: any[] = [];
+        if (optimizedInputBase64) {
+            parts.push({
+                inlineData: {
+                    data: optimizedInputBase64,
+                    mimeType: 'image/jpeg'
+                }
+            });
+        }
+        parts.push({ text: editInstruction });
+
         try {
-            console.log(`🎨 Attempting Google Imagen 3.0 with ${aspectRatio}...`);
-            const imagenResponse = await ai.models.generateImages({
-                model: "imagen-3.0-generate-002",
-                prompt: finalPrompt,
+            console.log(`🍌 Generating clean simulation via Nano Banana (gemini-nano-banana-2.1) [${aspectRatio}]...`);
+            const nanoResponse = await ai.models.generateContent({
+                model: 'gemini-nano-banana-2.1',
+                contents: { parts },
                 config: {
-                    numberOfImages: 1,
-                    aspectRatio: aspectRatio
+                    imageConfig: {
+                        aspectRatio: aspectRatio,
+                        imageSize: '1K'
+                    }
                 }
             });
 
-            const bytes = imagenResponse?.generatedImages?.[0]?.image?.imageBytes;
-            if (bytes) {
-                return { imageUrl: `data:image/png;base64,${bytes}`, finalPrompt };
+            if (nanoResponse?.imageUrl) {
+                return { imageUrl: nanoResponse.imageUrl, finalPrompt };
             }
-        } catch (imagenError: any) {
-            console.warn("Google Imagen API unavailable or quota limit reached, seamlessly falling back to Pollinations (Flux):", imagenError?.message || imagenError);
+            if (nanoResponse?.imageBase64) {
+                const outMime = nanoResponse.mimeType || 'image/png';
+                return { imageUrl: `data:${outMime};base64,${nanoResponse.imageBase64}`, finalPrompt };
+            }
+            throw new Error('Model Nano Banana tidak memulangkan imej. Pastikan kunci API Pro anda mempunyai akses ke model penjanaan imej Gemini.');
+        } catch (nanoError: any) {
+            const readableErr = prettifyErrorMessage(nanoError);
+            console.warn('❌ Nano Banana image simulation failed:', readableErr);
+            throw new Error(`Penjana imej Nano Banana gagal: ${readableErr}`);
         }
     }
 
-    // Default or Fallback: Pollinations
-    console.log(`🎨 Using Pollinations (External) Fallback with w:${width} h:${height}...`);
+    // Explicit Pollinations selection
+    console.log(`🎨 Using Pollinations (Flux) with w:${width} h:${height}...`);
     const seed = Math.floor(Math.random() * 999999);
     const encodedPrompt = encodeURIComponent(finalPrompt);
     const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&model=flux&nolog=true`;
@@ -1397,7 +1478,7 @@ export const askRiskFollowUp = async (risk: RiskDetection, question: string, lan
     try {
         const ai = getAIClient();
         const response = await ai.models.generateContent({
-            model: getPreferredModelForText("gemini-3.8-flash"), 
+            model: getPreferredModelForText("gemini-4-hydrogen"), 
             contents: {
                 parts: [{
                     text: `CONTEXT: RISK ANALYSIS. Risk: "${risk.label}" (${risk.category}). Agent: ${risk.agent}.
@@ -1408,6 +1489,9 @@ export const askRiskFollowUp = async (risk: RiskDetection, question: string, lan
         });
         return response.text || "Tiada jawapan.";
     } catch (error: any) {
+        if (isAuthOrPermissionError(error)) {
+            return `⚠️ ${prettifyErrorMessage(error)}`;
+        }
         console.warn("⚠️ API follow-up failed, falling back to simulated public health engineer response:", error);
         return getSimulatedChatResponse(risk, question, language);
     }
@@ -1446,7 +1530,7 @@ export const deepLarvaeAnalysis = async (base64Image: string): Promise<{ diagnos
         const parsedResult = await retryWithBackoff(async () => {
              const ai = getAIClient();
              const resp = await ai.models.generateContent({
-                 model: getPreferredModelForText("gemini-3.8-flash"),
+                 model: getPreferredModelForText("gemini-4-hydrogen"),
                  contents: {
                      parts: [
                          { inlineData: { mimeType: 'image/jpeg', data: optimizedImage } },
@@ -1488,6 +1572,9 @@ export const deepLarvaeAnalysis = async (base64Image: string): Promise<{ diagnos
             predictions: formattedPredictions
         };
     } catch (error: any) {
+        if (isAuthOrPermissionError(error)) {
+            throw new Error(prettifyErrorMessage(error));
+        }
         console.warn("⚠️ API Larvae Error: Seamlessly falling back to offline forensic simulation:", error);
         saveLog(`Larvae Analysis Fallback: ${error?.message || error}`, { error });
         return getSimulatedLarvaeResponse();
@@ -1516,7 +1603,7 @@ Gunakan format markdown yang kemas, profesional, saintifik tetapi difahami awam.
     try {
         const ai = getAIClient();
         const response = await ai.models.generateContent({
-            model: getPreferredModelForText("gemini-3.8-flash"),
+            model: getPreferredModelForText("gemini-4-hydrogen"),
             contents: { parts: [{ text: prompt }] }
         });
 
@@ -1567,7 +1654,7 @@ TUGAS ANDA:
         const parsedResult = await retryWithBackoff(async () => {
              const ai = getAIClient();
              const resp = await ai.models.generateContent({
-                 model: getPreferredModelForText("gemini-3.8-flash"),
+                 model: getPreferredModelForText("gemini-4-hydrogen"),
                  contents: {
                      parts: [
                          { inlineData: { mimeType: 'image/jpeg', data: optimizedImage } },
@@ -1606,6 +1693,9 @@ TUGAS ANDA:
             predictions: formattedPredictions
         };
     } catch (error: any) {
+        if (isAuthOrPermissionError(error)) {
+            throw new Error(prettifyErrorMessage(error));
+        }
         console.warn("⚠️ API Adult Mosquito Error: Seamlessly falling back to offline forensic simulation:", error);
         saveLog(`Adult Mosquito Analysis Fallback: ${error?.message || error}`, { error });
         return getSimulatedAdultMosquitoResponse();
@@ -1659,7 +1749,7 @@ Kembalikan JSON sahaja mengikut format ini:
         const parsed = await retryWithBackoff(async () => {
             const ai = getAIClient();
             const resp = await ai.models.generateContent({
-                model: getPreferredModelForText("gemini-2.5-flash"),
+                model: getPreferredModelForText("gemini-4-hydrogen"),
                 contents: {
                     parts: [
                         { inlineData: { mimeType: 'image/jpeg', data: origOpt } },
@@ -1700,6 +1790,9 @@ Kembalikan JSON sahaja mengikut format ini:
                 }))
         };
     } catch (err) {
+        if (isAuthOrPermissionError(err)) {
+            throw new Error(prettifyErrorMessage(err));
+        }
         console.warn("Compliance audit fallback activated:", err);
         const fallbackItems = (detectedRisks.length > 0 ? detectedRisks : [{ label: "Kebersihan Umum & Penghapusan Takungan" } as any]).map((r: any, idx: number) => ({
             riskLabel: r.label,

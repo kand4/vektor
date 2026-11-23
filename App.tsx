@@ -262,7 +262,7 @@ const App: React.FC = () => {
         Output JSON only: { "state": "State Name", "district": "District Name" }`;
         
         const response = await ai.models.generateContent({
-            model: getPreferredModelForText('gemini-2.5-flash'),
+            model: getPreferredModelForText('gemini-4-hydrogen'),
             contents: { parts: [{ text: prompt }] }
         });
         

@@ -22,7 +22,7 @@ export const SimulationConfigModal: React.FC<SimulationConfigModalProps> = ({ is
   const [mode, setMode] = React.useState<SimulationConfig['mode']>('SANITIZE_ONLY');
   const [humans, setHumans] = React.useState<SimulationConfig['humans']>('KEEP_PROTECTED');
   const [lighting, setLighting] = React.useState<SimulationConfig['lighting']>('CLINICAL_BLUE');
-  const [engine, setEngine] = React.useState<SimulationConfig['engine']>('POLLINATIONS');
+  const [engine, setEngine] = React.useState<SimulationConfig['engine']>('GEMINI_IMAGEN');
   const [customPrompt, setCustomPrompt] = React.useState('');
 
   if (!isOpen) return null;
@@ -79,7 +79,7 @@ export const SimulationConfigModal: React.FC<SimulationConfigModalProps> = ({ is
                 <div>
                    <label className="text-xs text-slate-400 font-mono-sci uppercase block mb-2">{t('label_ai_engine')}</label>
                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                      <OptionBtn label="✨ GEMINI (Imagen 4)" selected={engine === 'GEMINI_IMAGEN'} onClick={() => setEngine('GEMINI_IMAGEN')} />
+                      <OptionBtn label="🍌 NANO BANANA 2.1 (Gemini)" selected={engine === 'GEMINI_IMAGEN'} onClick={() => setEngine('GEMINI_IMAGEN')} />
                       <OptionBtn label="🌸 FLUX (Pollinations)" selected={engine === 'POLLINATIONS'} onClick={() => setEngine('POLLINATIONS')} />
                       <OptionBtn label="✍️ MANUAL (Web)" selected={engine === 'MANUAL'} onClick={() => setEngine('MANUAL')} />
                    </div>
