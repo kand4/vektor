@@ -92,6 +92,10 @@ const App: React.FC = () => {
 
   const purgeEpochRef = React.useRef<number>(0);
   const deletedIdsRef = React.useRef<Set<string>>(getStoredDeletedIds());
+  const sessionsRef = React.useRef<AnalysisSession[]>(sessions);
+  useEffect(() => {
+    sessionsRef.current = sessions;
+  }, [sessions]);
 
   // Load from IndexedDB and sync with cloud server on startup
   useEffect(() => {
@@ -258,7 +262,7 @@ const App: React.FC = () => {
         Output JSON only: { "state": "State Name", "district": "District Name" }`;
         
         const response = await ai.models.generateContent({
-            model: getPreferredModelForText('gemini-3.8-flash'),
+            model: getPreferredModelForText('gemini-2.5-flash'),
             contents: { parts: [{ text: prompt }] }
         });
         
@@ -369,25 +373,21 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    let timerId: ReturnType<typeof setTimeout> | null = null;
     const analyzingCount = sessions.filter(s => s.status === 'ANALYZING').length;
-    if (analyzingCount < 2) {
-      const pendingSession = sessions.find(s => s.status === 'PENDING');
-      if (pendingSession) {
-        // Trigger analysis promptly while respecting rate limits
-        timerId = setTimeout(() => {
-          triggerAnalysis(pendingSession.id);
-        }, 600);
-      }
-    }
-    return () => {
-      if (timerId) clearTimeout(timerId);
-    };
+    if (analyzingCount >= 2) return;
+    const pendingList = sessions.filter(s => s.status === 'PENDING').slice(0, 2 - analyzingCount);
+    if (pendingList.length === 0) return;
+
+    const timerId = setTimeout(() => {
+      pendingList.forEach(p => triggerAnalysis(p.id));
+    }, 500);
+
+    return () => clearTimeout(timerId);
   }, [sessions]);
 
   const triggerAnalysis = async (sessionId: string) => {
       const currentEpoch = purgeEpochRef.current;
-      const session = sessions.find(s => s.id === sessionId);
+      const session = sessionsRef.current.find(s => s.id === sessionId);
       if (!session || session.status !== 'PENDING' || deletedIdsRef.current.has(sessionId)) return;
       setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'ANALYZING' } : s));
       try {
@@ -399,25 +399,24 @@ const App: React.FC = () => {
             return;
           }
 
-          const completedSession: AnalysisSession = {
-            ...session,
-            status: 'SUCCESS',
-            result
-          };
-
+          let completedForSync: AnalysisSession | null = null;
           setSessions(prev => {
             if (deletedIdsRef.current.has(sessionId)) return prev;
-            const next = prev.map(s => s.id === sessionId ? completedSession : s);
+            const next = prev.map(s => {
+              if (s.id !== sessionId) return s;
+              completedForSync = { ...s, status: 'SUCCESS', result };
+              return completedForSync;
+            });
             const stillPending = next.some(s => s.status === 'PENDING' || s.status === 'ANALYZING');
             if (!stillPending) {
-              // Automatically collapse Papan Bukti thumbnail tray once scan finishes so cache strip doesn't clutter screen
               setIsGalleryExpanded(false);
             }
             return next;
           });
 
+          const syncTarget = completedForSync || { ...session, status: 'SUCCESS' as const, result };
           if (!deletedIdsRef.current.has(sessionId) && currentEpoch === purgeEpochRef.current) {
-            await syncSessionToServer(completedSession);
+            await syncSessionToServer(syncTarget);
           }
       } catch (error: any) {
           if (currentEpoch !== purgeEpochRef.current || deletedIdsRef.current.has(sessionId)) return;
@@ -427,16 +426,16 @@ const App: React.FC = () => {
 
   const handleSimulationSave = async (sessionId: string, image: string) => {
       if (deletedIdsRef.current.has(sessionId)) return;
-      // 1. Immediately update UI with self-contained image so slider works instantly and never breaks
+      // 1. Immediately update UI with self-contained image so slider works instantly
       setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, simulationImage: image } : s));
       
-      // 2. Sync to server
+      // 2. Sync to server using latest ref state so concurrent updates are preserved
       try {
         const hostedSimUrl = await uploadImageToCloud(image, `sim_${sessionId}`);
-        const target = sessions.find(s => s.id === sessionId);
+        const target = sessionsRef.current.find(s => s.id === sessionId);
         if (target && !deletedIdsRef.current.has(sessionId)) {
           const syncedTarget: AnalysisSession = { ...target, simulationImage: hostedSimUrl };
-          setSessions(prev => prev.map(s => s.id === sessionId ? syncedTarget : s));
+          setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, simulationImage: hostedSimUrl } : s));
           await syncSessionToServer(syncedTarget);
         }
       } catch (e) {
@@ -447,18 +446,18 @@ const App: React.FC = () => {
   const handleAnalyzeGeneratedImage = async (url: string, bypassJson?: string) => {
     try {
         if (bypassJson) {
-            // Apply JSON bypass immediately without API consumption
             let parsedResult: AnalysisResponse;
             try {
-                // Pre-process markdown if exist
                 let cleanJson = bypassJson.trim();
                 const match = cleanJson.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
                 if (match) cleanJson = match[1];
                 parsedResult = JSON.parse(cleanJson);
-                
-                // Add the new session fully resolved
+
+                localStorage.setItem(USER_PURGED_ALL_KEY, 'false');
+                dbSet(USER_PURGED_ALL_KEY, false).catch(() => {});
+
                 const newId = `session-simulated-bypass-${Date.now()}`;
-                setSessions(prev => [{
+                const newSession: AnalysisSession = {
                     id: newId,
                     fileName: "simulasi.png",
                     imageSrc: url,
@@ -467,10 +466,12 @@ const App: React.FC = () => {
                     mode: analysisMode,
                     result: parsedResult,
                     createdAt: Date.now()
-                }, ...prev]);
+                };
+                setSessions(prev => [newSession, ...prev]);
                 setActiveSessionId(newId);
                 setShowBypassModal(false);
                 setIsGalleryExpanded(false);
+                syncSessionToServer(newSession).catch(() => {});
             } catch (e: any) {
                 setToastMsg({ msg: "Ralat format JSON: " + e.message, type: 'error' });
             }
@@ -490,9 +491,20 @@ const App: React.FC = () => {
   const RADAR_GRID_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 1000 1000" style="background:%23020617"><defs><radialGradient id="r" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="%2310b981" stop-opacity="0.15"/><stop offset="100%" stop-color="%23020617" stop-opacity="0.9"/></radialGradient></defs><rect width="1000" height="1000" fill="url(%23r)"/><g stroke="%2310b981" stroke-opacity="0.2" stroke-width="1"><path d="M 0,100 L 1000,100 M 0,200 L 1000,200 M 0,300 L 1000,300 M 0,400 L 1000,400 M 0,500 L 1000,500 M 0,600 L 1000,600 M 0,700 L 1000,700 M 0,800 L 1000,800 M 0,900 L 1000,900"/><path d="M 100,0 L 100,1000 M 200,0 L 200,1000 M 300,0 L 300,1000 M 400,0 L 400,1000 M 500,0 L 500,1000 M 600,0 L 600,1000 M 700,0 L 700,1000 M 800,0 L 800,1000 M 900,0 L 900,1000"/></g><circle cx="500" cy="500" r="100" fill="none" stroke="%2310b981" stroke-opacity="0.5" stroke-dasharray="8 8" stroke-width="2"></circle><circle cx="500" cy="500" r="300" fill="none" stroke="%2310b981" stroke-opacity="0.3" stroke-width="1.5"/><circle cx="500" cy="500" r="450" fill="none" stroke="%2310b981" stroke-opacity="0.15" stroke-width="1"/><line x1="500" y1="0" x2="500" y2="1000" stroke="%2310b981" stroke-opacity="0.3" stroke-width="2"/><line x1="0" y1="500" x2="1000" y2="500" stroke="%2310b981" stroke-opacity="0.3" stroke-width="2"/><text x="50" y="80" fill="%2310b981" font-family="monospace" font-size="20" opacity="0.6">ANOMALY DETECTOR // MONITOR ACTIVE</text></svg>`;
 
   const handleApplyExternalJson = (parsedResult: AnalysisResponse) => {
+    localStorage.setItem(USER_PURGED_ALL_KEY, 'false');
+    dbSet(USER_PURGED_ALL_KEY, false).catch(() => {});
+
     if (activeSessionId) {
-      setSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, status: 'SUCCESS', result: parsedResult } : s));
+      let updatedForSync: AnalysisSession | null = null;
+      setSessions(prev => prev.map(s => {
+        if (s.id !== activeSessionId) return s;
+        updatedForSync = { ...s, status: 'SUCCESS', result: parsedResult };
+        return updatedForSync;
+      }));
       setIsGalleryExpanded(false);
+      if (updatedForSync) {
+        syncSessionToServer(updatedForSync).catch(() => {});
+      }
     } else {
       const newSessionId = `session-external-${Date.now()}`;
       const newSession: AnalysisSession = {
@@ -508,11 +520,21 @@ const App: React.FC = () => {
       setSessions(prev => [newSession, ...prev]);
       setActiveSessionId(newSessionId);
       setIsGalleryExpanded(false);
+      syncSessionToServer(newSession).catch(() => {});
     }
   };
 
   const handleUpdateSessionResult = (sessionId: string, newResult: AnalysisResponse) => {
-      setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, result: newResult } : s));
+      let updatedForSync: AnalysisSession | null = null;
+      setSessions(prev => prev.map(s => {
+        if (s.id !== sessionId) return s;
+        updatedForSync = { ...s, result: newResult };
+        return updatedForSync;
+      }));
+      const target = updatedForSync || sessionsRef.current.find(s => s.id === sessionId);
+      if (target) {
+        syncSessionToServer({ ...target, result: newResult }).catch(() => {});
+      }
   };
 
   const handleDeleteSession = (sessionId: string, e?: React.MouseEvent) => {
@@ -545,7 +567,8 @@ const App: React.FC = () => {
     setIsLiveMode(false);
     localStorage.setItem(USER_PURGED_ALL_KEY, 'false');
     dbSet(USER_PURGED_ALL_KEY, false);
-    const newSession: AnalysisSession = { id: `live-${Date.now()}`, fileName: 'AR_CAPTURE.jpg', imageSrc: capturedImageSrc, mimeType: 'image/jpeg', status: 'SUCCESS', result: capturedResult, mode: 'VECTOR_CONTROL', createdAt: Date.now() };
+    const detectedMode: AnalysisMode = capturedResult.mode || 'VECTOR_CONTROL';
+    const newSession: AnalysisSession = { id: `live-${Date.now()}`, fileName: 'AR_CAPTURE.jpg', imageSrc: capturedImageSrc, mimeType: 'image/jpeg', status: 'SUCCESS', result: capturedResult, mode: detectedMode, createdAt: Date.now() };
     setSessions(prev => autoCleanBoard ? [newSession] : [newSession, ...prev]);
     setActiveSessionId(newSession.id);
     setIsGalleryExpanded(false);
@@ -629,16 +652,8 @@ const App: React.FC = () => {
   };
 
   const handleManualSimulation = () => {
-    try {
-      navigator.clipboard.writeText(MANUAL_SIMULATION_DEFAULT_PROMPT);
-      setToastMsg({ msg: "Prompt disalin secara automatik! Membuka halaman simulasi khas & Gemini Web...", type: 'success' });
-      window.open("https://gemini.google.com/app", "_blank", "noopener,noreferrer");
-      setCurrentView('MANUAL_SIMULATION');
-    } catch (err) {
-      console.error(err);
-      setToastMsg({ msg: "Membuka halaman simulasi khas secara manual.", type: 'error' });
-      setCurrentView('MANUAL_SIMULATION');
-    }
+    setCurrentView('MANUAL_SIMULATION');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleGoHome = () => { 
@@ -779,10 +794,20 @@ const App: React.FC = () => {
                 }}
                 onDeleteSession={handleDeleteSession}
                 onDeleteSimulationOnly={(sessionId) => {
-                    setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, simulationImage: undefined } : s));
+                    let updatedForSync: AnalysisSession | null = null;
+                    setSessions(prev => prev.map(s => {
+                      if (s.id !== sessionId) return s;
+                      updatedForSync = { ...s, simulationImage: undefined };
+                      return updatedForSync;
+                    }));
+                    const target = updatedForSync || sessionsRef.current.find(s => s.id === sessionId);
+                    if (target) {
+                      syncSessionToServer({ ...target, simulationImage: undefined }).catch(() => {});
+                    }
                 }}
                 onUpdateSession={(updatedSession) => {
                     setSessions(prev => prev.map(s => s.id === updatedSession.id ? updatedSession : s));
+                    syncSessionToServer(updatedSession).catch(() => {});
                 }}
                 onClearAllSessions={resetApp}
                 onLoadDefaultArchive={() => {

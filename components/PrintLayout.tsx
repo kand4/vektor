@@ -6,11 +6,23 @@ interface PrintLayoutProps {
   sessions: AnalysisSession[];
 }
 
-const formatTextToHtml = (text: string) => {
-    if (!text) return "";
-    return text
-        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-        .replace(/\n/g, '<br/>');
+const renderFormattedText = (text: string) => {
+    if (!text) return null;
+    const lines = text.split('\n');
+    return lines.map((line, lineIdx) => {
+        const parts = line.split(/(\*\*.*?\*\*)/g);
+        return (
+            <React.Fragment key={lineIdx}>
+                {parts.map((part, partIdx) => {
+                    if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+                        return <b key={partIdx}>{part.slice(2, -2)}</b>;
+                    }
+                    return <React.Fragment key={partIdx}>{part}</React.Fragment>;
+                })}
+                {lineIdx < lines.length - 1 && <br />}
+            </React.Fragment>
+        );
+    });
 };
 
 const DeterministicSvgQR: React.FC<{ value: string; size?: number }> = ({ value, size = 76 }) => {
@@ -56,7 +68,15 @@ const DeterministicSvgQR: React.FC<{ value: string; size?: number }> = ({ value,
 export const PrintLayout: React.FC<PrintLayoutProps> = ({ sessions }) => {
   // Filter only successful sessions that have results
   const validSessions = sessions.filter(s => s.status === 'SUCCESS' && s.result);
-  const refNo = `KKM/PKP/2025/${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+  const refNo = React.useMemo(() => {
+    const year = new Date().getFullYear();
+    const seed = validSessions[0]?.id || '0000';
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+      hash = (hash * 31 + seed.charCodeAt(i)) % 10000;
+    }
+    return `KKM/PKP/${year}/${String(Math.abs(hash)).padStart(4, '0')}`;
+  }, [validSessions[0]?.id]);
   const today = new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' });
 
   // Get the portal target
@@ -359,10 +379,9 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ sessions }) => {
                 {/* Ulasan AI */}
                 <div className="mb-6 avoid-break">
                      <h4 className="font-bold text-sm border-b border-gray-300 mb-2 pb-1 uppercase">ULASAN HASIL PEMERIKSAAN:</h4>
-                     <div 
-                        className="text-xs text-justify font-serif leading-relaxed text-black"
-                        dangerouslySetInnerHTML={{ __html: formatTextToHtml(result.generalAdvice) }}
-                     />
+                     <div className="text-xs text-justify font-serif leading-relaxed text-black">
+                        {renderFormattedText(result.generalAdvice)}
+                     </div>
                 </div>
 
                 {/* Senarai Risiko */}
@@ -412,7 +431,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ sessions }) => {
 
                 {/* Footer Halaman */}
                 <div className="mt-auto pt-3 border-t border-black text-[10px] flex justify-between">
-                    <span>Muka Surat {index + 2} daripada {validSessions.length + 1}</span>
+                    <span>Muka Surat {index + 3} daripada {validSessions.length + 2}</span>
                     <span>Dicetak pada: {new Date().toLocaleString()}</span>
                 </div>
             </div>

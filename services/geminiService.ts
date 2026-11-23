@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { AnalysisResponse, RiskDetection, BoundingBox, SensitivityLevel, AnalysisMode, iDengueData, RegionalDengueData } from "../types";
+import { AnalysisResponse, RiskDetection, BoundingBox, SensitivityLevel, AnalysisMode, iDengueData, RegionalDengueData, ComplianceAuditResult } from "../types";
 import { saveLog } from "./logService";
 
 export interface SimulationConfig {
@@ -261,15 +261,15 @@ Ancaman Kesihatan Utama:
   }
 };
 
-export const getPreferredModel = (defaultModel: string = 'gemini-3.8-flash') => {
+export const getPreferredModel = (defaultModel: string = 'gemini-2.5-flash') => {
     return localStorage.getItem('gemini_model_preference') || defaultModel;
 };
 
-export const getPreferredModelForScan = (defaultModel: string = 'gemini-3.8-flash') => {
+export const getPreferredModelForScan = (defaultModel: string = 'gemini-2.5-flash') => {
     return localStorage.getItem('gemini_model_preference') || defaultModel;
 };
 
-export const getPreferredModelForText = (defaultModel: string = 'gemini-3.8-flash') => {
+export const getPreferredModelForText = (defaultModel: string = 'gemini-2.5-flash') => {
     return localStorage.getItem('gemini_model_preference') || defaultModel;
 };
 
@@ -1623,11 +1623,11 @@ export const verifyCleaningCompliance = async (
         : '1. Kebersihan umum & penghapusan bekas takungan air serta sarang vektor';
 
     try {
-        const origResolved = await resolveImageBase64(originalImageSrc, 'image/jpeg');
-        const afterResolved = await resolveImageBase64(afterImageSrc, 'image/jpeg');
-
-        const origOpt = await resizeAndCompressImage(origResolved.data, 800, 0.75);
-        const afterOpt = await resizeAndCompressImage(afterResolved.data, 800, 0.75);
+        const origOpt = await compressImage(originalImageSrc, 1024, 0.8);
+        const afterOpt = await compressImage(afterImageSrc, 1024, 0.8);
+        if (!origOpt || !afterOpt) {
+            throw new Error("Imej perbandingan tidak sah atau gagal diproses.");
+        }
 
         const prompt = `Anda adalah Pegawai Kesihatan Persekitaran Kanan (PKP) KKM yang menjalankan AUDIT PEMATUHAN SELEPAS PEMBERSIHAN (Post-Remediation Compliance Audit).
 Imej Pertama adalah IMEJ ASAL (SEBELUM PEMBERSIHAN).
@@ -1659,7 +1659,7 @@ Kembalikan JSON sahaja mengikut format ini:
         const parsed = await retryWithBackoff(async () => {
             const ai = getAIClient();
             const resp = await ai.models.generateContent({
-                model: getPreferredModelForText("gemini-3.8-flash"),
+                model: getPreferredModelForText("gemini-2.5-flash"),
                 contents: {
                     parts: [
                         { inlineData: { mimeType: 'image/jpeg', data: origOpt } },

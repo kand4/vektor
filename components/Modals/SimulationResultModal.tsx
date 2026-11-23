@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { getProxiedImageUrl } from '../../utils/imageProxy';
 
 interface SimulationResultModalProps {
   isOpen: boolean;
@@ -21,10 +22,14 @@ export const SimulationResultModal: React.FC<SimulationResultModalProps> = ({
   const isDragging = useRef(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [customPrompt, setCustomPrompt] = useState('');
+  const [useProxyOriginal, setUseProxyOriginal] = useState(false);
+  const [proxyGeneratedIndices, setProxyGeneratedIndices] = useState<Record<number, boolean>>({});
   
   useEffect(() => {
     if (isOpen && generatedImages.length > 0) {
       setSelectedIndex(generatedImages.length - 1);
+      setUseProxyOriginal(false);
+      setProxyGeneratedIndices({});
     }
   }, [isOpen, generatedImages]);
 
@@ -49,6 +54,10 @@ export const SimulationResultModal: React.FC<SimulationResultModalProps> = ({
   if (!isOpen || generatedImages.length === 0) return null;
 
   const currentGeneratedImage = generatedImages[selectedIndex];
+  const resolvedOriginalSrc = useProxyOriginal ? getProxiedImageUrl(originalImage) : originalImage;
+  const resolvedGeneratedSrc = proxyGeneratedIndices[selectedIndex]
+    ? getProxiedImageUrl(currentGeneratedImage)
+    : currentGeneratedImage;
 
   return (
     <div className="fixed inset-0 z-[180] bg-black/95 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 no-print overflow-y-auto"
@@ -80,9 +89,27 @@ export const SimulationResultModal: React.FC<SimulationResultModalProps> = ({
                     onTouchStart={(e) => onStart(e.touches[0].clientX)}
                     className="relative w-full min-h-[50vh] md:min-h-[70vh] border border-slate-700 rounded overflow-hidden shadow-xl group/sim select-none shrink-0 cursor-ew-resize bg-slate-950"
                  >
-                    <img src={currentGeneratedImage} className="absolute inset-0 w-full h-full object-contain bg-slate-950 pointer-events-none" />
+                    <img
+                      src={resolvedGeneratedSrc}
+                      alt={`Simulasi sanitasi pasca pembersihan #${selectedIndex + 1}`}
+                      onError={() => {
+                        if (!proxyGeneratedIndices[selectedIndex] && currentGeneratedImage.startsWith('http')) {
+                          setProxyGeneratedIndices(prev => ({ ...prev, [selectedIndex]: true }));
+                        }
+                      }}
+                      className="absolute inset-0 w-full h-full object-contain bg-slate-950 pointer-events-none"
+                    />
                     <div className="absolute inset-0 bg-slate-950 overflow-hidden pointer-events-none" style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}>
-                        <img src={originalImage} className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
+                        <img
+                          src={resolvedOriginalSrc}
+                          alt="Imej premis asal sebelum simulasi"
+                          onError={() => {
+                            if (!useProxyOriginal && originalImage.startsWith('http')) {
+                              setUseProxyOriginal(true);
+                            }
+                          }}
+                          className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+                        />
                     </div>
                     {/* Visual Divider Line */}
                     <div className="absolute top-0 bottom-0 w-0.5 bg-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.8)] pointer-events-none z-20" style={{ left: `${sliderPos}%` }}>
@@ -155,7 +182,16 @@ export const SimulationResultModal: React.FC<SimulationResultModalProps> = ({
                                         onClick={() => setSelectedIndex(idx)}
                                         className={`shrink-0 relative w-16 h-16 rounded overflow-hidden border-2 transition-all ${selectedIndex === idx ? 'border-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.5)]' : 'border-slate-800 opacity-50 hover:opacity-100'}`}
                                      >
-                                         <img src={img} className="w-full h-full object-cover" />
+                                         <img
+                                           src={proxyGeneratedIndices[idx] ? getProxiedImageUrl(img) : img}
+                                           alt={`Sejarah simulasi #${idx + 1}`}
+                                           onError={() => {
+                                             if (!proxyGeneratedIndices[idx] && img.startsWith('http')) {
+                                               setProxyGeneratedIndices(prev => ({ ...prev, [idx]: true }));
+                                             }
+                                           }}
+                                           className="w-full h-full object-cover"
+                                         />
                                          <div className="absolute bottom-0 right-0 bg-black/60 text-[8px] font-mono px-1 rounded-tl">{idx + 1}</div>
                                      </button>
                                  ))}
@@ -208,11 +244,22 @@ export const SimulationResultModal: React.FC<SimulationResultModalProps> = ({
                  </div>
 
                  <div className="flex flex-wrap items-center justify-center gap-4 no-print shrink-0 w-full mb-8">
+                      {onAnalyzeSimulation && (
+                        <button
+                          onClick={() => {
+                            onAnalyzeSimulation(resolvedGeneratedSrc);
+                            onClose();
+                          }}
+                          className="px-6 py-2 rounded bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/40 text-white font-bold text-sm shadow-lg shadow-emerald-600/20 transition"
+                        >
+                          🔬 Sahkan &amp; Analisis Imej Ini
+                        </button>
+                      )}
                       <button 
                         onClick={() => {
                             const link = document.createElement('a');
                             link.download = `sanorai_simulation_${selectedIndex + 1}.jpg`;
-                            link.href = currentGeneratedImage;
+                            link.href = resolvedGeneratedSrc;
                             link.click();
                         }}
                         className="px-6 py-2 rounded bg-slate-800 border border-slate-700 text-white font-bold text-sm hover:bg-slate-700 transition"

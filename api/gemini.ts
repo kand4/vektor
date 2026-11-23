@@ -8,8 +8,11 @@ function sanitizeErrorMessage(msg: string): string {
   return msg
     .replace(/AIza[0-9A-Za-z_-]{35}/g, '[REDACTED_API_KEY]')
     .replace(/([?&]key=)[^&\s]+/gi, '$1[REDACTED]')
-    .replace(/Bearer\s+[A-Za-z0-9_-]+/gi, 'Bearer [REDACTED]');
+    .replace(/bot[0-9]{8,10}:[a-zA-Z0-9_-]{30,}/gi, 'bot[REDACTED_TOKEN]')
+    .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, 'Bearer [REDACTED]');
 }
+
+let cachedWorkingTextModel: { model: string; expiresAt: number } | null = null;
 
 // Sanitizer for inlineData in contents to guarantee Gemini receives raw base64
 async function sanitizeGeminiContents(contents: any): Promise<any> {
@@ -169,24 +172,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const sanitizedContents = await sanitizeGeminiContents(contents);
       
       const safeFallbacks = [
-        "gemini-3.8-flash",
-        "gemini-flash-latest",
-        "gemini-3.7-flash",
         "gemini-2.5-flash",
-        "gemini-2.5-flash-lite",
-        "gemini-2.5-pro",
+        "gemini-flash-latest",
         "gemini-3.1-flash-lite",
-        "gemini-3.1-pro-preview"
+        "gemini-2.5-flash-lite",
+        "gemini-3.1-pro-preview",
+        "gemini-2.5-pro"
       ];
 
-      const uniqueModels = Array.from(new Set([model, ...safeFallbacks]));
+      const cached =
+        cachedWorkingTextModel && Date.now() < cachedWorkingTextModel.expiresAt
+          ? [cachedWorkingTextModel.model]
+          : [];
+
+      const uniqueModels = Array.from(new Set([...cached, model, ...safeFallbacks]));
       let response = null;
       let lastError: any = null;
 
       for (const targetModel of uniqueModels) {
         try {
           if (targetModel !== model) {
-            console.log(`🔄 [Vercel API] Attempting fallback model: ${targetModel} due to issues on ${model}`);
+            console.log(`🔄 [Vercel API] Attempting fallback model: ${targetModel}`);
           }
 
           let activeConfig = config;
@@ -204,11 +210,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             contents: sanitizedContents,
             config: activeConfig
           });
+          cachedWorkingTextModel = { model: targetModel, expiresAt: Date.now() + 10 * 60_000 };
           break;
         } catch (err: any) {
           lastError = err;
           const errStatus = err?.status || err?.code || 500;
-          const errMsg = err?.message || String(err);
+          const errMsg = sanitizeErrorMessage(err?.message || String(err));
           console.log(`ℹ️ [Vercel API] Model ${targetModel} attempt failed (Status ${errStatus}): ${errMsg}`);
         }
       }

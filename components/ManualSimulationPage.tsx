@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Toast } from './Toast';
+import { resizeAndCompressImage } from '../utils/imageUtils';
 
 interface ManualSimulationPageProps {
   onBack: () => void;
@@ -61,55 +62,53 @@ ${additionalDirectives ? `6. ARAHAN TAMBAHAN PENGGUNA: ${additionalDirectives}\n
 
   const currentPrompt = generatePromptText();
 
-  const handleCopyAndOpen = () => {
+  const handleCopyAndOpen = async () => {
     try {
-      navigator.clipboard.writeText(currentPrompt);
+      await navigator.clipboard.writeText(currentPrompt);
       setCopied(true);
       setToastMsg({ msg: "Prompt Manual disalin! Membuka gemini.google.com/app...", type: 'success' });
       setTimeout(() => setCopied(false), 2000);
-      window.open("https://gemini.google.com/app", "_blank");
+      window.open("https://gemini.google.com/app", "_blank", "noopener,noreferrer");
     } catch (err) {
       console.error(err);
       setToastMsg({ msg: "Gagal menyalin secara automatik. Sila salin prompt secara manual.", type: 'error' });
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'original' | 'simulated') => {
+  const processSanitizedImage = async (file: File, type: 'original' | 'simulated', successMsg?: string) => {
+    const { preview } = await resizeAndCompressImage(file);
+    if (!preview) {
+      setToastMsg({ msg: "Fail imej tidak sah atau gagal diproses. Gunakan format JPG, PNG atau WEBP.", type: 'error' });
+      return;
+    }
+    if (type === 'original') setOriginalImage(preview);
+    else setSimulatedImage(preview);
+    if (successMsg) setToastMsg({ msg: successMsg, type: 'success' });
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'original' | 'simulated') => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          if (type === 'original') setOriginalImage(event.target.result as string);
-          else setSimulatedImage(event.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+      await processSanitizedImage(file, type);
     }
   };
 
   // Support paste events
-  const handlePaste = (e: React.ClipboardEvent, type: 'original' | 'simulated') => {
+  const handlePaste = async (e: React.ClipboardEvent, type: 'original' | 'simulated') => {
     const items = e.clipboardData?.items;
-    if (items) {
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].type.indexOf('image') !== -1) {
-          const blob = items[i].getAsFile();
-          if (blob) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              if (event.target?.result) {
-                if (type === 'original') {
-                  setOriginalImage(event.target.result as string);
-                  setToastMsg({ msg: "Imej asal berjaya ditampal!", type: 'success' });
-                } else {
-                  setSimulatedImage(event.target.result as string);
-                  setToastMsg({ msg: "Imej simulasi bersih berjaya ditampal!", type: 'success' });
-                }
-              }
-            };
-            reader.readAsDataURL(blob);
-          }
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const blob = items[i].getAsFile();
+        if (blob) {
+          const wrappedFile = new File([blob], 'pasted-image.png', { type: blob.type || 'image/png' });
+          await processSanitizedImage(
+            wrappedFile,
+            type,
+            type === 'original' ? "Imej asal berjaya ditampal!" : "Imej simulasi bersih berjaya ditampal!"
+          );
+          break;
         }
       }
     }
@@ -119,18 +118,13 @@ ${additionalDirectives ? `6. ARAHAN TAMBAHAN PENGGUNA: ${additionalDirectives}\n
     e.preventDefault();
   };
 
-  const handleDrop = (e: React.DragEvent, type: 'original' | 'simulated') => {
+  const handleDrop = async (e: React.DragEvent, type: 'original' | 'simulated') => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
     if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          if (type === 'original') setOriginalImage(event.target.result as string);
-          else setSimulatedImage(event.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+      await processSanitizedImage(file, type);
+    } else if (file) {
+      setToastMsg({ msg: "Hanya fail imej (JPG/PNG/WEBP) dibenarkan.", type: 'error' });
     }
   };
 
@@ -213,6 +207,37 @@ ${additionalDirectives ? `6. ARAHAN TAMBAHAN PENGGUNA: ${additionalDirectives}\n
             <span>✕</span>
             <span>TUTUP</span>
           </button>
+        </div>
+      </div>
+
+      {/* 3-Step Visual Workflow Bar */}
+      <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className={`p-3 rounded-xl border flex items-center gap-3 transition-colors ${originalImage ? 'bg-emerald-950/30 border-emerald-500/40' : 'bg-slate-900/60 border-cyan-500/40'}`}>
+          <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${originalImage ? 'bg-emerald-600 text-white' : 'bg-cyan-600 text-white'}`}>
+            {originalImage ? '✓' : '1'}
+          </span>
+          <div>
+            <p className="text-xs font-bold text-white">Muat Naik Imej Asal</p>
+            <p className="text-[10px] text-slate-400 font-mono">Metadata EXIF/GPS dibersihkan automatik</p>
+          </div>
+        </div>
+        <div className={`p-3 rounded-xl border flex items-center gap-3 transition-colors ${copied ? 'bg-emerald-950/30 border-emerald-500/40' : 'bg-slate-900/60 border-slate-800'}`}>
+          <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${copied ? 'bg-emerald-600 text-white' : 'bg-indigo-600 text-white'}`}>
+            {copied ? '✓' : '2'}
+          </span>
+          <div>
+            <p className="text-xs font-bold text-white">Salin Prompt & Jana di Gemini Web</p>
+            <p className="text-[10px] text-slate-400 font-mono">Laraskan tahap steriliti & pencahayaan</p>
+          </div>
+        </div>
+        <div className={`p-3 rounded-xl border flex items-center gap-3 transition-colors ${simulatedImage && originalImage ? 'bg-emerald-950/30 border-emerald-500/40' : 'bg-slate-900/60 border-slate-800'}`}>
+          <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${simulatedImage && originalImage ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-200'}`}>
+            {simulatedImage && originalImage ? '✓' : '3'}
+          </span>
+          <div>
+            <p className="text-xs font-bold text-white">Tampal Hasil & Simpan Rekod</p>
+            <p className="text-[10px] text-slate-400 font-mono">Bandingkan terus dengan slider interaktif</p>
+          </div>
         </div>
       </div>
 

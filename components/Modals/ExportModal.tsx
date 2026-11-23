@@ -8,12 +8,14 @@ interface ExportModalProps {
     isOpen: boolean;
     onClose: () => void;
     sessions: AnalysisSession[];
+    currentSession?: AnalysisSession;
 }
 
-export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessions }) => {
+export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessions, currentSession }) => {
     const [telegramBotToken, setTelegramBotToken] = useState('');
     const [telegramChatId, setTelegramChatId] = useState('');
     const [telegraphAuthor, setTelegraphAuthor] = useState('VectorGuard AI');
+    const [exportScope, setExportScope] = useState<'CURRENT' | 'ALL'>('ALL');
     const [isExporting, setIsExporting] = useState(false);
     const [statusText, setStatusText] = useState('');
     const [toastMsg, setToastMsg] = useState<{msg: string, type: 'error' | 'success'} | null>(null);
@@ -21,16 +23,30 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
 
     const [lastCreatedUrl, setLastCreatedUrl] = useState<string | null>(null);
 
+    const targetSessions = exportScope === 'CURRENT' && currentSession ? [currentSession] : sessions;
+
     useEffect(() => {
         if (isOpen) {
             setTelegramBotToken(localStorage.getItem('telegram_bot_token') || '');
             setTelegramChatId(localStorage.getItem('telegram_chat_id') || '');
             setTelegraphAuthor(localStorage.getItem('telegraph_author_name') || 'VectorGuard AI');
             setTelegraphAuthUrl(localStorage.getItem('telegraph_auth_url'));
+            setExportScope(currentSession && sessions.length > 1 ? 'CURRENT' : 'ALL');
             setStatusText('');
             setLastCreatedUrl(null);
         }
-    }, [isOpen]);
+    }, [isOpen, currentSession, sessions.length]);
+
+    const isSafeHttpUrl = (url?: string | null): boolean => {
+        return !!url && /^https?:\/\//i.test(url.trim());
+    };
+
+    const getAppOriginUrl = (): string => {
+        if (typeof window !== 'undefined' && /^https?:\/\//i.test(window.location.origin)) {
+            return window.location.origin;
+        }
+        return 'https://vektorx.vercel.app';
+    };
 
     const handleSaveSettings = () => {
         localStorage.setItem('telegram_bot_token', telegramBotToken.trim());
@@ -145,10 +161,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
 
         if (index === total - 1) {
             report += `<b>━━━━━━━━━━━━━━━━━━━━━</b>\n`;
-            if (telegraphUrl) {
-                report += `📄 <b>Laporan Penuh Digital (Telegraph):</b>\n<a href="${telegraphUrl}">${telegraphUrl}</a>\n\n`;
+            if (isSafeHttpUrl(telegraphUrl)) {
+                const safeTgUrl = escapeHtml(telegraphUrl);
+                report += `📄 <b>Laporan Penuh Digital (Telegraph):</b>\n<a href="${safeTgUrl}">${safeTgUrl}</a>\n\n`;
             }
-            const appUrl = "https://vektorx.vercel.app";
+            const appUrl = escapeHtml(getAppOriginUrl());
             report += `🔍 <b>Jalankan Pemeriksaan Seterusnya di:</b>\n<a href="${appUrl}">${appUrl}</a>`;
         }
 
@@ -162,7 +179,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
         content.push({ tag: 'p', children: [`Tarikh Janaan: ${new Date().toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`] });
         content.push({ tag: 'hr' });
 
-        sessions.forEach((session, index) => {
+        targetSessions.forEach((session, index) => {
             const isKkmMode = session.mode === 'KKM_FOOD_STANDARD' || !!session.result?.kkmReport;
             const kkm = session.result?.kkmReport;
 
@@ -238,7 +255,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
             content.push({ tag: 'hr' });
         });
 
-        const appUrl = "https://vektorx.vercel.app";
+        const appUrl = getAppOriginUrl();
         content.push({ tag: 'p', children: [{ tag: 'b', children: ['Jalankan Analisis Anda Sendiri di: '] }, { tag: 'a', attrs: { href: appUrl, target: '_blank' }, children: [appUrl] }] });
 
         return content;
@@ -249,8 +266,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
         const uploadedImages: {sessionIndex: number, originalUrl: string, cleanUrl?: string}[] = [];
         const allImageUrls: string[] = [];
 
-        for (let i = 0; i < sessions.length; i++) {
-            const session = sessions[i];
+        for (let i = 0; i < targetSessions.length; i++) {
+            const session = targetSessions[i];
             let originalUrl = "";
             let cleanUrl = undefined;
             
@@ -279,7 +296,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
     };
 
     const handleExportTelegraph = async () => {
-        if (!sessions || sessions.length === 0) return setToastMsg({ msg: "Tiada data analisis.", type: 'error' });
+        if (!targetSessions || targetSessions.length === 0) return setToastMsg({ msg: "Tiada data analisis.", type: 'error' });
         if (!telegraphAuthor) return setToastMsg({ msg: "Sila isi Nama Pengarang Telegraph.", type: 'error' });
         
         setIsExporting(true);
@@ -322,7 +339,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
     };
 
     const handleExportTelegram = async () => {
-        if (!sessions || sessions.length === 0) return setToastMsg({ msg: "Tiada data analisis untuk dieksport.", type: 'error' });
+        if (!targetSessions || targetSessions.length === 0) return setToastMsg({ msg: "Tiada data analisis untuk dieksport.", type: 'error' });
         
         const token = telegramBotToken.trim();
         const rawChatId = telegramChatId.trim();
@@ -344,9 +361,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
             
             setStatusText("Menghantar mesej dan gambar ke Telegram...");
             
-            for (let i = 0; i < sessions.length; i++) {
-                const session = sessions[i];
-                const textReport = buildMarkdownForSession(session, i, sessions.length);
+            for (let i = 0; i < targetSessions.length; i++) {
+                const session = targetSessions[i];
+                const textReport = buildMarkdownForSession(session, i, targetSessions.length);
                 const sessionImages = uploadedImages.filter(img => img.sessionIndex === i);
                 const urlsForSession: string[] = [];
                 if (sessionImages.length > 0) {
@@ -374,7 +391,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
     };
 
     const handleExportBoth = async () => {
-        if (!sessions || sessions.length === 0) return setToastMsg({ msg: "Tiada data analisis untuk dieksport.", type: 'error' });
+        if (!targetSessions || targetSessions.length === 0) return setToastMsg({ msg: "Tiada data analisis untuk dieksport.", type: 'error' });
         
         const token = telegramBotToken.trim();
         const rawChatId = telegramChatId.trim();
@@ -406,9 +423,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
 
             setStatusText("Menghantar ke Telegram...");
             
-            for (let i = 0; i < sessions.length; i++) {
-                const session = sessions[i];
-                const textReport = buildMarkdownForSession(session, i, sessions.length, telegraphUrl);
+            for (let i = 0; i < targetSessions.length; i++) {
+                const session = targetSessions[i];
+                const textReport = buildMarkdownForSession(session, i, targetSessions.length, telegraphUrl);
                 const sessionImages = uploadedImages.filter(img => img.sessionIndex === i);
                 const urlsForSession: string[] = [];
                 if (sessionImages.length > 0) {
@@ -453,7 +470,31 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
                         ✕
                     </button>
                 </div>
-                <p className="text-xs text-slate-400 mb-6 font-mono">Laporkan hasil analisis (gambar berserta maklumat json diagnostik) secara berpusat dan bebas had saiz fail dengan chunking automatik.</p>
+                <p className="text-xs text-slate-400 mb-4 font-mono">Laporkan hasil analisis (gambar berserta maklumat diagnostik) secara berpusat dan bebas had saiz fail dengan chunking automatik.</p>
+
+                {currentSession && sessions.length > 1 && (
+                    <div className="mb-4 bg-slate-950 border border-slate-700 rounded-lg p-3">
+                        <span className="text-[10px] font-mono text-slate-400 uppercase block mb-2">SKOP EKSPORT LAPORAN</span>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setExportScope('CURRENT')}
+                                disabled={isExporting}
+                                className={`py-2 px-3 rounded text-xs font-bold border transition ${exportScope === 'CURRENT' ? 'bg-blue-600/20 border-blue-400 text-blue-300' : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-white'}`}
+                            >
+                                Sesi Semasa Sahaja (1)
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setExportScope('ALL')}
+                                disabled={isExporting}
+                                className={`py-2 px-3 rounded text-xs font-bold border transition ${exportScope === 'ALL' ? 'bg-blue-600/20 border-blue-400 text-blue-300' : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-white'}`}
+                            >
+                                Semua Sesi Batch ({sessions.length})
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 <div className="space-y-4">
                     <div className="bg-slate-950 p-4 rounded-lg border border-slate-700">
@@ -519,15 +560,15 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
                                 />
                             </div>
 
-                            {telegraphAuthUrl && (
+                            {isSafeHttpUrl(telegraphAuthUrl) && (
                                 <div className="mt-3 p-2.5 bg-slate-900/90 border border-slate-700/80 rounded flex items-center justify-between gap-2">
                                     <div className="text-[10px] text-slate-300 font-mono">
                                         <span className="text-amber-400 font-bold">✏️ Sesi Pengarang:</span> Log masuk untuk membolehkan butang <b>EDIT</b> pada artikel Telegraph.
                                     </div>
                                     <a
-                                        href={telegraphAuthUrl}
+                                        href={telegraphAuthUrl!}
                                         target="_blank"
-                                        rel="noreferrer"
+                                        rel="noopener noreferrer"
                                         className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded text-[10px] font-bold whitespace-nowrap transition"
                                     >
                                         Buka Sesi Edit ↗
@@ -538,7 +579,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
                     </div>
                 </div>
 
-                {lastCreatedUrl && (
+                {isSafeHttpUrl(lastCreatedUrl) && (
                     <div className="mt-4 p-3 bg-emerald-950/60 border border-emerald-500/50 rounded-lg animate-fade-in">
                         <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs mb-1">
                             <span>✅ Artikel Telegraph Berjaya Diterbitkan!</span>
@@ -548,18 +589,18 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, sessi
                         </p>
                         <div className="flex items-center gap-2">
                             <a
-                                href={lastCreatedUrl}
+                                href={lastCreatedUrl!}
                                 target="_blank"
-                                rel="noreferrer"
+                                rel="noopener noreferrer"
                                 className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-center text-xs font-bold transition shadow"
                             >
                                 🌐 Buka Artikel
                             </a>
-                            {telegraphAuthUrl && (
+                            {isSafeHttpUrl(telegraphAuthUrl) && (
                                 <a
-                                    href={telegraphAuthUrl}
+                                    href={telegraphAuthUrl!}
                                     target="_blank"
-                                    rel="noreferrer"
+                                    rel="noopener noreferrer"
                                     className="py-1.5 px-3 bg-amber-600 hover:bg-amber-500 text-white rounded text-center text-xs font-bold transition shadow"
                                 >
                                     ✏️ Log Masuk & Edit

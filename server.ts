@@ -230,8 +230,10 @@ async function startServer() {
 
   // Health check endpoint
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", defaultModel: "gemini-3.8-flash" });
+    res.json({ status: "ok", defaultModel: "gemini-2.5-flash" });
   });
+
+  let cachedWorkingTextModel: { model: string; expiresAt: number } | null = null;
 
   // API proxy route for Google Gemini (Protected by Rate Limiter)
   app.post("/api/gemini", apiRateLimiter(45, 60_000), async (req, res) => {
@@ -295,7 +297,7 @@ async function startServer() {
 
         return res.status(404).json({
           error: {
-            message: lastImagenError?.message || "Penjana imej Imagen tidak disokong pada API Key ini."
+            message: sanitizeOpSecError(lastImagenError) || "Penjana imej Imagen tidak disokong pada API Key ini."
           }
         });
       } else {
@@ -311,24 +313,20 @@ async function startServer() {
 
         // Safe and approved fallback models list in order of preference (prioritizing active supported models)
         const safeFallbacks = [
-          "gemini-3.8-flash",
-          "gemini-flash-latest",
-          "gemini-3.7-flash",
           "gemini-2.5-flash",
-          "gemini-2.5-flash-lite",
-          "gemini-2.5-pro",
+          "gemini-flash-latest",
           "gemini-3.1-flash-lite",
-          "gemini-3.1-pro-preview"
+          "gemini-2.5-flash-lite",
+          "gemini-3.1-pro-preview",
+          "gemini-2.5-pro"
         ];
 
-        const modelFallbackList = [model];
-        for (const fallback of safeFallbacks) {
-          if (!modelFallbackList.includes(fallback)) {
-            modelFallbackList.push(fallback);
-          }
-        }
+        const cached =
+          cachedWorkingTextModel && Date.now() < cachedWorkingTextModel.expiresAt
+            ? [cachedWorkingTextModel.model]
+            : [];
 
-        const uniqueModels = Array.from(new Set(modelFallbackList));
+        const uniqueModels = Array.from(new Set([...cached, model, ...safeFallbacks]));
         let response = null;
         let lastError: any = null;
 
@@ -358,11 +356,12 @@ async function startServer() {
               contents: sanitizedContents,
               config: activeConfig
             });
+            cachedWorkingTextModel = { model: targetModel, expiresAt: Date.now() + 10 * 60_000 };
             break; // Success! Break out of the loop
           } catch (err: any) {
             lastError = err;
             const errStatus = err?.status || err?.code || 500;
-            const errMsg = err?.message || String(err);
+            const errMsg = sanitizeOpSecError(err);
             console.log(`ℹ️ Model ${targetModel} attempt failed (Status ${errStatus}): ${errMsg}`);
           }
         }
@@ -998,7 +997,7 @@ async function startServer() {
       saveSharedSessions(filtered);
       return res.json({ success: true, count: filtered.length });
     } catch (err: any) {
-      return res.status(500).json({ error: err.message || "Gagal memadam sesi" });
+      return res.status(500).json({ error: "Gagal memadam sesi" });
     }
   });
 

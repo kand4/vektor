@@ -133,7 +133,7 @@ const AboutSystem: React.FC<AboutSystemProps> = ({ isOpen, onClose }) => {
                         </div>
                         <div className="bg-emerald-950/40 border border-emerald-800/40 px-3 py-1.5 text-emerald-400 rounded-lg font-mono-sci text-xs flex items-center gap-2 max-w-max shadow-lg shadow-emerald-950/25">
                             <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
-                            STATUS: v3.5.1-STABLE
+                            STATUS: v3.5.2-STABLE
                         </div>
                     </div>
 
@@ -141,27 +141,40 @@ const AboutSystem: React.FC<AboutSystemProps> = ({ isOpen, onClose }) => {
                         <div className="text-slate-300 space-y-2 border-b border-slate-900 pb-4">
                             <span className="text-emerald-500 font-mono-sci font-bold uppercase tracking-wider block">ℹ️ Membaca Nombor Versi (Format SemVer):</span>
                             <p className="leading-relaxed">
-                                Format versi yang digunakan bagi VectorGuard.AI adalah format piawai industri <strong className="text-emerald-400 font-mono">MAJOR.MINOR.PATCH</strong> (Contoh: <code className="text-emerald-400 bg-emerald-950/50 px-1 py-0.5 rounded font-mono">3.5.1</code>):
+                                Format versi yang digunakan bagi VectorGuard.AI adalah format piawai industri <strong className="text-emerald-400 font-mono">MAJOR.MINOR.PATCH</strong> (Contoh: <code className="text-emerald-400 bg-emerald-950/50 px-1 py-0.5 rounded font-mono">3.5.2</code>):
                             </p>
                             <ul className="list-disc pl-5 mt-2 space-y-1 text-slate-400">
                                 <li><strong className="text-slate-200 font-mono">MAJOR [3]</strong> : Perubahan reka bentuk struktur utama / penaiktarafan generasi sistem (v3 melambangkan migrasi AI penuh).</li>
                                 <li><strong className="text-slate-200 font-mono">MINOR [5]</strong> : Penaiktarafan algoritmik utama KKM, gamifikasi Detektif Habitat & deteksi peranti pintar.</li>
-                                <li><strong className="text-slate-200 font-mono">PATCH [1]</strong> : Pengukuhan keselamatan siber (OPSEC & GitHub Secret Guard), pembaikan cache Papan Bukti/Arkib & penambahbaikan UI modal.</li>
+                                <li><strong className="text-slate-200 font-mono">PATCH [2]</strong> : Pariti penuh Vercel Serverless API, sinkronisasi imej & pembuangan metadata EXIF menyeluruh, kejituan konkurensi & penambahbaikan UX aliran kerja.</li>
                             </ul>
                         </div>
 
                         {/* Timeline logs */}
                         <div className="space-y-4 pt-2">
                             <div className="relative border-l border-slate-800 pl-4 space-y-6">
-                                {/* Item v3.5.1 */}
+                                {/* Item v3.5.2 */}
                                 <div className="relative">
                                     <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 bg-emerald-400 rounded-full ring-4 ring-emerald-950/60 animate-pulse"></span>
                                     <div className="flex items-center gap-2">
-                                        <span className="font-mono text-emerald-300 font-bold bg-emerald-900/60 border border-emerald-500/40 px-2 py-0.5 rounded">v3.5.1</span>
-                                        <span className="text-emerald-400 font-mono text-[10px]">TERKINI (PATCH KESELAMATAN & SISTEM)</span>
+                                        <span className="font-mono text-emerald-300 font-bold bg-emerald-900/60 border border-emerald-500/40 px-2 py-0.5 rounded">v3.5.2</span>
+                                        <span className="text-emerald-400 font-mono text-[10px]">TERKINI (AUDIT KEJURUTERAAN & UX)</span>
+                                    </div>
+                                    <h5 className="font-bold text-white mt-1 uppercase font-sci-fi tracking-wider">Pariti Serverless Vercel, Keselamatan EXIF Menyeluruh, Enjin KKM Deterministik & Peningkatan Flow UX</h5>
+                                    <p className="text-slate-300 mt-1 leading-relaxed">
+                                        Penaiktarafan standard industri hasil audit kejuruteraan mendalam: melengkapkan endpoint serverless Telegram & Telegraph pada persekitaran Vercel, membaiki integrasi data sebenar KKM/data.gov.my serta modul Audit Pematuhan Selepas Pembersihan, menyeragamkan mampatan & pelucutan EXIF/GPS pada semua modul muat naik, menstabilkan konkurensi giliran analisis dengan sinkronisasi pelayan, mengasingkan perbualan AI mengikut risiko, menambah pilihan eksport sesi semasa vs pukal, serta menambah sokongan pengesahan 0-Risiko pada Pengimbas AR Langsung.
+                                    </p>
+                                </div>
+
+                                {/* Item v3.5.1 */}
+                                <div className="relative">
+                                    <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-4 ring-emerald-950/60"></span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-mono text-emerald-400 font-bold bg-emerald-950/50 px-2 py-0.5 rounded">v3.5.1</span>
+                                        <span className="text-slate-500 font-mono text-[10px]">PATCH KESELAMATAN & SISTEM</span>
                                     </div>
                                     <h5 className="font-bold text-white mt-1 uppercase font-sci-fi tracking-wider">Pengukuhan Keselamatan OPSEC & GitHub, Pembaikan Cache Papan Bukti & UI Tetingkap</h5>
-                                    <p className="text-slate-300 mt-1 leading-relaxed">
+                                    <p className="text-slate-400 mt-1 leading-relaxed">
                                         Melaksanakan audit dan pembaikan keselamatan menyeluruh: perlindungan 12-lapisan <code>.gitignore</code> untuk menghalang kebocoran fail rahsia/API Key, pengimbas automatik CI/CD <strong>GitHub Actions Secret Guard</strong>, redaksi token sensitif automatik dalam log sistem (Gemini, Telegram, GitHub PAT, Roboflow), serta sanitasi ralat pelayan. Turut membaiki isu cache imej rosak pada Papan Bukti selepas fungsi <i>Purge</i>, menambah pilihan sahkan <i>Purge Semua Rekod Terdahulu</i> di Arkib, dan menyeragamkan butang tutup (✕) pada setiap tetingkap/modal.
                                     </p>
                                 </div>

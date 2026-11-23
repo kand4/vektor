@@ -1,7 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ComplianceAuditResult, RiskDetection } from '../../types';
 import { verifyCleaningCompliance } from '../../services/geminiService';
 import { BeforeAfterSlider } from '../ArchivePage/BeforeAfterSlider';
+import { resizeAndCompressImage } from '../../utils/imageUtils';
 
 interface ComplianceAuditModalProps {
   isOpen: boolean;
@@ -28,24 +29,29 @@ export const ComplianceAuditModal: React.FC<ComplianceAuditModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (isOpen) {
+      setAfterImage(existingAudit?.afterImageSrc || null);
+      setAuditResult(existingAudit || null);
+      setErrorMsg(null);
+    }
+  }, [isOpen, existingAudit, originalImageSrc]);
+
   if (!isOpen) return null;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
     setErrorMsg(null);
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setAfterImage(reader.result);
-        setAuditResult(null);
-      }
-    };
-    reader.onerror = () => {
-      setErrorMsg('Gagal membaca fail imej. Sila pilih fail JPG/PNG yang sah.');
-    };
-    reader.readAsDataURL(file);
+    const { preview } = await resizeAndCompressImage(file);
+    if (!preview) {
+      setErrorMsg('Fail imej tidak sah atau gagal diproses. Sila pilih fail JPG, PNG atau WEBP yang sah.');
+      return;
+    }
+    setAfterImage(preview);
+    setAuditResult(null);
   };
 
   const handleRunAudit = async () => {

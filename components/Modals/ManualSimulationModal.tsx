@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { resizeAndCompressImage } from '../../utils/imageUtils';
 
 interface ManualSimulationModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export const ManualSimulationModal: React.FC<ManualSimulationModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [jsonInput, setJsonInput] = useState('');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -32,17 +34,20 @@ export const ManualSimulationModal: React.FC<ManualSimulationModalProps> = ({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
+      e.target.value = '';
       if (file) {
-          processFile(file);
+          void processFile(file);
       }
   };
 
-  const processFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setUploadedImage(e.target?.result as string);
-    };
-    reader.readAsDataURL(file);
+  const processFile = async (file: File) => {
+    setErrorMsg(null);
+    const { preview } = await resizeAndCompressImage(file);
+    if (!preview) {
+      setErrorMsg('Fail imej tidak sah atau gagal diproses. Sila pilih fail JPG/PNG/WEBP.');
+      return;
+    }
+    setUploadedImage(preview);
   }
 
   const handlePaste = (e: React.ClipboardEvent) => {
@@ -51,7 +56,11 @@ export const ManualSimulationModal: React.FC<ManualSimulationModalProps> = ({
      for (let i = 0; i < items.length; i++) {
         if (items[i].type.indexOf('image') !== -1) {
             const blob = items[i].getAsFile();
-            if (blob) processFile(blob);
+            if (blob) {
+              const wrapped = new File([blob], 'pasted-image.png', { type: blob.type || 'image/png' });
+              void processFile(wrapped);
+              break;
+            }
         }
      }
   }
@@ -157,6 +166,9 @@ export const ManualSimulationModal: React.FC<ManualSimulationModalProps> = ({
                         >
                             TAMPAL / PILIH IMEJ
                         </label>
+                        {errorMsg && (
+                            <p className="mt-2 text-xs text-red-400 font-mono">{errorMsg}</p>
+                        )}
                     </div>
 
                     {/* LANGKAH 3 */}

@@ -23,7 +23,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       const storedKey = localStorage.getItem('gemini_api_key') || '';
       const storedKey2 = localStorage.getItem('gemini_api_key_2') || '';
       const storedKey3 = localStorage.getItem('gemini_api_key_3') || '';
-      const storedModel = localStorage.getItem('gemini_model_preference') || 'gemini-3.8-flash';
+      const storedModel = localStorage.getItem('gemini_model_preference') || 'gemini-2.5-flash';
       const storedRoboflowKey = localStorage.getItem('roboflow_api_key') || '';
       const storedRoboflowModel = localStorage.getItem('roboflow_model') || 'aegypti-larvae-detection/1';
       setApiKey(storedKey);
@@ -60,7 +60,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                     },
                     body: JSON.stringify({
                         method: 'generateContent',
-                        model: geminiModel || 'gemini-3.8-flash',
+                        model: geminiModel || 'gemini-2.5-flash',
                         contents: { parts: [{ text: 'Test connection. Reply OK.' }] }
                     })
                 });
@@ -223,11 +223,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               value={geminiModel}
               onChange={(e) => setGeminiModel(e.target.value)}
             >
-              <option value="gemini-3.8-flash">Gemini 3.8 Flash (Terkini / Sangat Laju & Pintar)</option>
-              <option value="gemini-3.7-flash">Gemini 3.7 Flash (Stabil & Pantas)</option>
-              <option value="gemini-flash-latest">Gemini Flash Latest</option>
-              <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite (Pantas)</option>
-              <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Analisis Kompleks)</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash (Pantas, Stabil &amp; Disyorkan)</option>
+              <option value="gemini-flash-latest">Gemini Flash Latest (Auto-Kemaskini)</option>
+              <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash Lite (Ultra Pantas)</option>
+              <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Analisis Forensik Kompleks)</option>
+              {geminiModel &&
+                !['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite', 'gemini-3.1-pro-preview'].includes(geminiModel) && (
+                  <option value={geminiModel}>{geminiModel} (Tetapan Tersuai)</option>
+                )}
             </select>
             <p className="text-[10px] text-slate-500 mt-1">Pilihan ini digunakan sebagai enjin imbasan. Soalan susulan AI, diagnosa, dan simulasi imej menggunakan Gemini / Imagen secara automatik.</p>
           </div>

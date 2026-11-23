@@ -91,18 +91,21 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   const isKKMMode = result.mode === 'KKM_FOOD_STANDARD';
   
   const [isSavageMode, setIsSavageMode] = useState(false);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatByRisk, setChatByRisk] = useState<Record<string, ChatMessage[]>>({});
   const [userQuestion, setUserQuestion] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [manualBox, setManualBox] = useState<BoundingBox | null>(null);
   const [showManualModal, setShowManualModal] = useState(false);
-  const [manualContext, setManualContext] = useState("");
+  const [manualType, setManualType] = useState<'Candid' | 'Targeted'>('Targeted');
+  const [manualNote, setManualNote] = useState("Sila analisa kawasan ini.");
   const [isProcessingManual, setIsProcessingManual] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
   const [cleanImages, setCleanImages] = useState<string[]>(savedSimulationImage ? [savedSimulationImage] : []);
   const activeCleanImage = cleanImages.length > 0 ? cleanImages[cleanImages.length - 1] : (savedSimulationImage || null);
+  const activeChatMessages = activeRisk ? (chatByRisk[activeRisk.id] || []) : [];
+  const currentSession = allSessions?.find(s => s.imageSrc === imageSrc || (savedSimulationImage && s.simulationImage === savedSimulationImage));
   const [viewMode, setViewMode] = useState<'SLIDER' | 'ANNOTATION'>(Boolean(savedSimulationImage) ? 'SLIDER' : 'ANNOTATION');
   const [showCleanModal, setShowCleanModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -177,6 +180,12 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       }
   }, [currentRisks]);
 
+  useEffect(() => {
+    if (activeChatMessages.length > 0) {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [activeChatMessages.length, activeRisk?.id]);
+
   // Robust Print Clean-up Listener
   useEffect(() => {
     const cleanupPrint = () => {
@@ -236,19 +245,21 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
   const handleRegionDrawn = (box: BoundingBox) => {
     setManualBox(box);
-    setManualContext("Targeted: Sila analisa kawasan ini.");
+    setManualType('Targeted');
+    setManualNote("Sila analisa kawasan ini.");
     setShowManualModal(true);
     setIsEditing(false);
   };
 
   const submitManualAnalysis = async () => {
-    if (!manualBox || !manualContext) return;
+    if (!manualBox || !manualNote.trim()) return;
     setIsProcessingManual(true);
     try {
         const cleanBase64 = imageSrc.includes(',') ? imageSrc.split(',')[1] : imageSrc;
         const mimeType = imageSrc.includes(';') ? (imageSrc.split(';')[0].split(':')[1] || 'image/jpeg') : 'image/jpeg';
         const currentSensitivity = result?.sensitivityUsed || 'HIGH';
-        const newRisk = await analyzeManualRegion(cleanBase64, mimeType, manualBox, manualContext, language, isSavageMode, currentSensitivity as 'LOW' | 'HIGH' | 'EXTREME');
+        const contextPayload = `${manualType}: ${manualNote.trim()}`;
+        const newRisk = await analyzeManualRegion(cleanBase64, mimeType, manualBox, contextPayload, language, isSavageMode, currentSensitivity as 'LOW' | 'HIGH' | 'EXTREME');
         
         // UPDATE PARENT STATE FOR PERSISTENCE
         const updatedRisks = [newRisk, ...currentRisks];
@@ -258,7 +269,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
         
         setActiveRisk(newRisk);
         setShowManualModal(false);
-        setManualContext("");
+        setManualNote("Sila analisa kawasan ini.");
         setManualBox(null);
     } catch (e: any) {
         setToastMsg({ msg: `Gagal memproses manual region: ${e?.message || e}`, type: 'error' });
@@ -267,7 +278,7 @@ export const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     }
   };
 
-  const cancelManualMode = () => { setIsEditing(false); setShowManualModal(false); setManualBox(null); setManualContext(""); };
+  const cancelManualMode = () => { setIsEditing(false); setShowManualModal(false); setManualBox(null); setManualNote("Sila analisa kawasan ini."); };
   const handleOpenSimulation = () => { cleanImages.length > 0 ? setShowCleanModal(true) : setShowConfigModal(true); };
 
   const handleRegenerateSimulation = async (customPrompt: string) => {
@@ -364,17 +375,27 @@ ${textPrompt}`;
   const handleAskAI = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userQuestion.trim() || !activeRisk) return;
+    const riskId = activeRisk.id;
     const newMsg: ChatMessage = { role: 'user', text: userQuestion };
-    setChatMessages(prev => [...prev, newMsg]);
+    setChatByRisk(prev => ({
+      ...prev,
+      [riskId]: [...(prev[riskId] || []), newMsg]
+    }));
     setUserQuestion("");
     setIsChatLoading(true);
     try {
       const response = await askRiskFollowUp(activeRisk, newMsg.text, language);
-      setChatMessages(prev => [...prev, { role: 'model', text: response }]);
+      setChatByRisk(prev => ({
+        ...prev,
+        [riskId]: [...(prev[riskId] || []), { role: 'model', text: response }]
+      }));
     } catch (error: any) {
       console.error("Ask AI error:", error);
       const errMsg = error?.message || String(error);
-      setChatMessages(prev => [...prev, { role: 'model', text: `${t('chat_error')} Ralat: ${errMsg}` }]);
+      setChatByRisk(prev => ({
+        ...prev,
+        [riskId]: [...(prev[riskId] || []), { role: 'model', text: `${t('chat_error')} Ralat: ${errMsg}` }]
+      }));
     } finally {
       setIsChatLoading(false);
     }
@@ -504,31 +525,46 @@ ${textPrompt}`;
       return t('btn_microscope');
   };
 
-  // MANUAL TARGETING MODAL
-  if (showManualModal) {
-     return (
-        <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-emerald-500 rounded-xl p-6 w-full max-w-sm shadow-2xl animate-fade-in-up">
-                <h3 className="text-lg font-sci-fi font-bold text-white mb-4"><span className="text-emerald-400">🎯 {t('manual_targeting')}</span></h3>                <div className="mb-4">
-                     <label className="text-xs text-slate-400 font-mono-sci uppercase block mb-1">Jenis Gambar:</label>
-                     <select 
-                        value={manualContext.includes("Candid") ? "Candid" : "Targeted"} 
-                        onChange={(e) => setManualContext(prev => `${e.target.value}: ${prev.split(': ')[1] || ''}`)}
-                        className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white text-sm"
-                     >
-                         <option value="Candid">Candid</option>
-                         <option value="Targeted">Targeted (Bersasar)</option>
-                     </select>
-                 </div>
-                 <textarea value={manualContext.split(': ')[1] || ''} onChange={(e) => setManualContext(prev => `${prev.split(': ')[0] || 'Candid'}: ${e.target.value}`)} placeholder={t('manual_placeholder')} rows={3} className="w-full bg-slate-950 border border-slate-700 rounded p-3 text-white text-sm outline-none mb-4" />
-                <div className="flex gap-2">
-                    <button onClick={cancelManualMode} disabled={isProcessingManual} className="flex-1 py-2 bg-slate-800 text-slate-300 rounded">{t('btn_cancel')}</button>
-                    <button onClick={submitManualAnalysis} disabled={!manualContext.trim() || isProcessingManual} className="flex-1 py-2 bg-emerald-600 text-white rounded font-bold">{isProcessingManual ? t('scanning_wait') : t('btn_analyze')}</button>
-                </div>
-            </div>
+  const manualOverlayModal = showManualModal ? (
+    <div className="fixed inset-0 z-[270] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-slate-900 border border-emerald-500 rounded-xl p-6 w-full max-w-sm shadow-2xl animate-fade-in-up">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h3 className="text-lg font-sci-fi font-bold text-white"><span className="text-emerald-400">🎯 {t('manual_targeting')}</span></h3>
+          <button
+            onClick={cancelManualMode}
+            disabled={isProcessingManual}
+            title="Tutup"
+            aria-label="Tutup"
+            className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-red-600 text-slate-300 hover:text-white flex items-center justify-center border border-slate-700 transition-colors font-bold text-xs shrink-0"
+          >
+            ✕
+          </button>
         </div>
-     )
-  }
+        <div className="mb-4">
+          <label className="text-xs text-slate-400 font-mono-sci uppercase block mb-1">Jenis Gambar:</label>
+          <select
+            value={manualType}
+            onChange={(e) => setManualType(e.target.value as 'Candid' | 'Targeted')}
+            className="w-full bg-slate-950 border border-slate-700 rounded p-2 text-white text-sm"
+          >
+            <option value="Candid">Candid</option>
+            <option value="Targeted">Targeted (Bersasar)</option>
+          </select>
+        </div>
+        <textarea
+          value={manualNote}
+          onChange={(e) => setManualNote(e.target.value)}
+          placeholder={t('manual_placeholder')}
+          rows={3}
+          className="w-full bg-slate-950 border border-slate-700 rounded p-3 text-white text-sm outline-none mb-4 focus:border-emerald-500"
+        />
+        <div className="flex gap-2">
+          <button onClick={cancelManualMode} disabled={isProcessingManual} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded transition-colors">{t('btn_cancel')}</button>
+          <button onClick={submitManualAnalysis} disabled={!manualNote.trim() || isProcessingManual} className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded font-bold transition-colors">{isProcessingManual ? t('scanning_wait') : t('btn_analyze')}</button>
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   // IF KKM MODE: Show Special Report + Image Annotator
   if (isKKMMode) {
@@ -537,6 +573,7 @@ ${textPrompt}`;
       
       return (
           <div className="animate-fade-in pb-20 border border-[#e5ebe5]">
+             {manualOverlayModal}
              {isPrinting && (
                  <div className="fixed inset-0 z-[9999] bg-slate-900/90 backdrop-blur-sm flex flex-col items-center justify-center">
                      <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mb-4 shadow-[0_0_15px_cyan]"></div>
@@ -548,7 +585,7 @@ ${textPrompt}`;
              <SimulationConfigModal isOpen={showConfigModal} onClose={() => setShowConfigModal(false)} onStart={startSimulation} />
              <SimulationResultModal isOpen={showCleanModal} onClose={() => setShowCleanModal(false)} originalImage={imageSrc} generatedImages={cleanImages} generatedPrompt={generatedSimPrompt} onRegenerate={handleRegenerateSimulation} onManualFallback={handleManualFallback} onAnalyzeSimulation={onAnalyzeGeneratedImage} />
              <ManualSimulationModal isOpen={showManualSimModal} onClose={() => setShowManualSimModal(false)} promptText={manualSimPrompt} onImagePasted={handleManualSimulationPasted} />
-             <ExportModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} sessions={allSessions} />
+             <ExportModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} sessions={allSessions} currentSession={currentSession} />
              <ComplianceAuditModal isOpen={showAuditModal} onClose={() => setShowAuditModal(false)} originalImageSrc={imageSrc} detectedRisks={currentRisks} existingAudit={result.complianceAudit} onSaveAudit={handleSaveAudit} language={language} />
              
              {/* THE HIDDEN PRINT MODULE */}
@@ -896,9 +933,9 @@ ${textPrompt}`;
                                             💬 {t('chat_title') || 'TANYA AI TENTANG ISU INI'}
                                         </h4>
                                         
-                                        {chatMessages.length > 0 && (
+                                        {activeChatMessages.length > 0 && (
                                             <div className="mb-4 max-h-[250px] overflow-y-auto custom-scrollbar bg-black/60 rounded-xl p-4 text-sm space-y-3 border border-slate-800">
-                                                {chatMessages.map((msg, idx) => (
+                                                {activeChatMessages.map((msg, idx) => (
                                                     <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                                                         <span className={`text-[10px] font-mono-sci uppercase tracking-wider mb-1 ${msg.role === 'user' ? 'text-emerald-400' : 'text-blue-400'}`}>
                                                             {msg.role === 'user' ? t('chat_you') || 'ANDA' : t('chat_ai') || 'AI SANITASI'}
@@ -989,6 +1026,7 @@ ${textPrompt}`;
   // Restored to rely on activeRisk for details panel presence (Clean visual if no risk selected)
   return (
     <div className="animate-fade-in pb-20">
+      {manualOverlayModal}
       {isPrinting && (
           <div className="fixed inset-0 z-[9999] bg-slate-900/90 backdrop-blur-sm flex flex-col items-center justify-center">
               <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mb-4 shadow-[0_0_15px_cyan]"></div>
@@ -1000,7 +1038,7 @@ ${textPrompt}`;
       <SimulationConfigModal isOpen={showConfigModal} onClose={() => setShowConfigModal(false)} onStart={startSimulation} />
       <SimulationResultModal isOpen={showCleanModal} onClose={() => setShowCleanModal(false)} originalImage={imageSrc} generatedImages={cleanImages} generatedPrompt={generatedSimPrompt} onRegenerate={handleRegenerateSimulation} onManualFallback={handleManualFallback} onAnalyzeSimulation={onAnalyzeGeneratedImage} />
       <ManualSimulationModal isOpen={showManualSimModal} onClose={() => setShowManualSimModal(false)} promptText={manualSimPrompt} onImagePasted={handleManualSimulationPasted} />
-      <ExportModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} sessions={allSessions} />
+      <ExportModal isOpen={showExportModal} onClose={() => setShowExportModal(false)} sessions={allSessions} currentSession={currentSession} />
       <ComplianceAuditModal isOpen={showAuditModal} onClose={() => setShowAuditModal(false)} originalImageSrc={imageSrc} detectedRisks={currentRisks} existingAudit={result.complianceAudit} onSaveAudit={handleSaveAudit} language={language} />
       
       {/* THE HIDDEN PRINT MODULE */}
@@ -1413,9 +1451,9 @@ ${textPrompt}`;
                             </div>
                         </div>
                         <div className="mt-4 pt-4 border-t border-slate-800">
-                            {chatMessages.length > 0 && (
+                            {activeChatMessages.length > 0 && (
                                 <div className="mb-4 max-h-[320px] overflow-y-auto custom-scrollbar bg-black/60 rounded-xl p-4 text-sm space-y-3 border border-slate-800">
-                                    {chatMessages.map((msg, idx) => (
+                                    {activeChatMessages.map((msg, idx) => (
                                         <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                                             <span className={`text-[10px] font-mono-sci uppercase tracking-wider mb-1 ${msg.role === 'user' ? 'text-emerald-400' : 'text-blue-400'}`}>
                                                 {msg.role === 'user' ? t('chat_you') : t('chat_ai')}

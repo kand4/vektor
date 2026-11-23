@@ -16,46 +16,62 @@ const formatDate = (dateStr: string) => {
  */
 export const fetchNationalDengueTrend = async (): Promise<EpidemicTrend> => {
   try {
-    // NOTE: We are fetching 'cases_malaysia' which often includes dengue aggregate data
-    // Or specifically targeting a dengue endpoint if available. 
-    // For stability, we use a known endpoint for daily cases and filter/aggregate or simulate if CORS blocks.
-    
-    // Attempting to fetch real data
-    // Using 'epidemic_dengue_weekly' if available, otherwise falling back to a logic that mimics real data structure
-    // Since direct CORS might be blocked on localhost, we handle errors gracefully.
-    
-    const response = await fetch(`${API_BASE}?id=dengue_weekly&limit=10`);
-    
+    const response = await fetch(`${API_BASE}?id=dengue_weekly&limit=10`, {
+      signal: AbortSignal.timeout(8000)
+    });
+
     if (!response.ok) {
-        throw new Error("API Connection Failed");
+      throw new Error(`API Connection Failed (${response.status})`);
     }
 
     const json = await response.json();
-    
-    // Assuming API returns array of objects: { "date": "2024-01-01", "cases_new": 120, ... }
-    // We map it to our structure.
-    // If the API structure changes, this mapping needs adjustment.
-    
-    // MOCK LOGIC FOR DEMO (Because data.gov.my sometimes changes IDs or blocks CORS for generic domains)
-    // In a real production deployment, we would proxy this request.
-    // For now, let's return a "Live-Lookalike" dataset that represents current Malaysian trends.
-    
-    return {
-        weeks: ["Minggu 44", "Minggu 45", "Minggu 46", "Minggu 47", "Minggu 48"],
-        cases: [1450, 1520, 1680, 1850, 2100], // Realistic rising trend in Malaysia
-        trend: 'RISING',
-        totalCasesLastWeek: 2100
-    };
+    const rows = Array.isArray(json)
+      ? json
+      : Array.isArray((json as any)?.data)
+      ? (json as any).data
+      : [];
 
+    const validRows = rows
+      .map((row: any) => {
+        const rawDate = row?.date || row?.tarikh || row?.week;
+        const rawCases = Number(row?.cases ?? row?.cases_new ?? row?.kes ?? row?.jumlah ?? row?.value);
+        if (!rawDate || !Number.isFinite(rawCases)) return null;
+        return {
+          dateStr: String(rawDate),
+          timestamp: new Date(rawDate).getTime() || 0,
+          cases: Math.max(0, Math.round(rawCases))
+        };
+      })
+      .filter((r: any): r is { dateStr: string; timestamp: number; cases: number } => r !== null)
+      .sort((a: any, b: any) => a.timestamp - b.timestamp)
+      .slice(-5);
+
+    if (validRows.length >= 2) {
+      const weeks = validRows.map((r: any) => formatDate(r.dateStr));
+      const cases = validRows.map((r: any) => r.cases);
+      const last = cases[cases.length - 1];
+      const prev = cases[cases.length - 2];
+      const diffPct = prev > 0 ? ((last - prev) / prev) * 100 : 0;
+      const trend: 'RISING' | 'FALLING' | 'STABLE' =
+        diffPct > 3 ? 'RISING' : diffPct < -3 ? 'FALLING' : 'STABLE';
+
+      return {
+        weeks,
+        cases,
+        trend,
+        totalCasesLastWeek: last
+      };
+    }
+
+    throw new Error("Struktur data tidak mencukupi daripada data.gov.my");
   } catch (error) {
     console.warn("Gagal menyambung ke data.gov.my, menggunakan data simpanan (cached).");
-    
-    // Fallback Data (Based on Q4 2024 Trends)
+
     return {
-        weeks: ["M44", "M45", "M46", "M47", "M48"],
-        cases: [1800, 1950, 2010, 2200, 2350],
-        trend: 'RISING',
-        totalCasesLastWeek: 2350
+      weeks: ["M44", "M45", "M46", "M47", "M48"],
+      cases: [1800, 1950, 2010, 2200, 2350],
+      trend: 'RISING',
+      totalCasesLastWeek: 2350
     };
   }
 };

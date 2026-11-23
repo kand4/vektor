@@ -243,7 +243,7 @@ DO NOT include markdown tags like \`\`\`json or backticks. Return the json objec
         const risks = parsed.risks || [];
         const hygieneLevel = parsed.hygieneLevel || 3;
 
-        const sections = sectionsText.map(sec => {
+        const sections = sectionsText.map((sec, idx) => {
             const violations: string[] = [];
             risks.forEach((r: any) => {
                 const desc = (r.description || '').toLowerCase();
@@ -257,9 +257,12 @@ DO NOT include markdown tags like \`\`\`json or backticks. Return the json objec
             let demeritReceived = 0;
             if (violations.length > 0) {
                 demeritReceived = Math.min(sec.max, violations.length * 3);
-            } else if (hygieneLevel > 2 && Math.random() > 0.6) {
-                demeritReceived = Math.min(sec.max, Math.floor(Math.random() * 2) + 1);
-                violations.push("Pemerhatian kebersihan kurang memuaskan secara tidak langsung.");
+            } else if (hygieneLevel >= 4 && idx % 3 === 0) {
+                demeritReceived = Math.min(sec.max, 2);
+                violations.push("Pemerhatian kebersihan kurang memuaskan berdasarkan skor risiko keseluruhan.");
+            } else if (hygieneLevel >= 3 && idx % 4 === 0) {
+                demeritReceived = Math.min(sec.max, 1);
+                violations.push("Pemerhatian kebersihan memerlukan penyelenggaraan berkala.");
             }
 
             totalDemerit += demeritReceived;
@@ -409,7 +412,7 @@ DO NOT include markdown tags like \`\`\`json or backticks. Return the json objec
               <>
                 <p>1. Buka <a href="https://aistudio.google.com" target="_blank" rel="noreferrer" className="text-cyan-400 font-bold hover:underline">Google AI Studio</a> (Percuma & Tiada Had).</p>
                 <p>2. Muatkan imej anda, salin membimbing arahan prompt di bawah.</p>
-                <p>3. Pilih model <b>Gemini 1.5 Pro atau Gemini 2.5 Flash</b> lalu tekan Run.</p>
+                <p>3. Pilih model <b>Gemini 2.5 Flash atau Gemini 3.1 Pro</b> lalu tekan Run.</p>
               </>
             )}
             {activePlatform === 'LMSYS' && (
